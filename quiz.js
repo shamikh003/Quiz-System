@@ -10,8 +10,9 @@ const scoreDisplay = document.getElementById('score-display');
 const greetingMessage = document.getElementById('greeting-message');
 const timerDisplay = document.getElementById('time-left');
 
-// Backend URL
-const BACKEND_URL = 'http://localhost:5000';
+
+//backend link
+const BACKEND_URL = 'https://quiz-system-hpy5.onrender.com';
 
 // Timer Variables
 let quizTimer;

@@ -6,8 +6,8 @@ const correctOptionD = document.getElementById('correct-option-d');
 const questionForm = document.getElementById('question-form');
 const clearBtn = document.getElementById('clear-questions-btn');
 
-// Backend server ka URL
-const BACKEND_URL = 'http://localhost:5000'; 
+//backend link
+const BACKEND_URL = 'https://quiz-system-hpy5.onrender.com';
 
 // Event listener for the dropdown
 optionCountSelector.addEventListener('change', function() {

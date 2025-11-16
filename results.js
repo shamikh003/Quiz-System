@@ -1,5 +1,6 @@
-// Backend URL
-const BACKEND_URL = 'http://localhost:5000';
+
+//backend link
+const BACKEND_URL = 'https://quiz-system-hpy5.onrender.com';
 
 // 'DOMContentLoaded' ko 'async' banayein
 document.addEventListener('DOMContentLoaded', async function() {
