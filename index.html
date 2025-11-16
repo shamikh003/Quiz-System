@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher - Admin Panel</title>
-    <link rel="stylesheet" href="style.css?v=1.5">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css?v=1.7">
 </head>
 <body>
 
@@ -47,30 +48,29 @@
                 <option value="D" id="correct-option-d">D</option>
             </select>
             
-            <button type="submit">Save Question</button>
+            <button type="submit" id="save-question-btn">Save Question</button>
             <button type="button" id="clear-questions-btn" class="btn-danger">Clear All Saved Questions</button>
         </form>
 
         <div class="nav-links">
             <a href="results.html">View All Results</a>
-                 <!-- just for testing student panel -->
-            <hr class="separator">
-            <a href="quiz.html">Open Student Quiz Page</a>
-        </div>
+            
+            </div>
     </div>
 
-    <script src="admin.js?v=1.5"></script>
+    <script src="admin.js?v=1.7"></script>
 
     <script>
-        
         (function() {
             const password = prompt("Teacher Panel Access: Please enter the password:");
             const CORRECT_PASSWORD = "teacher123"; 
+
             if (password === CORRECT_PASSWORD) {
                 const adminPanel = document.getElementById('admin-panel');
                 adminPanel.classList.remove('admin-hidden');
             } else {
                 alert("Incorrect password. Access denied.");
+                document.body.innerHTML = '<h1 style="color:white; text-align:center; margin-top: 50px;">Access Denied</h1>';
             }
         })();
     </script>

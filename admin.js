@@ -7,10 +7,13 @@ const optionDWrapper = document.getElementById('option-d-wrapper');
 const optionDInput = document.getElementById('option-d');
 const correctOptionD = document.getElementById('correct-option-d');
 const questionForm = document.getElementById('question-form');
-const clearBtn = document.getElementById('clear-questions-btn');
-const quizTimeInput = document.getElementById('quiz-time'); // Time input ko select karein
+const quizTimeInput = document.getElementById('quiz-time'); 
 
-// --- NAYA: Page Load par settings load karein ---
+// Buttons ko select karein
+const saveBtn = document.getElementById('save-question-btn');
+const clearBtn = document.getElementById('clear-questions-btn');
+
+// Page Load par settings load karein
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const response = await fetch(`${BACKEND_URL}/api/settings`);
@@ -25,7 +28,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error fetching settings:', error);
     }
 });
-// --- END OF NEW CODE ---
 
 // Event listener for the dropdown
 optionCountSelector.addEventListener('change', function() {
@@ -41,22 +43,26 @@ optionCountSelector.addEventListener('change', function() {
     }
 });
 
-// Form submit karne ka naya logic
+// Form submit ka logic (Loading state ke sath)
 questionForm.addEventListener('submit', async function(event) {
     event.preventDefault();
 
-    // 1. Pehle Settings (Time) ko save karein
-    const quizTime = quizTimeInput.value; // Yahan se value lein
-    const settingsData = { time: quizTime };
-    
+    // 1. Loading state shuru karein
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = 'Saving... <span class="spinner"></span>';
+
+    const quizTime = quizTimeInput.value; // Time save karein
+
     try {
+        // 2. Settings (Time) ko save karein
+        const settingsData = { time: quizTime };
         await fetch(`${BACKEND_URL}/api/settings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settingsData)
         });
 
-        // 2. Ab Naya Sawal (Question) save karein
+        // 3. Naya Sawal (Question) save karein
         const optionsArray = [
             { id: 'A', text: document.getElementById('option-a').value },
             { id: 'B', text: document.getElementById('option-b').value },
@@ -82,12 +88,7 @@ questionForm.addEventListener('submit', async function(event) {
         if (response.ok) {
             alert('Question saved to database successfully!');
             event.target.reset(); // Form reset karein
-            
-            // --- NAYA: Reset ke baad Time wapas set karein ---
-            quizTimeInput.value = quizTime; 
-            // --- END OF NEW CODE ---
-
-            // Form reset hone ke baad, 4-options wala view wapas set karein (default)
+            quizTimeInput.value = quizTime; // Time wapas set karein
             optionDWrapper.classList.remove('hidden');
             correctOptionD.classList.remove('hidden');
             optionDInput.required = true;
@@ -97,17 +98,28 @@ questionForm.addEventListener('submit', async function(event) {
     } catch (error) {
         console.error('Error saving data:', error);
         alert('Could not connect to server. Please check your connection.');
+    } finally {
+        // 4. Loading state khatam karein
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = 'Save Question';
     }
 });
 
-// "Clear All Questions" button ka naya logic
+// "Clear All" ka logic (Loading state ke sath)
 clearBtn.addEventListener('click', async function() {
     if (confirm('Are you sure you want to delete ALL questions from the database?')) {
+        
+        clearBtn.disabled = true;
+        clearBtn.innerHTML = 'Deleting... <span class="spinner"></span>';
+
         try {
             await fetch(`${BACKEND_URL}/api/questions`, { method: 'DELETE' });
             alert('All questions deleted from database.');
         } catch (error) {
             alert('Could not connect to server to delete questions.');
+        } finally {
+            clearBtn.disabled = false;
+            clearBtn.innerHTML = 'Clear All Saved Questions';
         }
     }
 });

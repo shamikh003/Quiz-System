@@ -4,8 +4,6 @@
 :root {
     --primary-color: #6c5ce7; /* Main Purple/Indigo */
     --primary-light: #f0edff; /* Halka Purple (Hover ke liye) */
-    /* --secondary-bg: #f5f6fa; -- Iski zaroorat nahi */
-    /* --container-bg: #ffffff; -- Iski zaroorat nahi */
     --text-dark: #333333; /* Dark text */
     --text-light: #555555; /* Light text (labels ke liye) */
     --border-color: #e0e0e0; /* Naya border color */
@@ -17,13 +15,9 @@
 /* === 2. GENERAL STYLES (WITH GLASSMORPHISM) === */
 body { 
     font-family: 'Poppins', Arial, sans-serif; 
-    
-    /* === Naya Background Glass effect ke liye === */
     background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
-    /* === End === */
-
     padding: 20px; 
-    color: var(--text-dark); /* Text ko thora dark rakhein glass par */
+    color: var(--text-dark); 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -34,20 +28,14 @@ body {
     max-width: 600px; 
     width: 100%;
     margin: 20px auto; 
-    
-    /* === Glassmorphism Effect === */
-    background: rgba(255, 255, 255, 0.4); /* Halka sa white background */
+    background: rgba(255, 255, 255, 0.4); 
     backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px); /* Safari support */
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Halka border */
-    /* === End of Effect === */
-    
+    -webkit-backdrop-filter: blur(12px); 
+    border: 1px solid rgba(255, 255, 255, 0.2); 
     padding: 30px; 
-    border-radius: 16px; /* Thora aur rounded */
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); /* Halka shadow */
+    border-radius: 16px; 
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); 
 }
-/* === END OF GLASSMORPHISM STYLES === */
-
 h1 { 
     text-align: center; 
     color: var(--text-dark); 
@@ -75,7 +63,7 @@ textarea, input, select {
     border-radius: 8px; 
     border: 1px solid var(--border-color);
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    background: rgba(255, 255, 255, 0.5); /* Inputs ko bhi halka transparent karein */
+    background: rgba(255, 255, 255, 0.5); 
 }
 textarea:focus, input:focus, select:focus {
     outline: none;
@@ -103,8 +91,16 @@ button:hover {
     background-color: #5a4bd4; 
     transform: translateY(-2px); 
 }
-
-/* Danger buttons (Clear All) */
+/* Jab button disable ho (loading ke waqt) */
+button:disabled, button[disabled] {
+    background-color: #5a4bd4; 
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+button:disabled:hover, button[disabled]:hover {
+    background-color: #5a4bd4;
+    transform: none;
+}
 .btn-danger {
     background-color: var(--danger-color);
     margin-top: 10px;
@@ -116,7 +112,7 @@ button:hover {
 
 /* === 5. QUIZ OPTION BUTTONS === */
 .option-btn { 
-    background-color: rgba(255, 255, 255, 0.5); /* Halka transparent */
+    background-color: rgba(255, 255, 255, 0.5); 
     border: 1px solid var(--border-color); 
     text-align: left; 
     color: var(--text-light);
@@ -132,6 +128,14 @@ button:hover {
     cursor: not-allowed; 
     opacity: 0.8;
 }
+/* NAYA: Selected style (Feedback chupanay ke liye) */
+.option-btn.selected {
+    background-color: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--text-dark);
+    font-weight: 600;
+}
+/* Yeh styles ab sirf results page par kaam karenge */
 .option-btn.correct { 
     background-color: var(--success-color); 
     color: white;
@@ -146,9 +150,7 @@ button:hover {
     transform: none; 
 }
 
-
 /* === 6. NAVIGATION & RESULTS PAGES === */
-/* Navigation Links */
 .nav-links { 
     text-align: center; 
     margin-top: 25px; 
@@ -166,21 +168,15 @@ button:hover {
 }
 .nav-links a[href="results.html"] { background-color: #28a745; } 
 .nav-links a[href="results.html"]:hover { background-color: #218838; }
-
 .nav-links a:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow);
 }
-
-/* Separator Line (admin.html) */
 .separator {
     border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.4); /* Glass separator */
+    border-top: 1px solid rgba(255, 255, 255, 0.4); 
     margin: 15px 0; 
 }
-
-
-/* Results Table (results.html) */
 table { 
     width: 100%; 
     border-collapse: collapse; 
@@ -197,10 +193,8 @@ th {
     font-weight: 600;
 }
 tr:nth-child(even) { 
-    background-color: rgba(255, 255, 255, 0.2); /* Halka transparent row */
+    background-color: rgba(255, 255, 255, 0.2); 
 }
-
-/* Detailed Results (quiz.html) */
 .result-item {
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 15px;
@@ -228,12 +222,25 @@ tr:nth-child(even) {
 #option-d-wrapper.hidden {
     display: none;
 }
-
 #login-container, #quiz-container, #result-container { 
     display: none; 
 }
 #login-container { 
-    display: block; /* Sirf login ko dikhayein */
+    display: block; 
+}
+/* NAYA: Loading Container */
+#loading-container {
+    display: none; /* Default mein chupa ho */
+    text-align: center;
+    padding: 40px 0;
+}
+#loading-container h2 {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+#loading-container p {
+    font-size: 0.9rem;
+    color: var(--text-light);
 }
 
 /* === 8. NAYI TIMER STYLING === */
@@ -249,7 +256,6 @@ tr:nth-child(even) {
     background: var(--primary-light);
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
-
 #time-left {
     font-family: 'Poppins', monospace; 
     font-size: 2.2rem;
@@ -257,49 +263,54 @@ tr:nth-child(even) {
     color: var(--primary-color);
 }
 
+/* === 9. NAYA: LOADING SPINNER (Button ke liye) === */
+.spinner {
+    display: inline-block;
+    width: 1em; 
+    height: 1em;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    border-top-color: #ffffff;
+    animation: spin 1s ease-in-out infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+@keyframes spin {
+    to { 
+        transform: rotate(360deg); 
+    }
+}
 
-/* ========================================= */
-/* === 9. MOBILE RESPONSIVE STYLES === */
-/* ========================================= */
-
+/* === 10. MOBILE RESPONSIVE STYLES === */
 @media (max-width: 600px) {
-    
     body {
         padding: 10px; 
         align-items: flex-start; 
     }
-    
     .container {
         padding: 20px; 
         margin: 10px auto; 
         border-radius: 12px;
     }
-
     h1 {
         font-size: 24px; 
         margin-bottom: 20px;
     }
-    
     h2 {
         font-size: 20px;
     }
-
     input, select, button, textarea {
         padding: 14px; 
         font-size: 16px; 
     }
-
     table {
         display: block;
         overflow-x: auto; 
         white-space: nowrap; 
     }
-    
     th, td {
         padding: 10px;
     }
-
-    /* Timer ko mobile par thora chota karein */
     #timer-display {
         width: 100px;
         height: 100px;
@@ -308,6 +319,8 @@ tr:nth-child(even) {
         font-size: 1.8rem;
     }
 }
+
+/* === 11. ADMIN PASSWORD PROTECTION === */
 .admin-hidden {
     display: none;
 }
