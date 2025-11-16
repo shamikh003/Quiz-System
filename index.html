@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher - Admin Panel</title>
+    <link rel="stylesheet" href="style.css?v=1.5">
+</head>
+<body>
+
+    <div class="container admin-hidden" id="admin-panel">
+        <h1>Teacher Admin Panel</h1>
+        
+        <form id="question-form">
+            
+            <label for="question-text">Write New Question:</label>
+            <textarea id="question-text" required></textarea>
+            
+            <label for="option-count">Number of Options:</label>
+            <select id="option-count">
+                <option value="4" selected>4 Options</option>
+                <option value="3">3 Options</option>
+            </select>
+            
+            <label for="quiz-time">Quiz Time (in Minutes):</label>
+            <input type="number" id="quiz-time" value="10" min="1" required>
+
+            <label for="option-a">Option A:</label>
+            <input type="text" id="option-a" required>
+            
+            <label for="option-b">Option B:</label>
+            <input type="text" id="option-b" required>
+            
+            <label for="option-c">Option C:</label>
+            <input type="text" id="option-c" required>
+            
+            <div id="option-d-wrapper">
+                <label for="option-d">Option D:</label>
+                <input type="text" id="option-d" required>
+            </div>
+            
+            <label for="correct-answer">Correct Answer:</label>
+            <select id="correct-answer" required>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D" id="correct-option-d">D</option>
+            </select>
+            
+            <button type="submit">Save Question</button>
+            <button type="button" id="clear-questions-btn" class="btn-danger">Clear All Saved Questions</button>
+        </form>
+
+        <div class="nav-links">
+            <a href="results.html">View All Results</a>
+                 <!-- just for testing student panel -->
+            <hr class="separator">
+            <a href="quiz.html">Open Student Quiz Page</a>
+        </div>
+    </div>
+
+    <script src="admin.js?v=1.5"></script>
+
+    <script>
+        
+        (function() {
+            const password = prompt("Teacher Panel Access: Please enter the password:");
+            const CORRECT_PASSWORD = "teacher123"; 
+            if (password === CORRECT_PASSWORD) {
+                const adminPanel = document.getElementById('admin-panel');
+                adminPanel.classList.remove('admin-hidden');
+            } else {
+                alert("Incorrect password. Access denied.");
+            }
+        })();
+    </script>
+    </body>
+</html>

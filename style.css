@@ -1,0 +1,313 @@
+/* === 1. FONT AUR COLOR VARIABLES === */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary-color: #6c5ce7; /* Main Purple/Indigo */
+    --primary-light: #f0edff; /* Halka Purple (Hover ke liye) */
+    /* --secondary-bg: #f5f6fa; -- Iski zaroorat nahi */
+    /* --container-bg: #ffffff; -- Iski zaroorat nahi */
+    --text-dark: #333333; /* Dark text */
+    --text-light: #555555; /* Light text (labels ke liye) */
+    --border-color: #e0e0e0; /* Naya border color */
+    --success-color: #28a745; /* Green */
+    --danger-color: #dc3545;  /* Red */
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Halka shadow */
+}
+
+/* === 2. GENERAL STYLES (WITH GLASSMORPHISM) === */
+body { 
+    font-family: 'Poppins', Arial, sans-serif; 
+    
+    /* === Naya Background Glass effect ke liye === */
+    background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+    /* === End === */
+
+    padding: 20px; 
+    color: var(--text-dark); /* Text ko thora dark rakhein glass par */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+.container { 
+    max-width: 600px; 
+    width: 100%;
+    margin: 20px auto; 
+    
+    /* === Glassmorphism Effect === */
+    background: rgba(255, 255, 255, 0.4); /* Halka sa white background */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px); /* Safari support */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Halka border */
+    /* === End of Effect === */
+    
+    padding: 30px; 
+    border-radius: 16px; /* Thora aur rounded */
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); /* Halka shadow */
+}
+/* === END OF GLASSMORPHISM STYLES === */
+
+h1 { 
+    text-align: center; 
+    color: var(--text-dark); 
+    font-weight: 700;
+    margin-bottom: 25px;
+}
+h2, h3 {
+    color: var(--text-dark);
+    font-weight: 600;
+}
+label {
+    font-weight: 500;
+    color: var(--text-light);
+}
+
+/* === 3. FORM STYLES === */
+form { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 15px; 
+}
+textarea, input, select { 
+    padding: 12px; 
+    font-size: 16px; 
+    border-radius: 8px; 
+    border: 1px solid var(--border-color);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    background: rgba(255, 255, 255, 0.5); /* Inputs ko bhi halka transparent karein */
+}
+textarea:focus, input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+textarea { 
+    resize: vertical; 
+    min-height: 100px; 
+}
+
+/* === 4. BUTTON STYLES === */
+button { 
+    background-color: var(--primary-color); 
+    color: white; 
+    cursor: pointer; 
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+button:hover { 
+    background-color: #5a4bd4; 
+    transform: translateY(-2px); 
+}
+
+/* Danger buttons (Clear All) */
+.btn-danger {
+    background-color: var(--danger-color);
+    margin-top: 10px;
+}
+.btn-danger:hover {
+    background-color: #c82333; 
+    transform: translateY(-2px);
+}
+
+/* === 5. QUIZ OPTION BUTTONS === */
+.option-btn { 
+    background-color: rgba(255, 255, 255, 0.5); /* Halka transparent */
+    border: 1px solid var(--border-color); 
+    text-align: left; 
+    color: var(--text-light);
+    transition: all 0.3s ease;
+}
+.option-btn:hover { 
+    background-color: var(--primary-light); 
+    border-color: var(--primary-color);
+    color: var(--text-dark);
+    transform: translateX(5px); 
+}
+.option-btn:disabled { 
+    cursor: not-allowed; 
+    opacity: 0.8;
+}
+.option-btn.correct { 
+    background-color: var(--success-color); 
+    color: white;
+    border-color: var(--success-color);
+}
+.option-btn.wrong { 
+    background-color: var(--danger-color); 
+    color: white;
+    border-color: var(--danger-color);
+}
+.option-btn:disabled:hover {
+    transform: none; 
+}
+
+
+/* === 6. NAVIGATION & RESULTS PAGES === */
+/* Navigation Links */
+.nav-links { 
+    text-align: center; 
+    margin-top: 25px; 
+    display: flex;
+    flex-direction: column;
+}
+.nav-links a { 
+    text-decoration: none; 
+    color: white; 
+    padding: 12px 20px; 
+    border-radius: 8px;
+    display: block; 
+    background-color: var(--primary-color);
+    transition: all 0.3s ease;
+}
+.nav-links a[href="results.html"] { background-color: #28a745; } 
+.nav-links a[href="results.html"]:hover { background-color: #218838; }
+
+.nav-links a:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+/* Separator Line (admin.html) */
+.separator {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.4); /* Glass separator */
+    margin: 15px 0; 
+}
+
+
+/* Results Table (results.html) */
+table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-top: 20px; 
+}
+th, td { 
+    border: 1px solid var(--border-color); 
+    padding: 12px; 
+    text-align: left; 
+}
+th { 
+    background-color: var(--primary-color); 
+    color: white;
+    font-weight: 600;
+}
+tr:nth-child(even) { 
+    background-color: rgba(255, 255, 255, 0.2); /* Halka transparent row */
+}
+
+/* Detailed Results (quiz.html) */
+.result-item {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+.result-item p {
+    margin: 5px 0;
+}
+.correct-answer {
+    color: var(--success-color);
+    font-weight: 500;
+}
+.wrong-answer {
+    color: var(--danger-color);
+    font-weight: 500;
+}
+
+/* === 7. ZAROORI FIXES (Admin aur Quiz) === */
+.hidden {
+    display: none;
+}
+#option-d-wrapper {
+    display: contents;
+}
+#option-d-wrapper.hidden {
+    display: none;
+}
+
+#login-container, #quiz-container, #result-container { 
+    display: none; 
+}
+#login-container { 
+    display: block; /* Sirf login ko dikhayein */
+}
+
+/* === 8. NAYI TIMER STYLING === */
+#timer-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 120px;
+    height: 120px;
+    margin: 10px auto 25px auto;
+    border: 5px solid var(--primary-color);
+    border-radius: 50%; 
+    background: var(--primary-light);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+#time-left {
+    font-family: 'Poppins', monospace; 
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+
+/* ========================================= */
+/* === 9. MOBILE RESPONSIVE STYLES === */
+/* ========================================= */
+
+@media (max-width: 600px) {
+    
+    body {
+        padding: 10px; 
+        align-items: flex-start; 
+    }
+    
+    .container {
+        padding: 20px; 
+        margin: 10px auto; 
+        border-radius: 12px;
+    }
+
+    h1 {
+        font-size: 24px; 
+        margin-bottom: 20px;
+    }
+    
+    h2 {
+        font-size: 20px;
+    }
+
+    input, select, button, textarea {
+        padding: 14px; 
+        font-size: 16px; 
+    }
+
+    table {
+        display: block;
+        overflow-x: auto; 
+        white-space: nowrap; 
+    }
+    
+    th, td {
+        padding: 10px;
+    }
+
+    /* Timer ko mobile par thora chota karein */
+    #timer-display {
+        width: 100px;
+        height: 100px;
+    }
+    #time-left {
+        font-size: 1.8rem;
+    }
+}
+.admin-hidden {
+    display: none;
+}
