@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher - Admin Panel</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css?v=2.0">
+</head>
+<body>
+
+    <div class="container wide" id="teacher-login-container">
+        <button class="theme-toggle" id="theme-toggle">🌙 Dark</button>
+        <h1>Teacher Login</h1>
+        <form id="login-form-admin">
+            <label for="login-username">Username:</label>
+            <input type="text" id="login-username" required autocomplete="username">
+
+            <label for="login-password">Password:</label>
+            <input type="password" id="login-password" required autocomplete="current-password">
+
+            <p class="error-text" id="login-error"></p>
+
+            <button type="submit" id="login-submit-btn">Log In</button>
+        </form>
+    </div>
+
+    <div class="container wide" id="admin-panel">
+        <div class="top-bar">
+            <h1 style="margin-bottom:0;">Teacher Admin Panel</h1>
+            <div class="header-actions">
+                <button class="theme-toggle" id="theme-toggle-2">🌙 Dark</button>
+                <button class="btn-danger btn-small" id="logout-btn" style="width:auto; margin-top:0;">Log Out</button>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button type="button" id="tab-add" class="active">Add / Edit Question</button>
+            <button type="button" id="tab-manage">Manage Questions <span class="badge" id="question-count">0</span></button>
+        </div>
+
+        <div id="add-tab-content">
+            <form id="question-form">
+                <label for="question-text">Write Question:</label>
+                <textarea id="question-text" required></textarea>
+
+                <label for="question-grade">Grade:</label>
+                <select id="question-grade" required>
+                    <option value="" disabled selected>Choose grade</option>
+                    <option value="4">Grade 4</option>
+                    <option value="5">Grade 5</option>
+                    <option value="6">Grade 6</option>
+                    <option value="7">Grade 7</option>
+                </select>
+
+                <label for="option-count">Number of Options:</label>
+                <select id="option-count">
+                    <option value="4" selected>4 Options</option>
+                    <option value="3">3 Options</option>
+                </select>
+
+                <label for="quiz-time">Quiz Time (in Minutes):</label>
+                <input type="number" id="quiz-time" value="10" min="1" required>
+
+                <label for="option-a">Option A:</label>
+                <input type="text" id="option-a" required>
+
+                <label for="option-b">Option B:</label>
+                <input type="text" id="option-b" required>
+
+                <label for="option-c">Option C:</label>
+                <input type="text" id="option-c" required>
+
+                <div id="option-d-wrapper">
+                    <label for="option-d">Option D:</label>
+                    <input type="text" id="option-d" required>
+                </div>
+
+                <label for="correct-answer">Correct Answer:</label>
+                <select id="correct-answer" required>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D" id="correct-option-d">D</option>
+                </select>
+
+                <p class="error-text" id="form-error"></p>
+
+                <button type="submit" id="save-question-btn">Save Question</button>
+                <button type="button" id="cancel-edit-btn" class="btn-secondary hidden">Cancel Edit</button>
+            </form>
+        </div>
+
+        <div id="manage-tab-content" class="hidden">
+            <label for="filter-grade">Filter by Grade:</label>
+            <select id="filter-grade">
+                <option value="">All Grades</option>
+                <option value="4">Grade 4</option>
+                <option value="5">Grade 5</option>
+                <option value="6">Grade 6</option>
+                <option value="7">Grade 7</option>
+            </select>
+            <div id="question-list" class="question-list"></div>
+            <button type="button" id="clear-questions-btn" class="btn-danger">Clear All Saved Questions</button>
+        </div>
+
+        <div class="nav-links">
+            <a href="results.html">View All Results</a>
+        </div>
+    </div>
+
+    <script src="admin.js?v=2.0"></script>
+</body>
+</html>

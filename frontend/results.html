@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Results</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css?v=2.0">
+</head>
+<body>
+
+    <div class="container wide">
+        <button class="theme-toggle" id="theme-toggle">🌙 Dark</button>
+        <h1>Leaderboard</h1>
+
+        <label for="filter-grade">Filter by Grade:</label>
+        <select id="filter-grade">
+            <option value="">All Grades</option>
+            <option value="4">Grade 4</option>
+            <option value="5">Grade 5</option>
+            <option value="6">Grade 6</option>
+            <option value="7">Grade 7</option>
+        </select>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Roll Number</th>
+                    <th>Grade</th>
+                    <th>Score</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+        </table>
+
+        <div class="top-bar" style="margin-top: 15px;">
+            <button id="export-csv-btn" class="btn-secondary" style="width: auto;">⬇ Export as CSV</button>
+            <button id="clear-results-btn" class="btn-danger hidden" style="width: auto;">Clear All Results</button>
+        </div>
+
+        <p class="error-text" id="results-note"></p>
+
+        <div class="nav-links">
+            <a href="index.html">Back to Admin Panel</a>
+        </div>
+    </div>
+
+    <script src="results.js?v=2.0"></script>
+
+</body>
+</html>

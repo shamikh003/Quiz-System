@@ -1,0 +1,322 @@
+/* === 1. FONT AUR COLOR VARIABLES === */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary-color: #6c5ce7;
+    --primary-light: #f0edff;
+    --text-dark: #333333;
+    --text-light: #555555;
+    --border-color: #e0e0e0;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --bg-gradient-start: #89f7fe;
+    --bg-gradient-end: #66a6ff;
+    --card-bg: rgba(255, 255, 255, 0.4);
+    --card-border: rgba(255, 255, 255, 0.2);
+    --input-bg: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] {
+    --text-dark: #f0f0f0;
+    --text-light: #cfcfcf;
+    --border-color: #444a5c;
+    --bg-gradient-start: #232946;
+    --bg-gradient-end: #121629;
+    --card-bg: rgba(30, 33, 48, 0.65);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --primary-light: #2e2a4d;
+}
+
+/* === 2. GENERAL STYLES (WITH GLASSMORPHISM) === */
+body {
+    font-family: 'Poppins', Arial, sans-serif;
+    background: linear-gradient(120deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    padding: 20px;
+    color: var(--text-dark);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+.container {
+    max-width: 600px;
+    width: 100%;
+    margin: 20px auto;
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--card-border);
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+    position: relative;
+}
+.container.wide {
+    max-width: 800px;
+}
+h1 {
+    text-align: center;
+    color: var(--text-dark);
+    font-weight: 700;
+    margin-bottom: 25px;
+}
+h2, h3 {
+    color: var(--text-dark);
+    font-weight: 600;
+}
+label {
+    font-weight: 500;
+    color: var(--text-light);
+}
+p, span, td, th, div { color: var(--text-dark); }
+
+/* === 3. FORM STYLES === */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+textarea, input, select {
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    background: var(--input-bg);
+    color: var(--text-dark);
+}
+textarea:focus, input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* === 4. BUTTON STYLES === */
+button {
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+button:hover {
+    background-color: #5a4bd4;
+    transform: translateY(-2px);
+}
+button:disabled, button[disabled] {
+    background-color: #5a4bd4;
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+button:disabled:hover, button[disabled]:hover {
+    background-color: #5a4bd4;
+    transform: none;
+}
+.btn-danger { background-color: var(--danger-color); margin-top: 10px; }
+.btn-danger:hover { background-color: #c82333; transform: translateY(-2px); }
+.btn-secondary { background-color: #6c757d; }
+.btn-secondary:hover { background-color: #5a6268; }
+.btn-small { padding: 6px 12px; font-size: 13px; width: auto; }
+
+/* === 5. QUIZ OPTION BUTTONS === */
+.option-btn {
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    text-align: left;
+    color: var(--text-light);
+    transition: all 0.3s ease;
+}
+.option-btn:hover {
+    background-color: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--text-dark);
+    transform: translateX(5px);
+}
+.option-btn:disabled { cursor: not-allowed; opacity: 0.8; }
+.option-btn.selected {
+    background-color: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--text-dark);
+    font-weight: 600;
+}
+.option-btn.correct { background-color: var(--success-color); color: white; border-color: var(--success-color); }
+.option-btn.wrong { background-color: var(--danger-color); color: white; border-color: var(--danger-color); }
+.option-btn:disabled:hover { transform: none; }
+
+/* === 6. NAVIGATION & RESULTS PAGES === */
+.nav-links {
+    text-align: center;
+    margin-top: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.nav-links a {
+    text-decoration: none;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: block;
+    background-color: var(--primary-color);
+    transition: all 0.3s ease;
+}
+.nav-links a[href="results.html"] { background-color: #28a745; }
+.nav-links a[href="results.html"]:hover { background-color: #218838; }
+.nav-links a:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.separator { border: none; border-top: 1px solid rgba(255, 255, 255, 0.4); margin: 15px 0; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { border: 1px solid var(--border-color); padding: 12px; text-align: left; }
+th { background-color: var(--primary-color); color: white; font-weight: 600; }
+tr:nth-child(even) { background-color: rgba(120, 120, 120, 0.08); }
+.result-item { border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px; }
+.result-item p { margin: 5px 0; }
+.correct-answer { color: var(--success-color); font-weight: 500; }
+.wrong-answer { color: var(--danger-color); font-weight: 500; }
+
+/* === 7. ZAROORI FIXES (Admin aur Quiz) === */
+.hidden { display: none !important; }
+#option-d-wrapper { display: contents; }
+#option-d-wrapper.hidden { display: none; }
+#login-container, #quiz-container, #result-container, #admin-panel, #teacher-login-container { display: none; }
+#teacher-login-container { display: block; }
+#login-container { display: block; }
+#loading-container {
+    display: none;
+    text-align: center;
+    padding: 40px 0;
+}
+#loading-container h2 { color: var(--primary-color); font-weight: 600; }
+#loading-container p { font-size: 0.9rem; color: var(--text-light); }
+
+/* === 8. TIMER STYLING === */
+#timer-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 120px;
+    height: 120px;
+    margin: 10px auto 15px auto;
+    border: 5px solid var(--primary-color);
+    border-radius: 50%;
+    background: var(--primary-light);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+#time-left {
+    font-family: 'Poppins', monospace;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+#timer-display.time-warning { border-color: var(--danger-color); }
+#timer-display.time-warning #time-left { color: var(--danger-color); }
+
+/* === 9. SPINNER === */
+.spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    border-top-color: #ffffff;
+    animation: spin 1s ease-in-out infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* === 10. PROGRESS BAR === */
+.progress-wrapper {
+    margin-bottom: 15px;
+}
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 6px;
+}
+.progress-track {
+    width: 100%;
+    height: 10px;
+    background: rgba(120, 120, 120, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+/* === 11. THEME TOGGLE === */
+.theme-toggle {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: auto;
+    padding: 8px 14px;
+    font-size: 13px;
+    background: var(--input-bg);
+    color: var(--text-dark);
+    border: 1px solid var(--border-color);
+}
+.theme-toggle:hover { transform: none; background: var(--primary-light); }
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.header-actions .theme-toggle {
+    position: static;
+    top: auto;
+    right: auto;
+}
+
+/* === 12. ADMIN QUESTION LIST === */
+.question-list { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+.question-card {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px;
+    background: var(--input-bg);
+}
+.question-card p { margin: 4px 0; }
+.question-card .q-options { font-size: 0.9rem; color: var(--text-light); margin: 6px 0; }
+.question-card .q-actions { display: flex; gap: 8px; margin-top: 10px; }
+.question-card .q-actions button { flex: 1; }
+.empty-state { text-align: center; color: var(--text-light); padding: 20px 0; }
+.top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 10px; flex-wrap: wrap; }
+.badge { background: var(--primary-light); color: var(--primary-color); padding: 3px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+.error-text { color: var(--danger-color); font-size: 0.9rem; text-align: center; min-height: 1.2em; }
+.tabs { display: flex; gap: 8px; margin-bottom: 15px; }
+.tabs button { flex: 1; background: var(--input-bg); color: var(--text-dark); border: 1px solid var(--border-color); }
+.tabs button.active { background: var(--primary-color); color: white; }
+.rank-1 { font-weight: 700; }
+.rank-medal { margin-right: 6px; }
+
+/* === 13. MOBILE RESPONSIVE STYLES === */
+@media (max-width: 600px) {
+    body { padding: 10px; align-items: flex-start; }
+    .container { padding: 20px; margin: 10px auto; border-radius: 12px; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 20px; }
+    input, select, button, textarea { padding: 14px; font-size: 16px; }
+    table { display: block; overflow-x: auto; white-space: nowrap; }
+    th, td { padding: 10px; }
+    #timer-display { width: 100px; height: 100px; }
+    #time-left { font-size: 1.8rem; }
+    .theme-toggle { position: static; margin-bottom: 10px; align-self: flex-end; }
+}
