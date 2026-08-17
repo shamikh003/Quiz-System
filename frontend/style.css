@@ -284,6 +284,54 @@ tr:nth-child(even) { background-color: rgba(120, 120, 120, 0.08); }
     top: auto;
     right: auto;
 }
+.lang-toggle {
+    width: auto;
+    padding: 8px 14px;
+    font-size: 13px;
+    background: var(--input-bg);
+    color: var(--text-dark);
+    border: 1px solid var(--border-color);
+}
+.lang-toggle:hover { transform: none; background: var(--primary-light); }
+.quiz-header-actions {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+}
+.quiz-header-actions .theme-toggle { position: static; top: auto; right: auto; }
+
+/* === 11b. ANTI-CHEATING UI === */
+.violation-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: var(--danger-color);
+    color: #fff;
+    text-align: center;
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.fullscreen-notice {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-align: center;
+    margin: 10px 0 0;
+}
+[dir="rtl"] .violation-banner,
+[dir="rtl"] .fullscreen-notice,
+[dir="rtl"] label,
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3,
+[dir="rtl"] p {
+    text-align: right;
+}
+[dir="rtl"] .quiz-header-actions { left: 16px; right: auto; }
 
 /* === 12. ADMIN QUESTION LIST === */
 .question-list { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
@@ -319,4 +367,5 @@ tr:nth-child(even) { background-color: rgba(120, 120, 120, 0.08); }
     #timer-display { width: 100px; height: 100px; }
     #time-left { font-size: 1.8rem; }
     .theme-toggle { position: static; margin-bottom: 10px; align-self: flex-end; }
+    .quiz-header-actions { position: static; display: flex; justify-content: flex-end; margin-bottom: 10px; }
 }

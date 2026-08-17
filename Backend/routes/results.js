@@ -13,6 +13,8 @@ router.post('/quiz/submit', async (req, res) => {
     try {
         const { name, rollNum, answers } = req.body;
         const grade = Number(req.body.grade);
+        const tabSwitchCount = Math.max(0, Number(req.body.tabSwitchCount) || 0);
+        const fullscreenExitCount = Math.max(0, Number(req.body.fullscreenExitCount) || 0);
 
         if (!name || !rollNum || !VALID_GRADES.includes(grade) || !Array.isArray(answers) || answers.length === 0) {
             return res.status(400).json({ error: 'name, rollNum, a valid grade, and at least one answer are required.' });
@@ -48,6 +50,8 @@ router.post('/quiz/submit', async (req, res) => {
             grade,
             score,
             total: answers.length,
+            tabSwitchCount,
+            fullscreenExitCount,
             details
         });
         await result.save();

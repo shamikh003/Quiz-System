@@ -5,38 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz Project</title>
     <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6c5ce7">
     <link rel="stylesheet" href="style.css?v=2.0">
 </head>
 <body>
 
     <div class="container">
-        <button class="theme-toggle" id="theme-toggle">🌙 Dark</button>
+        <div class="header-actions quiz-header-actions">
+            <button class="lang-toggle" id="lang-toggle" type="button">اردو</button>
+            <button class="theme-toggle" id="theme-toggle">🌙 Dark</button>
+        </div>
+
+        <div id="violation-banner" class="violation-banner hidden"></div>
 
         <div id="login-container">
-            <h1>Welcome to the Quiz</h1>
+            <h1 data-i18n="welcome">Welcome to the Quiz</h1>
             <form id="login-form">
-                <label for="student-name">Enter Your Name:</label>
+                <label for="student-name" data-i18n="labelName">Enter Your Name:</label>
                 <input type="text" id="student-name" required>
 
-                <label for="student-roll">Enter Your Roll Number:</label>
+                <label for="student-roll" data-i18n="labelRoll">Enter Your Roll Number:</label>
                 <input type="text" id="student-roll" required>
 
-                <label for="student-grade">Select Your Grade:</label>
+                <label for="student-grade" data-i18n="labelGrade">Select Your Grade:</label>
                 <select id="student-grade" required>
-                    <option value="" disabled selected>Choose grade</option>
-                    <option value="4">Grade 4</option>
-                    <option value="5">Grade 5</option>
-                    <option value="6">Grade 6</option>
-                    <option value="7">Grade 7</option>
+                    <option value="" disabled selected data-i18n="chooseGrade">Choose grade</option>
+                    <option value="4" data-i18n="grade4">Grade 4</option>
+                    <option value="5" data-i18n="grade5">Grade 5</option>
+                    <option value="6" data-i18n="grade6">Grade 6</option>
+                    <option value="7" data-i18n="grade7">Grade 7</option>
                 </select>
 
-                <button type="submit">Start Quiz</button>
+                <p class="fullscreen-notice" data-i18n="fullscreenNotice">This quiz runs in full-screen mode. Please don't switch tabs or exit full-screen once it starts.</p>
+
+                <button type="submit" data-i18n="startQuiz">Start Quiz</button>
             </form>
         </div>
 
         <div id="loading-container">
-            <h2>Loading Quiz...</h2>
-            <p>Please wait, Quiz is starting</p>
+            <h2 data-i18n="loadingTitle">Loading Quiz...</h2>
+            <p data-i18n="loadingText">Please wait, Quiz is starting</p>
         </div>
 
         <div id="quiz-container">
@@ -56,18 +66,18 @@
 
             <h2 id="question-title"></h2>
             <div id="options-container"></div>
-            <button id="next-btn" style="margin-top: 20px; display: none;">Next Question</button>
+            <button id="next-btn" style="margin-top: 20px; display: none;" data-i18n="nextQuestion">Next Question</button>
         </div>
 
         <div id="result-container">
             <h2 id="greeting-message" style="text-align: center;"></h2>
             <h2 id="score-display" style="text-align: center;"></h2>
-            <h3 style="text-align: center; margin-top: 20px;">Your Detailed Results</h3>
+            <h3 style="text-align: center; margin-top: 20px;" data-i18n="detailedResults">Your Detailed Results</h3>
 
             <div id="detailed-results-list"></div>
 
             <div class="nav-links">
-                <a href="quiz.html">Take Quiz Again</a>
+                <a href="quiz.html" data-i18n="retakeQuiz">Take Quiz Again</a>
             </div>
         </div>
     </div>

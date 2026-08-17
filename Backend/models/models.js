@@ -26,6 +26,8 @@ const ResultSchema = new mongoose.Schema({
     grade: { type: Number, required: true, enum: [4, 5, 6, 7] },
     score: Number,
     total: Number,
+    tabSwitchCount: { type: Number, default: 0 },
+    fullscreenExitCount: { type: Number, default: 0 },
     details: [
         {
             questionText: String,
