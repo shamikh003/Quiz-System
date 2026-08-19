@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher - Admin Panel</title>
+    <title>Teacher Panel</title>
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="manifest" href="manifest.json">
@@ -40,6 +40,7 @@
         <div class="tabs">
             <button type="button" id="tab-add" class="active">Add / Edit Question</button>
             <button type="button" id="tab-manage">Manage Questions <span class="badge" id="question-count">0</span></button>
+            <button type="button" id="tab-assignments">Assignments</button>
         </div>
 
         <div id="add-tab-content">
@@ -47,36 +48,51 @@
                 <label for="question-text">Write Question:</label>
                 <textarea id="question-text" required></textarea>
 
-                <label for="question-grade">Grade:</label>
-                <select id="question-grade" required>
-                    <option value="" disabled selected>Choose grade</option>
-                    <option value="4">Grade 4</option>
-                    <option value="5">Grade 5</option>
-                    <option value="6">Grade 6</option>
-                    <option value="7">Grade 7</option>
-                </select>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="question-grade">Grade:</label>
+                        <select id="question-grade" required>
+                            <option value="" disabled selected>Choose grade</option>
+                            <option value="4">Grade 4</option>
+                            <option value="5">Grade 5</option>
+                            <option value="6">Grade 6</option>
+                            <option value="7">Grade 7</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="option-count">Number of Options:</label>
+                        <select id="option-count">
+                            <option value="4" selected>4 Options</option>
+                            <option value="3">3 Options</option>
+                        </select>
+                    </div>
+                </div>
 
-                <label for="option-count">Number of Options:</label>
-                <select id="option-count">
-                    <option value="4" selected>4 Options</option>
-                    <option value="3">3 Options</option>
-                </select>
+                <div class="field stat-field">
+                    <label for="quiz-time">Quiz Time (in Minutes):</label>
+                    <input type="number" id="quiz-time" value="10" min="1" required>
+                </div>
 
-                <label for="quiz-time">Quiz Time (in Minutes):</label>
-                <input type="number" id="quiz-time" value="10" min="1" required>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="option-a">Option A:</label>
+                        <input type="text" id="option-a" required>
+                    </div>
+                    <div class="field">
+                        <label for="option-b">Option B:</label>
+                        <input type="text" id="option-b" required>
+                    </div>
+                </div>
 
-                <label for="option-a">Option A:</label>
-                <input type="text" id="option-a" required>
-
-                <label for="option-b">Option B:</label>
-                <input type="text" id="option-b" required>
-
-                <label for="option-c">Option C:</label>
-                <input type="text" id="option-c" required>
-
-                <div id="option-d-wrapper">
-                    <label for="option-d">Option D:</label>
-                    <input type="text" id="option-d" required>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="option-c">Option C:</label>
+                        <input type="text" id="option-c" required>
+                    </div>
+                    <div class="field" id="option-d-wrapper">
+                        <label for="option-d">Option D:</label>
+                        <input type="text" id="option-d" required>
+                    </div>
                 </div>
 
                 <label for="correct-answer">Correct Answer:</label>
@@ -105,6 +121,51 @@
             </select>
             <div id="question-list" class="question-list"></div>
             <button type="button" id="clear-questions-btn" class="btn-danger">Clear All Saved Questions</button>
+        </div>
+
+        <div id="assignments-tab-content" class="hidden">
+            <form id="assignment-upload-form">
+                <label for="assignment-title">Assignment Title:</label>
+                <input type="text" id="assignment-title" required>
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="assignment-grade">Grade:</label>
+                        <select id="assignment-grade" required>
+                            <option value="" disabled selected>Choose grade</option>
+                            <option value="4">Grade 4</option>
+                            <option value="5">Grade 5</option>
+                            <option value="6">Grade 6</option>
+                            <option value="7">Grade 7</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="assignment-max-marks">Max Marks:</label>
+                        <input type="number" id="assignment-max-marks" value="100" min="1" required>
+                    </div>
+                </div>
+
+                <label for="assignment-file">Attach File (Word / Excel / PowerPoint):</label>
+                <input type="file" id="assignment-file" accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx" required>
+
+                <p class="error-text" id="assignment-form-error"></p>
+
+                <button type="submit" id="upload-assignment-btn">Upload Assignment</button>
+            </form>
+
+            <hr class="separator">
+
+            <h3>Uploaded Assignments</h3>
+            <div id="assignment-list" class="question-list"></div>
+
+            <div id="submissions-panel" class="hidden">
+                <hr class="separator">
+                <div class="top-bar">
+                    <h3 id="submissions-title" style="margin-bottom:0;">Submissions</h3>
+                    <button type="button" id="back-to-assignments-btn" class="btn-secondary btn-small">← Back</button>
+                </div>
+                <div id="submissions-list" class="question-list"></div>
+            </div>
         </div>
 
         <div class="nav-links">

@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const questionRoutes = require('./routes/questions');
 const resultRoutes = require('./routes/results');
 const settingsRoutes = require('./routes/settings');
+const assignmentRoutes = require('./routes/assignments');
 
 // 2. SETUP APP & MIDDLEWARE
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', questionRoutes);
 app.use('/api', resultRoutes);
 app.use('/api', settingsRoutes);
+app.use('/api', assignmentRoutes);
 
 app.get('/', (req, res) => {
     res.send('Quiz System backend is running.');

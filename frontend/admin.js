@@ -85,22 +85,26 @@ logoutBtn.addEventListener('click', function () {
 // ---------- Tabs ----------
 const tabAdd = document.getElementById('tab-add');
 const tabManage = document.getElementById('tab-manage');
+const tabAssignments = document.getElementById('tab-assignments');
 const addTabContent = document.getElementById('add-tab-content');
 const manageTabContent = document.getElementById('manage-tab-content');
+const assignmentsTabContent = document.getElementById('assignments-tab-content');
 
-tabAdd.addEventListener('click', () => {
-    tabAdd.classList.add('active');
-    tabManage.classList.remove('active');
-    addTabContent.classList.remove('hidden');
-    manageTabContent.classList.add('hidden');
-});
-tabManage.addEventListener('click', () => {
-    tabManage.classList.add('active');
-    tabAdd.classList.remove('active');
-    manageTabContent.classList.remove('hidden');
-    addTabContent.classList.add('hidden');
-    loadQuestionList();
-});
+const tabButtons = { add: tabAdd, manage: tabManage, assignments: tabAssignments };
+const tabContents = { add: addTabContent, manage: manageTabContent, assignments: assignmentsTabContent };
+
+function activateTab(key) {
+    Object.keys(tabButtons).forEach(k => {
+        tabButtons[k].classList.toggle('active', k === key);
+        tabContents[k].classList.toggle('hidden', k !== key);
+    });
+    if (key === 'manage') loadQuestionList();
+    if (key === 'assignments') loadAssignments();
+}
+
+tabAdd.addEventListener('click', () => activateTab('add'));
+tabManage.addEventListener('click', () => activateTab('manage'));
+tabAssignments.addEventListener('click', () => activateTab('assignments'));
 
 // ---------- DOM Elements ----------
 const optionCountSelector = document.getElementById('option-count');
@@ -147,9 +151,12 @@ optionCountSelector.addEventListener('change', function () {
     }
 });
 
-function resetForm() {
+// keepGrade=true is used right after a successful save, so the teacher doesn't
+// have to re-pick the grade for every single question of the same batch.
+function resetForm({ keepGrade = false } = {}) {
+    const currentGrade = questionGradeSelect.value;
     questionForm.reset();
-    questionGradeSelect.value = '';
+    questionGradeSelect.value = keepGrade ? currentGrade : '';
     optionDWrapper.classList.remove('hidden');
     correctOptionD.classList.remove('hidden');
     optionDInput.required = true;
@@ -159,7 +166,7 @@ function resetForm() {
     formError.textContent = '';
 }
 
-cancelEditBtn.addEventListener('click', resetForm);
+cancelEditBtn.addEventListener('click', () => resetForm());
 
 // Form submit: creates a new question, or updates one if we're editing
 questionForm.addEventListener('submit', async function (event) {
@@ -209,7 +216,7 @@ questionForm.addEventListener('submit', async function (event) {
 
         if (response.ok) {
             alert(editingQuestionId ? 'Question updated!' : 'Question saved to database successfully!');
-            resetForm();
+            resetForm({ keepGrade: true });
             quizTimeInput.value = quizTime;
             loadQuestionList();
         } else if (response.status === 401) {
@@ -294,7 +301,7 @@ function startEditQuestion(q) {
     saveBtn.textContent = 'Update Question';
     cancelEditBtn.classList.remove('hidden');
 
-    tabAdd.click();
+    activateTab('add');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -346,6 +353,218 @@ clearBtn.addEventListener('click', async function () {
         }
     }
 });
+
+// ================= ASSIGNMENTS TAB =================
+const assignmentForm = document.getElementById('assignment-upload-form');
+const assignmentFormError = document.getElementById('assignment-form-error');
+const assignmentFileInput = document.getElementById('assignment-file');
+const assignmentGradeSelect = document.getElementById('assignment-grade');
+const assignmentMaxMarksInput = document.getElementById('assignment-max-marks');
+const uploadAssignmentBtn = document.getElementById('upload-assignment-btn');
+const assignmentList = document.getElementById('assignment-list');
+const submissionsPanel = document.getElementById('submissions-panel');
+const submissionsTitle = document.getElementById('submissions-title');
+const submissionsList = document.getElementById('submissions-list');
+const backToAssignmentsBtn = document.getElementById('back-to-assignments-btn');
+
+assignmentForm.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    assignmentFormError.textContent = '';
+    uploadAssignmentBtn.disabled = true;
+    uploadAssignmentBtn.innerHTML = 'Uploading... <span class="spinner"></span>';
+
+    try {
+        const formData = new FormData();
+        formData.append('title', document.getElementById('assignment-title').value);
+        formData.append('grade', assignmentGradeSelect.value);
+        formData.append('maxMarks', assignmentMaxMarksInput.value);
+        formData.append('file', assignmentFileInput.files[0]);
+
+        // Do NOT set Content-Type manually — the browser needs to add the
+        // multipart boundary itself for FormData uploads.
+        const response = await fetch(`${BACKEND_URL}/api/admin/assignments`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: formData
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('Assignment uploaded successfully!');
+            assignmentForm.reset();
+            assignmentMaxMarksInput.value = 100;
+            loadAssignments();
+        } else if (response.status === 401) {
+            alert('Your session expired. Please log in again.');
+            localStorage.removeItem('adminToken');
+            showLoggedOutView();
+        } else {
+            assignmentFormError.textContent = data.error || 'Error uploading assignment.';
+        }
+    } catch (error) {
+        assignmentFormError.textContent = 'Could not connect to server.';
+    } finally {
+        uploadAssignmentBtn.disabled = false;
+        uploadAssignmentBtn.textContent = 'Upload Assignment';
+    }
+});
+
+async function loadAssignments() {
+    assignmentList.innerHTML = '<p class="empty-state">Loading assignments...</p>';
+    submissionsPanel.classList.add('hidden');
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/assignments`, { headers: authHeaders() });
+        if (response.status === 401) {
+            localStorage.removeItem('adminToken');
+            showLoggedOutView();
+            return;
+        }
+        const assignments = await response.json();
+
+        if (assignments.length === 0) {
+            assignmentList.innerHTML = '<p class="empty-state">No assignments uploaded yet.</p>';
+            return;
+        }
+
+        assignmentList.innerHTML = '';
+        assignments.forEach(a => {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            card.innerHTML = `
+                <p><strong>${a.title}</strong> <span class="badge">Grade ${a.grade}</span></p>
+                <p class="q-options">📎 ${a.fileName} • Max Marks: ${a.maxMarks} • Submissions: ${a.submissionCount} (${a.gradedCount} graded)</p>
+                <div class="q-actions">
+                    <button type="button" class="btn-secondary btn-small view-submissions-btn">View Submissions</button>
+                    <button type="button" class="btn-danger btn-small delete-assignment-btn">Delete</button>
+                </div>
+            `;
+            card.querySelector('.view-submissions-btn').addEventListener('click', () => viewSubmissions(a));
+            card.querySelector('.delete-assignment-btn').addEventListener('click', () => deleteAssignment(a._id));
+            assignmentList.appendChild(card);
+        });
+    } catch (error) {
+        assignmentList.innerHTML = '<p class="empty-state">Could not load assignments. Server may be offline.</p>';
+    }
+}
+
+async function deleteAssignment(id) {
+    if (!confirm('Delete this assignment and all its submissions?')) return;
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/assignments/${id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+        if (response.ok) {
+            loadAssignments();
+        } else if (response.status === 401) {
+            localStorage.removeItem('adminToken');
+            showLoggedOutView();
+        } else {
+            alert('Could not delete assignment.');
+        }
+    } catch (error) {
+        alert('Could not connect to server.');
+    }
+}
+
+async function viewSubmissions(assignment) {
+    submissionsPanel.classList.remove('hidden');
+    submissionsTitle.textContent = `Submissions — ${assignment.title}`;
+    submissionsList.innerHTML = '<p class="empty-state">Loading submissions...</p>';
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/assignments/${assignment._id}/submissions`, {
+            headers: authHeaders()
+        });
+        if (response.status === 401) {
+            localStorage.removeItem('adminToken');
+            showLoggedOutView();
+            return;
+        }
+        const submissions = await response.json();
+
+        if (submissions.length === 0) {
+            submissionsList.innerHTML = '<p class="empty-state">No submissions yet.</p>';
+            return;
+        }
+
+        submissionsList.innerHTML = '';
+        submissions.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            const statusBadge = s.status === 'graded'
+                ? `<span class="badge" style="background:var(--success-subtle); color:var(--success);">Graded — ${s.percentage}%</span>`
+                : `<span class="badge">Pending</span>`;
+            card.innerHTML = `
+                <p><strong>${s.name}</strong> (Roll: ${s.rollNum}) ${statusBadge}</p>
+                <p class="q-options">📎 ${s.fileName} • Submitted: ${new Date(s.submittedAt).toLocaleString('en-US')}</p>
+                <div class="q-actions">
+                    <button type="button" class="btn-secondary btn-small download-submission-btn">⬇ Download File</button>
+                    <input type="number" class="marks-input" placeholder="Marks / ${assignment.maxMarks}" min="0" max="${assignment.maxMarks}" value="${s.marks !== null && s.marks !== undefined ? s.marks : ''}" style="max-width:140px;">
+                    <button type="button" class="btn-small save-marks-btn">Save Marks</button>
+                </div>
+            `;
+            card.querySelector('.download-submission-btn').addEventListener('click', () => downloadSubmission(s));
+            card.querySelector('.save-marks-btn').addEventListener('click', () => saveMarks(s._id, card, assignment));
+            submissionsList.appendChild(card);
+        });
+    } catch (error) {
+        submissionsList.innerHTML = '<p class="empty-state">Could not load submissions.</p>';
+    }
+}
+
+async function downloadSubmission(submission) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/submissions/${submission._id}/download`, {
+            headers: authHeaders()
+        });
+        if (!response.ok) {
+            alert('Could not download file.');
+            return;
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = submission.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        alert('Could not connect to server.');
+    }
+}
+
+async function saveMarks(submissionId, card, assignment) {
+    const input = card.querySelector('.marks-input');
+    const marks = Number(input.value);
+    if (input.value === '' || isNaN(marks) || marks < 0 || marks > assignment.maxMarks) {
+        alert(`Marks must be between 0 and ${assignment.maxMarks}.`);
+        return;
+    }
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/submissions/${submissionId}/marks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ marks })
+        });
+        if (response.ok) {
+            alert('Marks saved!');
+            viewSubmissions(assignment);
+        } else if (response.status === 401) {
+            localStorage.removeItem('adminToken');
+            showLoggedOutView();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Could not save marks.');
+        }
+    } catch (error) {
+        alert('Could not connect to server.');
+    }
+}
+
+backToAssignmentsBtn.addEventListener('click', () => submissionsPanel.classList.add('hidden'));
 
 // ---------- PWA: register service worker (offline app-shell caching) ----------
 if ('serviceWorker' in navigator) {

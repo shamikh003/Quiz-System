@@ -1,5 +1,5 @@
 const express = require('express');
-const { Question, Result } = require('../models/models');
+const { Question, Result, Submission } = require('../models/models');
 const { requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -69,6 +69,8 @@ router.post('/quiz/submit', async (req, res) => {
 
 // ---- PUBLIC: leaderboard / all results ----
 // Optional ?grade=4|5|6|7 filter for viewing one grade's leaderboard at a time.
+// Each result also carries the student's latest graded assignment percentage
+// (matched by roll number + grade), so the leaderboard can show both scores.
 router.get('/results', async (req, res) => {
     const filter = {};
     if (req.query.grade && VALID_GRADES.includes(Number(req.query.grade))) {
@@ -76,8 +78,23 @@ router.get('/results', async (req, res) => {
     }
     const results = await Result.find(filter)
         .select('-details')
-        .sort({ score: -1, date: 1 });
-    res.json(results);
+        .sort({ score: -1, date: 1 })
+        .lean();
+
+    const withAssignments = await Promise.all(results.map(async (r) => {
+        const submission = await Submission.findOne({
+            rollNum: r.rollNum,
+            grade: r.grade,
+            status: 'graded'
+        }).sort({ gradedAt: -1 });
+
+        return {
+            ...r,
+            assignmentPercentage: submission ? submission.percentage : null
+        };
+    }));
+
+    res.json(withAssignments);
 });
 
 // ---- ADMIN: delete all results (protected) ----

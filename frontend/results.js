@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             results = await response.json();
         } catch (error) {
             console.error("Error fetching results:", error);
-            resultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Could not load results. Server may be offline.</td></tr>';
+            resultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Could not load results. Server may be offline.</td></tr>';
         }
     }
 
@@ -56,19 +56,23 @@ document.addEventListener('DOMContentLoaded', async function () {
         resultsBody.innerHTML = '';
 
         if (results.length === 0) {
-            resultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No results found in database.</td></tr>';
+            resultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No results found in database.</td></tr>';
             return;
         }
 
         results.forEach((result) => {
             const row = document.createElement('tr');
-            const formattedDate = new Date(result.date).toLocaleString('en-US');
+            const flagCount = (result.tabSwitchCount || 0) + (result.fullscreenExitCount || 0);
+            const assignmentCell = (result.assignmentPercentage !== null && result.assignmentPercentage !== undefined)
+                ? `${result.assignmentPercentage}%`
+                : '—';
             row.innerHTML = `
                 <td>${result.name}</td>
                 <td>${result.rollNum}</td>
                 <td>${result.grade}</td>
                 <td>${result.score} / ${result.total}</td>
-                <td>${formattedDate}</td>
+                <td>${flagCount}</td>
+                <td>${assignmentCell}</td>
             `;
             resultsBody.appendChild(row);
         });
@@ -77,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     renderTable();
 
     filterGradeSelect.addEventListener('change', async function () {
-        resultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
+        resultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading...</td></tr>';
         await fetchResults();
         renderTable();
     });
@@ -87,14 +91,15 @@ document.addEventListener('DOMContentLoaded', async function () {
             alert('No results to export.');
             return;
         }
-        const header = ['Name', 'Roll Number', 'Grade', 'Score', 'Total', 'Timestamp'];
+        const header = ['Name', 'Roll Number', 'Grade', 'Score', 'Total', 'Flags', 'Assignment %'];
         const rows = results.map((r) => [
             r.name,
             r.rollNum,
             r.grade,
             r.score,
             r.total,
-            new Date(r.date).toLocaleString('en-US')
+            (r.tabSwitchCount || 0) + (r.fullscreenExitCount || 0),
+            (r.assignmentPercentage !== null && r.assignmentPercentage !== undefined) ? r.assignmentPercentage : ''
         ]);
         const csvContent = [header, ...rows]
             .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))

@@ -36,7 +36,15 @@ const translations = {
         correctAnswerLabel: 'Correct Answer:',
         tabSwitchWarning: (count) => `⚠ Warning: You switched away from the quiz tab (${count} time${count > 1 ? 's' : ''}). This has been recorded.`,
         fullscreenExitWarning: (count) => `⚠ Warning: You exited full-screen mode (${count} time${count > 1 ? 's' : ''}). Please return to full-screen. This has been recorded.`,
-        reenterFullscreen: 'Return to Full-Screen'
+        reenterFullscreen: 'Return to Full-Screen',
+        assignmentAvailable: '📎 Assignment Available',
+        downloadAssignment: '⬇ Download Assignment',
+        uploadCompletedFile: 'Upload Completed File:',
+        submitAssignment: 'Submit Assignment',
+        assignmentSubmitted: '✅ Assignment submitted successfully!',
+        assignmentAlreadySubmitted: 'You have already submitted this assignment.',
+        assignmentFillDetailsFirst: 'Please fill your name, roll number, and grade first.',
+        assignmentChooseFile: 'Please choose a file to upload.'
     },
     ur: {
         welcome: 'کوئز میں خوش آمدید',
@@ -71,7 +79,15 @@ const translations = {
         correctAnswerLabel: 'درست جواب:',
         tabSwitchWarning: (count) => `⚠ انتباہ: آپ نے کوئز ٹیب سے دوسری جگہ رخ کیا (${count} بار)۔ یہ ریکارڈ کر لیا گیا ہے۔`,
         fullscreenExitWarning: (count) => `⚠ انتباہ: آپ فل اسکرین موڈ سے باہر نکلے (${count} بار)۔ براہ کرم فل اسکرین پر واپس جائیں۔ یہ ریکارڈ کر لیا گیا ہے۔`,
-        reenterFullscreen: 'فل اسکرین پر واپس جائیں'
+        reenterFullscreen: 'فل اسکرین پر واپس جائیں',
+        assignmentAvailable: '📎 اسائنمنٹ دستیاب ہے',
+        downloadAssignment: '⬇ اسائنمنٹ ڈاؤن لوڈ کریں',
+        uploadCompletedFile: 'مکمل شدہ فائل اپ لوڈ کریں:',
+        submitAssignment: 'اسائنمنٹ جمع کروائیں',
+        assignmentSubmitted: '✅ اسائنمنٹ کامیابی سے جمع ہو گئی!',
+        assignmentAlreadySubmitted: 'آپ یہ اسائنمنٹ پہلے ہی جمع کروا چکے ہیں۔',
+        assignmentFillDetailsFirst: 'براہ کرم پہلے اپنا نام، رول نمبر، اور گریڈ درج کریں۔',
+        assignmentChooseFile: 'براہ کرم اپ لوڈ کرنے کے لیے فائل منتخب کریں۔'
     }
 };
 
@@ -142,6 +158,16 @@ const timerDisplayWrapper = document.getElementById('timer-display');
 const progressText = document.getElementById('progress-text');
 const progressPercent = document.getElementById('progress-percent');
 const progressFill = document.getElementById('progress-fill');
+
+// Assignment section elements
+const studentGradeSelect = document.getElementById('student-grade');
+const assignmentSection = document.getElementById('assignment-section');
+const assignmentNameEl = document.getElementById('assignment-name');
+const downloadAssignmentBtn = document.getElementById('download-assignment-btn');
+const assignmentFileInput = document.getElementById('assignment-file-input');
+const submitAssignmentBtn = document.getElementById('submit-assignment-btn');
+const assignmentStatusText = document.getElementById('assignment-status-text');
+let currentAssignment = null;
 
 // Timer Variables
 let quizTimer;
@@ -431,6 +457,127 @@ async function submitQuiz() {
     if (!response.ok) throw new Error('Submit failed');
     return response.json();
 }
+
+// ================= ASSIGNMENT SECTION =================
+// Checks whether an assignment exists for the selected grade, and only then
+// reveals the section. If the student already submitted it (matched by roll
+// number), the form is shown as already-submitted instead of re-openable.
+async function checkAssignmentForGrade() {
+    const grade = studentGradeSelect.value;
+    assignmentStatusText.textContent = '';
+
+    if (!grade) {
+        assignmentSection.classList.add('hidden');
+        currentAssignment = null;
+        return;
+    }
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/assignments?grade=${grade}`);
+        const assignments = await response.json();
+
+        if (!Array.isArray(assignments) || assignments.length === 0) {
+            currentAssignment = null;
+            assignmentSection.classList.add('hidden');
+            return;
+        }
+
+        currentAssignment = assignments[0]; // most recently uploaded assignment for this grade
+        assignmentNameEl.textContent = `${currentAssignment.title} (Max Marks: ${currentAssignment.maxMarks})`;
+        assignmentSection.classList.remove('hidden');
+        assignmentFileInput.value = '';
+        submitAssignmentBtn.disabled = false;
+        submitAssignmentBtn.textContent = t('submitAssignment');
+
+        await refreshAssignmentSubmissionStatus();
+    } catch (error) {
+        currentAssignment = null;
+        assignmentSection.classList.add('hidden');
+    }
+}
+
+// If the roll number is already filled in, check whether this student already submitted.
+async function refreshAssignmentSubmissionStatus() {
+    if (!currentAssignment) return;
+    const roll = document.getElementById('student-roll').value.trim();
+    if (!roll) return;
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/assignments/${currentAssignment._id}/status?rollNum=${encodeURIComponent(roll)}`);
+        const data = await response.json();
+        if (data.submitted) {
+            assignmentStatusText.style.color = 'var(--success)';
+            assignmentStatusText.textContent = data.status === 'graded'
+                ? `✅ Submitted — Graded (${data.percentage}%)`
+                : '✅ Submitted — waiting for teacher to grade it.';
+            submitAssignmentBtn.disabled = true;
+            submitAssignmentBtn.textContent = 'Submitted';
+        }
+    } catch (error) {
+        // Silent — this is just a convenience check, not required for the flow to work.
+    }
+}
+
+studentGradeSelect.addEventListener('change', checkAssignmentForGrade);
+document.getElementById('student-roll').addEventListener('blur', refreshAssignmentSubmissionStatus);
+
+downloadAssignmentBtn.addEventListener('click', () => {
+    if (!currentAssignment) return;
+    window.open(`${BACKEND_URL}/api/assignments/${currentAssignment._id}/download`, '_blank');
+});
+
+submitAssignmentBtn.addEventListener('click', async () => {
+    if (!currentAssignment) return;
+
+    const name = document.getElementById('student-name').value;
+    const roll = document.getElementById('student-roll').value;
+    const grade = studentGradeSelect.value;
+
+    assignmentStatusText.style.color = '';
+    if (!name || !roll || !grade) {
+        assignmentStatusText.textContent = t('assignmentFillDetailsFirst');
+        return;
+    }
+    if (!assignmentFileInput.files[0]) {
+        assignmentStatusText.textContent = t('assignmentChooseFile');
+        return;
+    }
+
+    submitAssignmentBtn.disabled = true;
+    submitAssignmentBtn.innerHTML = 'Submitting... <span class="spinner"></span>';
+    assignmentStatusText.textContent = '';
+
+    try {
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('rollNum', roll);
+        formData.append('grade', grade);
+        formData.append('file', assignmentFileInput.files[0]);
+
+        const response = await fetch(`${BACKEND_URL}/api/assignments/${currentAssignment._id}/submit`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            assignmentStatusText.style.color = 'var(--success)';
+            assignmentStatusText.textContent = t('assignmentSubmitted');
+            submitAssignmentBtn.textContent = 'Submitted';
+        } else if (response.status === 409) {
+            assignmentStatusText.textContent = t('assignmentAlreadySubmitted');
+            submitAssignmentBtn.textContent = 'Submitted';
+        } else {
+            assignmentStatusText.textContent = data.error || 'Could not submit assignment.';
+            submitAssignmentBtn.disabled = false;
+            submitAssignmentBtn.textContent = t('submitAssignment');
+        }
+    } catch (error) {
+        assignmentStatusText.textContent = 'Could not connect to server.';
+        submitAssignmentBtn.disabled = false;
+        submitAssignmentBtn.textContent = t('submitAssignment');
+    }
+});
 
 // ---------- PWA: register service worker (offline app-shell caching) ----------
 if ('serviceWorker' in navigator) {
