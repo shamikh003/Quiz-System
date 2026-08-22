@@ -1,12 +1,12 @@
 {
-  "name": "QuizBoard",
-  "short_name": "QuizBoard",
-  "description": "Grade-wise student quiz system",
+  "name": "QuizBoard Quiz",
+  "short_name": "QB Quiz",
+  "description": "Student quiz for QuizBoard",
   "start_url": "quiz.html",
   "scope": ".",
   "display": "standalone",
-  "background_color": "#66a6ff",
-  "theme_color": "#6c5ce7",
+  "background_color": "#FAFAF9",
+  "theme_color": "#6C5CE7",
   "icons": [
     {
       "src": "logo.png",

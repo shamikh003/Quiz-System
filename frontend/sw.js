@@ -1,5 +1,5 @@
 // Bump this version whenever the cached files change, so browsers pick up updates.
-const CACHE_NAME = 'quizboard-cache-v1';
+const CACHE_NAME = 'quizboard-cache-v2';
 
 // The "app shell" — static files needed to load the pages even with a slow/offline connection.
 // Quiz/question/result DATA itself always comes fresh from the backend (never cached here),
@@ -13,7 +13,8 @@ const APP_SHELL = [
     'quiz.js?v=2.0',
     'results.js',
     'logo.png',
-    'manifest.json'
+    'manifest-admin.json',
+    'manifest-quiz.json'
 ];
 
 self.addEventListener('install', (event) => {
