@@ -576,7 +576,7 @@ submitAssignmentBtn.addEventListener('click', async () => {
 // ---------- PWA: register service worker (offline app-shell caching) ----------
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(err => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(err => {
             console.warn('Service worker registration failed:', err);
         });
     });

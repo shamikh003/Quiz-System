@@ -1,20 +1,22 @@
 // Bump this version whenever the cached files change, so browsers pick up updates.
-const CACHE_NAME = 'quizboard-cache-v2';
+const CACHE_NAME = 'quizboard-cache-v3';
 
 // The "app shell" — static files needed to load the pages even with a slow/offline connection.
 // Quiz/question/result DATA itself always comes fresh from the backend (never cached here),
 // so students can't take an outdated or offline quiz — but the page itself loads instantly.
+// This service worker lives at the site ROOT so its scope covers both /admin/ and /student/.
 const APP_SHELL = [
-    'index.html',
-    'quiz.html',
-    'results.html',
-    'style.css?v=2.0',
-    'admin.js',
-    'quiz.js?v=2.0',
-    'results.js',
-    'logo.png',
-    'manifest-admin.json',
-    'manifest-quiz.json'
+    '/index.html',
+    '/admin/index.html',
+    '/admin/results.html',
+    '/admin/admin.js?v=2.0',
+    '/admin/results.js?v=2.0',
+    '/student/quiz.html',
+    '/student/quiz.js?v=2.0',
+    '/style.css?v=2.0',
+    '/logo.png',
+    '/manifest-admin.json',
+    '/manifest-quiz.json'
 ];
 
 self.addEventListener('install', (event) => {
