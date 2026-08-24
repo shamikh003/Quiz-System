@@ -1,12 +1,13 @@
 {
+  "id": "quizboard-admin",
   "name": "QuizBoard Admin",
   "short_name": "QB Admin",
   "description": "Teacher admin panel for QuizBoard",
   "start_url": "index.html",
   "scope": ".",
   "display": "standalone",
-  "background_color": "#FAFAF9",
-  "theme_color": "#6C5CE7",
+  "background_color": "#66a6ff",
+  "theme_color": "#6c5ce7",
   "icons": [
     {
       "src": "logo.png",

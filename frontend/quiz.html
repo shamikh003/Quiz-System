@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz Project</title>
+    <title>Quiz</title>
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="manifest" href="manifest-quiz.json">
@@ -37,6 +37,19 @@
                     <option value="6" data-i18n="grade6">Grade 6</option>
                     <option value="7" data-i18n="grade7">Grade 7</option>
                 </select>
+
+                <div id="assignment-section" class="hidden">
+                    <h3 data-i18n="assignmentAvailable">📎 Assignment Available</h3>
+                    <p id="assignment-name"></p>
+                    <button type="button" id="download-assignment-btn" class="btn-secondary" data-i18n="downloadAssignment">⬇ Download Assignment</button>
+
+                    <div class="field">
+                        <label for="assignment-file-input" data-i18n="uploadCompletedFile">Upload Completed File:</label>
+                        <input type="file" id="assignment-file-input" accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx">
+                    </div>
+                    <button type="button" id="submit-assignment-btn" data-i18n="submitAssignment">Submit Assignment</button>
+                    <p class="error-text" id="assignment-status-text"></p>
+                </div>
 
                 <p class="fullscreen-notice" data-i18n="fullscreenNotice">This quiz runs in full-screen mode. Please don't switch tabs or exit full-screen once it starts.</p>
 

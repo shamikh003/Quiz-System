@@ -414,19 +414,13 @@ async function showResults(isTimeUp) {
     details.forEach((answer, index) => {
         const resultItem = document.createElement('div');
         resultItem.classList.add('result-item');
-        const isCorrect = (answer.selected === answer.correct);
-        const correctOption = answer.options.find(opt => opt.id === answer.correct);
-        const correctText = correctOption ? correctOption.text : 'N/A';
         const studentOption = answer.options.find(opt => opt.id === answer.selected);
         const studentText = studentOption ? studentOption.text : t('noAnswer');
 
-        let innerHTML = `<p><strong>${t('questionLabel', index + 1)}</strong> ${answer.questionText}</p>`;
-        if (isCorrect) {
-            innerHTML += `<p class="correct-answer">✔ ${t('youAnswered')} ${studentText}</p>`;
-        } else {
-            innerHTML += `<p class="wrong-answer">✖ ${t('youAnswered')} ${studentText}</p>`;
-            innerHTML += `<p class="correct-answer"><strong>${t('correctAnswerLabel')}</strong> ${correctText}</p>`;
-        }
+        const innerHTML = `
+            <p><strong>${t('questionLabel', index + 1)}</strong> ${answer.questionText}</p>
+            <p>${t('youAnswered')} ${studentText}</p>
+        `;
 
         resultItem.innerHTML = innerHTML;
         resultsListDiv.appendChild(resultItem);
