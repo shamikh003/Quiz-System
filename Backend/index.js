@@ -4,7 +4,14 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
+const dns = require('dns');
 require('dotenv').config();
+
+// Force Node's own DNS resolver to use Google/Cloudflare DNS. Some local
+// networks/ISPs fail to resolve MongoDB Atlas's SRV records even after the
+// OS-level DNS is changed — this guarantees the app itself always asks a
+// resolver that works, regardless of Windows network settings.
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 const { Admin } = require('./models/models');
 const authRoutes = require('./routes/auth');
@@ -12,10 +19,15 @@ const questionRoutes = require('./routes/questions');
 const resultRoutes = require('./routes/results');
 const settingsRoutes = require('./routes/settings');
 const assignmentRoutes = require('./routes/assignments');
+const dashboardRoutes = require('./routes/dashboard');
 
 // 2. SETUP APP & MIDDLEWARE
 const app = express();
 const port = process.env.PORT || 5000;
+
+// Render sits behind a proxy — this tells Express to trust its
+// X-Forwarded-For header so rate limiting sees the real client IP.
+app.set('trust proxy', 1);
 
 app.use(cors());
 app.use(express.json());
@@ -66,6 +78,7 @@ app.use('/api', questionRoutes);
 app.use('/api', resultRoutes);
 app.use('/api', settingsRoutes);
 app.use('/api', assignmentRoutes);
+app.use('/api', dashboardRoutes);
 
 app.get('/', (req, res) => {
     res.send('Quiz System backend is running.');

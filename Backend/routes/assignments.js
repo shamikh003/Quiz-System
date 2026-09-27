@@ -1,22 +1,18 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
+const stream = require('stream');
 const multer = require('multer');
 const { Assignment, Submission } = require('../models/models');
 const { requireAdmin } = require('../middleware/auth');
+const { uploadBuffer, deleteFile } = require('../cloudinary');
 
 const router = express.Router();
 const VALID_GRADES = [4, 5, 6, 7];
 
 // ---- Storage setup ----
-// NOTE: Render's free/standard disk is ephemeral — files here can be lost on
-// redeploy or restart. For production durability, attach a Render Persistent
-// Disk to these folders, or swap this for cloud storage (S3, Cloudinary, etc).
-const ASSIGNMENTS_DIR = path.join(__dirname, '..', 'uploads', 'assignments');
-const SUBMISSIONS_DIR = path.join(__dirname, '..', 'uploads', 'submissions');
-fs.mkdirSync(ASSIGNMENTS_DIR, { recursive: true });
-fs.mkdirSync(SUBMISSIONS_DIR, { recursive: true });
-
+// Files are uploaded straight to Cloudinary (never touch Render's disk), so
+// they survive redeploys/restarts. multer just holds the file in memory
+// briefly while we stream it to Cloudinary.
 const ALLOWED_EXTENSIONS = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'];
 
 function fileFilter(req, file, cb) {
@@ -27,28 +23,17 @@ function fileFilter(req, file, cb) {
     cb(null, true);
 }
 
-function makeUploader(destinationDir) {
-    return multer({
-        storage: multer.diskStorage({
-            destination: (req, file, cb) => cb(null, destinationDir),
-            filename: (req, file, cb) => {
-                const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-                cb(null, `${unique}${path.extname(file.originalname)}`);
-            }
-        }),
-        fileFilter,
-        limits: { fileSize: 15 * 1024 * 1024 } // 15MB per file
-    }).single('file');
-}
-
-const assignmentUpload = makeUploader(ASSIGNMENTS_DIR);
-const submissionUpload = makeUploader(SUBMISSIONS_DIR);
+const uploader = multer({
+    storage: multer.memoryStorage(),
+    fileFilter,
+    limits: { fileSize: 15 * 1024 * 1024 } // 15MB per file
+}).single('file');
 
 // ================= ADMIN: manage assignments =================
 
 // Create a new assignment (title + grade + max marks + file)
 router.post('/admin/assignments', requireAdmin, (req, res) => {
-    assignmentUpload(req, res, async (err) => {
+    uploader(req, res, async (err) => {
         if (err) return res.status(400).json({ error: err.message });
         try {
             const { title, grade, maxMarks } = req.body;
@@ -56,12 +41,15 @@ router.post('/admin/assignments', requireAdmin, (req, res) => {
             if (!VALID_GRADES.includes(Number(grade))) return res.status(400).json({ error: 'Grade must be 4-7.' });
             if (!req.file) return res.status(400).json({ error: 'A file is required.' });
 
+            const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/assignments');
+
             const assignment = new Assignment({
                 title: title.trim(),
                 grade: Number(grade),
                 maxMarks: Number(maxMarks) > 0 ? Number(maxMarks) : 100,
                 fileName: req.file.originalname,
-                filePath: req.file.filename
+                fileUrl: uploaded.secure_url,
+                filePath: uploaded.public_id
             });
             await assignment.save();
             res.status(201).json(assignment);
@@ -90,20 +78,20 @@ router.delete('/admin/assignments/:id', requireAdmin, async (req, res) => {
 
     const subs = await Submission.find({ assignment: assignment._id });
     for (const s of subs) {
-        fs.unlink(path.join(SUBMISSIONS_DIR, s.filePath), () => {});
+        await deleteFile(s.filePath);
     }
     await Submission.deleteMany({ assignment: assignment._id });
-    fs.unlink(path.join(ASSIGNMENTS_DIR, assignment.filePath), () => {});
+    await deleteFile(assignment.filePath);
 
     res.json({ message: 'Assignment and its submissions deleted.' });
 });
 
-// Download the original assignment file — public, students need this
+// Download the original assignment file — public, students need this.
+// Cloudinary already hosts the file directly, so we just send them there.
 router.get('/assignments/:id/download', async (req, res) => {
     const assignment = await Assignment.findById(req.params.id);
     if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
-    const filePath = path.join(ASSIGNMENTS_DIR, assignment.filePath);
-    res.download(filePath, assignment.fileName);
+    res.redirect(assignment.fileUrl);
 });
 
 // ================= PUBLIC: student-facing =================
@@ -131,7 +119,7 @@ router.get('/assignments/:id/status', async (req, res) => {
 
 // Student submits their completed file — one-time only (unique index enforces it)
 router.post('/assignments/:id/submit', (req, res) => {
-    submissionUpload(req, res, async (err) => {
+    uploader(req, res, async (err) => {
         if (err) return res.status(400).json({ error: err.message });
         try {
             const assignment = await Assignment.findById(req.params.id);
@@ -143,13 +131,16 @@ router.post('/assignments/:id/submit', (req, res) => {
             }
             if (!req.file) return res.status(400).json({ error: 'A file is required.' });
 
+            const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/submissions');
+
             const submission = new Submission({
                 assignment: assignment._id,
                 name: String(name).trim(),
                 rollNum: String(rollNum).trim(),
                 grade: Number(grade),
                 fileName: req.file.originalname,
-                filePath: req.file.filename
+                fileUrl: uploaded.secure_url,
+                filePath: uploaded.public_id
             });
             await submission.save();
             res.status(201).json({ message: 'Assignment submitted successfully.' });
@@ -173,8 +164,19 @@ router.get('/admin/assignments/:id/submissions', requireAdmin, async (req, res) 
 router.get('/admin/submissions/:id/download', requireAdmin, async (req, res) => {
     const submission = await Submission.findById(req.params.id);
     if (!submission) return res.status(404).json({ error: 'Submission not found.' });
-    const filePath = path.join(SUBMISSIONS_DIR, submission.filePath);
-    res.download(filePath, submission.fileName);
+
+    try {
+        const fileResponse = await fetch(submission.fileUrl);
+        if (!fileResponse.ok || !fileResponse.body) {
+            return res.status(502).json({ error: 'Could not fetch file from storage.' });
+        }
+        res.setHeader('Content-Disposition', `attachment; filename="${submission.fileName}"`);
+        res.setHeader('Content-Type', fileResponse.headers.get('content-type') || 'application/octet-stream');
+        stream.Readable.fromWeb(fileResponse.body).pipe(res);
+    } catch (e) {
+        console.error('Download error:', e);
+        res.status(500).json({ error: 'Could not download file.' });
+    }
 });
 
 // Teacher enters marks (out of the assignment's maxMarks) — percentage is derived automatically

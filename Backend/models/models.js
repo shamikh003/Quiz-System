@@ -51,7 +51,8 @@ const AssignmentSchema = new mongoose.Schema({
     grade: { type: Number, required: true, enum: [4, 5, 6, 7] },
     maxMarks: { type: Number, required: true, default: 100 },
     fileName: { type: String, required: true },   // original file name shown to users
-    filePath: { type: String, required: true },   // name on disk inside uploads/assignments
+    fileUrl: { type: String, required: true },    // Cloudinary secure_url
+    filePath: { type: String, required: true },   // Cloudinary public_id (needed to delete later)
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -62,7 +63,8 @@ const SubmissionSchema = new mongoose.Schema({
     rollNum: { type: String, required: true },
     grade: { type: Number, required: true, enum: [4, 5, 6, 7] },
     fileName: { type: String, required: true },   // original file name
-    filePath: { type: String, required: true },   // name on disk inside uploads/submissions
+    fileUrl: { type: String, required: true },    // Cloudinary secure_url
+    filePath: { type: String, required: true },   // Cloudinary public_id (needed to delete later)
     marks: { type: Number, default: null },
     percentage: { type: Number, default: null },
     status: { type: String, enum: ['pending', 'graded'], default: 'pending' },
