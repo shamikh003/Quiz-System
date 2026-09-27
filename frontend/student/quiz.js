@@ -1,5 +1,5 @@
 // Backend URL
-const BACKEND_URL = 'https://quiz-system-hpy5.onrender.com';
+const BACKEND_URL = 'https://quiz-system-wf0d.onrender.com';
 
 // ---------- Language toggle (English / Urdu) ----------
 const translations = {

@@ -1,5 +1,5 @@
 // Backend server ka URL
-const BACKEND_URL = 'https://quiz-system-hpy5.onrender.com';
+const BACKEND_URL = 'https://quiz-system-wf0d.onrender.com';
 
 // ---------- Theme toggle (shared logic, works on any page) ----------
 function applyStoredTheme() {
@@ -32,12 +32,15 @@ const logoutBtn = document.getElementById('logout-btn');
 function showLoggedOutView() {
     teacherLoginContainer.style.display = 'block';
     adminPanel.style.display = 'none';
+    document.body.classList.remove('app-shell-page');
 }
 function showLoggedInView() {
     teacherLoginContainer.style.display = 'none';
-    adminPanel.style.display = 'block';
+    adminPanel.style.display = 'flex';
+    document.body.classList.add('app-shell-page');
     loadSettings();
     loadQuestionList();
+    loadDashboard();
 }
 
 if (getToken()) {
@@ -83,28 +86,91 @@ logoutBtn.addEventListener('click', function () {
 });
 
 // ---------- Tabs ----------
+const tabDashboard = document.getElementById('tab-dashboard');
 const tabAdd = document.getElementById('tab-add');
 const tabManage = document.getElementById('tab-manage');
 const tabAssignments = document.getElementById('tab-assignments');
+const dashboardTabContent = document.getElementById('dashboard-tab-content');
 const addTabContent = document.getElementById('add-tab-content');
 const manageTabContent = document.getElementById('manage-tab-content');
 const assignmentsTabContent = document.getElementById('assignments-tab-content');
 
-const tabButtons = { add: tabAdd, manage: tabManage, assignments: tabAssignments };
-const tabContents = { add: addTabContent, manage: manageTabContent, assignments: assignmentsTabContent };
+const tabButtons = { dashboard: tabDashboard, add: tabAdd, manage: tabManage, assignments: tabAssignments };
+const tabContents = { dashboard: dashboardTabContent, add: addTabContent, manage: manageTabContent, assignments: assignmentsTabContent };
 
 function activateTab(key) {
     Object.keys(tabButtons).forEach(k => {
         tabButtons[k].classList.toggle('active', k === key);
         tabContents[k].classList.toggle('hidden', k !== key);
     });
+    if (key === 'dashboard') loadDashboard();
     if (key === 'manage') loadQuestionList();
     if (key === 'assignments') loadAssignments();
+
+    // Close the mobile sidebar (if open) after picking a section.
+    const sidebarEl = document.getElementById('sidebar');
+    if (sidebarEl) sidebarEl.classList.remove('open');
 }
 
+tabDashboard.addEventListener('click', () => activateTab('dashboard'));
 tabAdd.addEventListener('click', () => activateTab('add'));
 tabManage.addEventListener('click', () => activateTab('manage'));
 tabAssignments.addEventListener('click', () => activateTab('assignments'));
+
+const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('open');
+    });
+}
+
+// ---------- Dashboard ----------
+const dashboardDateEl = document.getElementById('dashboard-date');
+if (dashboardDateEl) {
+    dashboardDateEl.textContent = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+async function loadDashboard() {
+    const statQuestions = document.getElementById('stat-total-questions');
+    const statAssignments = document.getElementById('stat-total-assignments');
+    const statStudents = document.getElementById('stat-total-students');
+    const statPending = document.getElementById('stat-pending-submissions');
+    const resultsBody = document.getElementById('dashboard-results-body');
+    if (!statQuestions) return; // dashboard markup not on this page
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/dashboard`, { headers: authHeaders() });
+        if (!response.ok) throw new Error('Request failed');
+        const data = await response.json();
+
+        statQuestions.textContent = data.totalQuestions;
+        statAssignments.textContent = data.totalAssignments;
+        statStudents.textContent = data.totalStudents;
+        statPending.textContent = data.pendingSubmissions;
+
+        if (!data.recentResults || data.recentResults.length === 0) {
+            resultsBody.innerHTML = '<tr><td colspan="5" class="shell-empty">No quiz attempts yet.</td></tr>';
+            return;
+        }
+
+        resultsBody.innerHTML = data.recentResults.map(r => {
+            const flagCount = (r.tabSwitchCount || 0) + (r.fullscreenExitCount || 0);
+            const pillClass = flagCount === 0 ? 'good' : (flagCount <= 2 ? 'warn' : 'bad');
+            const pillText = flagCount === 0 ? 'Clean' : `${flagCount} flag${flagCount > 1 ? 's' : ''}`;
+            const dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+            return `
+                <tr>
+                    <td>${r.name}</td>
+                    <td class="mono">Grade ${r.grade}</td>
+                    <td class="mono">${r.score} / ${r.total}</td>
+                    <td><span class="pill ${pillClass}">${pillText}</span></td>
+                    <td class="mono">${dateStr}</td>
+                </tr>`;
+        }).join('');
+    } catch (error) {
+        resultsBody.innerHTML = '<tr><td colspan="5" class="shell-empty">Could not load dashboard data.</td></tr>';
+    }
+}
 
 // ---------- DOM Elements ----------
 const optionCountSelector = document.getElementById('option-count');
