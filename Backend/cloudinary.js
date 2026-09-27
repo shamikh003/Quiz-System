@@ -6,12 +6,20 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Uploads a file buffer (from multer's memoryStorage) straight to Cloudinary —
-// nothing ever touches Render's disk, so it survives redeploys/restarts.
-function uploadBuffer(buffer, folder) {
+// Uploads a file buffer (from multer's memoryStorage) straight to Cloudinary
+function uploadBuffer(buffer, folder, originalName) {
     return new Promise((resolve, reject) => {
+        // Original naam mein se spaces hata kar safe name banana
+        const safeName = originalName ? originalName.replace(/\s+/g, '_') : 'file';
+        
+        // Folder aur unique naam combine karna taake overwrite na ho
+        const uniquePublicId = `${folder}/${Date.now()}-${safeName}`;
+
         const stream = cloudinary.uploader.upload_stream(
-            { resource_type: 'raw', folder },
+            { 
+                resource_type: 'raw',
+                public_id: uniquePublicId // Yeh file ka original naam aur extension bachayega
+            },
             (error, result) => {
                 if (error) return reject(error);
                 resolve(result);

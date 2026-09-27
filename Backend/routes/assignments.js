@@ -41,7 +41,8 @@ router.post('/admin/assignments', requireAdmin, (req, res) => {
             if (!VALID_GRADES.includes(Number(grade))) return res.status(400).json({ error: 'Grade must be 4-7.' });
             if (!req.file) return res.status(400).json({ error: 'A file is required.' });
 
-            const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/assignments');
+            // UPDATED: Added req.file.originalname as the 3rd parameter
+            const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/assignments', req.file.originalname);
 
             const assignment = new Assignment({
                 title: title.trim(),
@@ -131,7 +132,8 @@ router.post('/assignments/:id/submit', (req, res) => {
             }
             if (!req.file) return res.status(400).json({ error: 'A file is required.' });
 
-            const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/submissions');
+            // UPDATED: Added req.file.originalname as the 3rd parameter
+            const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/submissions', req.file.originalname);
 
             const submission = new Submission({
                 assignment: assignment._id,
