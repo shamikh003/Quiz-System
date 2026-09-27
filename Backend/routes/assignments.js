@@ -10,9 +10,6 @@ const router = express.Router();
 const VALID_GRADES = [4, 5, 6, 7];
 
 // ---- Storage setup ----
-// Files are uploaded straight to Cloudinary (never touch Render's disk), so
-// they survive redeploys/restarts. multer just holds the file in memory
-// briefly while we stream it to Cloudinary.
 const ALLOWED_EXTENSIONS = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'];
 
 function fileFilter(req, file, cb) {
@@ -41,7 +38,6 @@ router.post('/admin/assignments', requireAdmin, (req, res) => {
             if (!VALID_GRADES.includes(Number(grade))) return res.status(400).json({ error: 'Grade must be 4-7.' });
             if (!req.file) return res.status(400).json({ error: 'A file is required.' });
 
-            // UPDATED: Added req.file.originalname as the 3rd parameter
             const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/assignments', req.file.originalname);
 
             const assignment = new Assignment({
@@ -87,18 +83,28 @@ router.delete('/admin/assignments/:id', requireAdmin, async (req, res) => {
     res.json({ message: 'Assignment and its submissions deleted.' });
 });
 
-// Download the original assignment file — public, students need this.
-// Cloudinary already hosts the file directly, so we just send them there.
+// Download the original assignment file (Student facing - fixed with proper filename and extension)
 router.get('/assignments/:id/download', async (req, res) => {
-    const assignment = await Assignment.findById(req.params.id);
-    if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
-    res.redirect(assignment.fileUrl);
+    try {
+        const assignment = await Assignment.findById(req.params.id);
+        if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
+
+        const fileResponse = await fetch(assignment.fileUrl);
+        if (!fileResponse.ok || !fileResponse.body) {
+            return res.status(502).json({ error: 'Could not fetch file from storage.' });
+        }
+        res.setHeader('Content-Disposition', `attachment; filename="${assignment.fileName}"`);
+        res.setHeader('Content-Type', fileResponse.headers.get('content-type') || 'application/octet-stream');
+        stream.Readable.fromWeb(fileResponse.body).pipe(res);
+    } catch (e) {
+        console.error('Download error:', e);
+        res.status(500).json({ error: 'Could not download file.' });
+    }
 });
 
 // ================= PUBLIC: student-facing =================
 
-// Assignments available for a grade — used by quiz.html to decide whether
-// to show the assignment section at all.
+// Assignments available for a grade
 router.get('/assignments', async (req, res) => {
     const grade = Number(req.query.grade);
     if (!VALID_GRADES.includes(grade)) return res.status(400).json({ error: 'A valid grade (4-7) is required.' });
@@ -118,7 +124,7 @@ router.get('/assignments/:id/status', async (req, res) => {
     });
 });
 
-// Student submits their completed file — one-time only (unique index enforces it)
+// Student submits their completed file
 router.post('/assignments/:id/submit', (req, res) => {
     uploader(req, res, async (err) => {
         if (err) return res.status(400).json({ error: err.message });
@@ -132,7 +138,6 @@ router.post('/assignments/:id/submit', (req, res) => {
             }
             if (!req.file) return res.status(400).json({ error: 'A file is required.' });
 
-            // UPDATED: Added req.file.originalname as the 3rd parameter
             const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/submissions', req.file.originalname);
 
             const submission = new Submission({
@@ -181,7 +186,7 @@ router.get('/admin/submissions/:id/download', requireAdmin, async (req, res) => 
     }
 });
 
-// Teacher enters marks (out of the assignment's maxMarks) — percentage is derived automatically
+// Teacher enters marks
 router.post('/admin/submissions/:id/marks', requireAdmin, async (req, res) => {
     try {
         const submission = await Submission.findById(req.params.id);
