@@ -614,7 +614,7 @@ tr:nth-child(even) { background-color: var(--surface-sunken); }
 .question-card p { margin: var(--space-1) 0; }
 .question-card .q-options { font-size: 0.85rem; color: var(--text-secondary); margin: var(--space-2) 0; }
 .question-card .q-actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); align-items: center; flex-wrap: wrap; }
-.question-card .q-actions button { flex: 1; }
+.question-card .q-actions button { flex: 1; margin: 0; min-height: 40px; }
 .question-card .q-actions .marks-input { flex: 0 0 auto; width: auto; font-family: var(--font-mono); }
 .question-card .q-actions .save-marks-btn { flex: 0 0 auto; }
 .empty-state { text-align: center; color: var(--text-tertiary); padding: var(--space-6) 0; }
