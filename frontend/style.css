@@ -904,6 +904,7 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .report-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px; }
 .report-toolbar button { width:auto; margin-top:0; }
 .section-edit-form { padding:8px 0 20px; margin-bottom:16px; border-bottom:1px solid var(--border); }
+.student-delete-btn { width:100%; margin-top:16px; }
 @media (max-width:600px) { .report-filters { grid-template-columns:1fr; } .student-page-header,.report-toolbar { align-items:flex-start; flex-direction:column; } .page-context { display:none; } }
 .portal-actions { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
 .portal-actions button { flex: 1; margin-top: 0; }

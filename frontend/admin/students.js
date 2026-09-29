@@ -5,9 +5,9 @@ let students = [];
 let visibleStudents = [];
 const filters = () => ({ grade: $('student-filter-grade').value, section: $('student-filter-section').value, search: $('student-search').value });
 document.documentElement.dataset.theme = localStorage.getItem('quizTheme') || 'light';
-async function request(path, body) {
+async function request(path, body, method) {
     const response = await fetch(`${BACKEND_URL}/api${path}`, {
-        method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        method: method || (body ? 'POST' : 'GET'), headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {})
     });
     const data = await response.json();
@@ -55,6 +55,14 @@ function render() {
             finally { button.disabled = false; }
         };
         card.append(form); $('students-list').append(card);
+        const deleteButton = node('button', 'Delete Student'); deleteButton.type = 'button'; deleteButton.className = 'btn-danger student-delete-btn';
+        deleteButton.onclick = async () => {
+            if (!confirm(`Delete ${student.name}'s account and all of their quiz results and assignment submissions? This cannot be undone.`)) return;
+            deleteButton.disabled = true;
+            try { const data = await request(`/admin/students/${student.id}`, undefined, 'DELETE'); $('account-message').textContent = data.message; await load(); }
+            catch (error) { $('account-message').textContent = error.message; deleteButton.disabled = false; }
+        };
+        card.append(deleteButton);
     }
     if (!$('students-list').children.length) $('students-list').append(node('p', 'No students found.'));
 }

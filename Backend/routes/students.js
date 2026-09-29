@@ -9,6 +9,7 @@ const { pakistanDay } = require('../quiz-policy');
 const { finalizeAttempt } = require('../services/attempts');
 const { sectionName, sectionKey, studentRecords } = require('../sections');
 const { linkLegacyRecords } = require('../services/sections');
+const { deleteFile } = require('../cloudinary');
 const router = express.Router();
 const profile = s => ({ id: s._id, name: s.name, rollNum: s.rollNum, grade: s.grade, section: sectionName(s.section) });
 router.use((req, res, next) => {
@@ -79,6 +80,23 @@ router.post('/admin/students/:id/password', requireAdmin, async (req, res) => {
         { $set: { passwordHash: await bcrypt.hash(password, 10) }, $inc: { tokenVersion: 1 } });
     if (!student) return res.status(404).json({ error: 'Student not found.' });
     res.json({ message: 'Password reset. Previous sessions are now signed out.' });
+});
+
+router.delete('/admin/students/:id', requireAdmin, async (req, res) => {
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ error: 'Student not found.' });
+    if (await Attempt.exists({ student: student._id, status: 'active', expiresAt: { $gt: new Date() } })) {
+        return res.status(409).json({ error: 'This student is currently taking a quiz. Wait until the quiz ends before deleting the account.' });
+    }
+    const submissions = await Submission.find({ student: student._id }).select('filePath');
+    await Promise.all(submissions.map(submission => deleteFile(submission.filePath)));
+    await Promise.all([
+        Result.deleteMany({ student: student._id }),
+        Submission.deleteMany({ student: student._id }),
+        Attempt.deleteMany({ student: student._id }),
+        Student.deleteOne({ _id: student._id })
+    ]);
+    res.json({ message: `${student.name}'s account and saved records were deleted.` });
 });
 
 router.get('/student/report', requireStudent, async (req, res) => {
