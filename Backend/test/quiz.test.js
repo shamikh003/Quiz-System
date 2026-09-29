@@ -90,14 +90,15 @@ test('section migration preserves records and replaces retired indexes', async (
 test('same roll in different sections keeps reports, assignment marks and daily locks separate', async () => {
     const body = { name: 'Section Student', rollNum: 'SEC-01', grade: 5, password: 'sample123', section: 'Section A' };
     const a = await request('/admin/students', adminToken, body);
-    const b = await request('/admin/students', adminToken, { ...body, section: 'Section B' });
+    const b = await request('/admin/students', adminToken, { ...body, section: 'Section B', password: 'sample456' });
     assert.equal(a.status, 201); assert.equal(b.status, 201);
     assert.equal((await request('/admin/students', adminToken, { ...body, section: ' section   a ' })).status, 409);
     assert.equal((await request('/admin/students', adminToken, { ...body, section: {} })).status, 400);
     const tokenA = (await request('/student/login', null, { ...body, section: ' section a ' })).data.token;
-    const tokenB = (await request('/student/login', null, { ...body, section: 'Section B' })).data.token;
+    const tokenB = (await request('/student/login', null, { ...body, password: 'sample456', section: 'Section B' })).data.token;
     assert.ok(tokenA); assert.ok(tokenB);
-    assert.equal((await request('/student/login', null, { ...body, section: '' })).status, 401);
+    const autoSection = await request('/student/login', null, { ...body, section: '' });
+    assert.equal(autoSection.status, 200); assert.equal(autoSection.data.student.section, 'Section A');
     await models.Result.create({ student: a.data.id, name: body.name, rollNum: body.rollNum, grade: 5, section: 'Section A', score: 1, total: 1 });
     await models.Question.create({ grade: 5, text: 'Input device?', options: [{ id: 'A', text: 'Keyboard' }, { id: 'B', text: 'Monitor' }, { id: 'C', text: 'Printer' }], correct: 'A' });
     assert.equal((await request('/quiz/start', tokenA, {})).status, 409);

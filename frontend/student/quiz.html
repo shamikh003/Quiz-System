@@ -4,7 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuizBoard — Student</title>
 <link rel="icon" href="../logo.png"><link rel="manifest" href="../manifest-quiz.json">
-<meta name="theme-color" content="#1F4E79"><link rel="stylesheet" href="../style.css?v=5.5">
+<meta name="theme-color" content="#1F4E79"><link rel="stylesheet" href="../style.css?v=5.6">
 </head>
 <body>
 <main class="container wide student-portal">
@@ -26,9 +26,6 @@
                 <option value="4">Grade 4</option><option value="5">Grade 5</option>
                 <option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option>
             </select>
-            <label for="student-section" data-i18n="section">Section</label>
-            <input id="student-section" maxlength="80" placeholder="Section name (leave blank if not assigned)" autocomplete="off">
-            <p class="field-help" data-i18n="sectionHelp">Enter the section your teacher assigned. Otherwise leave blank.</p>
             <label for="student-password" data-i18n="password">Password</label>
             <input id="student-password" type="password" required maxlength="72" autocomplete="current-password">
             <button id="login-btn" type="submit" data-i18n="login">Student Login</button>
@@ -36,7 +33,7 @@
     </section>
     <section id="dashboard" class="hidden">
         <h1 id="student-heading"></h1>
-        <p data-i18n="dailyRule">One quiz attempt per day (Pakistan time). An unfinished quiz resumes with its original deadline.</p>
+        <p data-i18n="dailyRule">One quiz attempt per day. An unfinished quiz resumes with its original deadline.</p>
         <button id="start-btn" type="button" data-i18n="start">Start / Resume Quiz</button>
         <button id="refresh-btn" type="button" class="btn-secondary" data-i18n="refresh">Refresh report</button>
         <h2 class="portal-section-title" data-i18n="scores">My Test Scores</h2>
@@ -54,7 +51,7 @@
         <h2 id="question-title" tabindex="-1"></h2>
         <div id="options-container"></div>
         <div class="portal-actions">
-            <button id="skip-btn" type="button" class="btn-secondary" data-i18n="skip">Skip — return at end</button>
+            <button id="skip-btn" type="button" class="btn-secondary" data-i18n="skip">Skip</button>
             <button id="next-btn" type="button" data-i18n="saveNext">Save & Next</button>
         </div>
         <button id="finish-btn" type="button" class="btn-secondary" data-i18n="finish">Submit Quiz</button>
@@ -62,7 +59,7 @@
     <section id="result-container" style="display:none">
         <h1 data-i18n="complete">Quiz Complete</h1><h2 id="score-display"></h2>
         <div id="answer-review"></div>
-        <p data-i18n="completedRule">Your result is saved. Another quiz will be available tomorrow (Pakistan time).</p>
+        <p data-i18n="completedRule">Your result is saved. Another quiz will be available tomorrow.</p>
         <button id="retry-btn" class="hidden" type="button" data-i18n="retry">Retry submission</button>
         <button id="back-btn" type="button" data-i18n="back">Back to my report</button>
     </section>

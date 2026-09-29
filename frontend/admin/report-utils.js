@@ -34,7 +34,7 @@
         }).join(',')).join('\r\n');
     }
     function resultCsv(rows) {
-        return csv([['Name', 'Roll Number', 'Grade', 'Section', 'Score', 'Total', 'Flags', 'Assignment %', 'Timestamp (Pakistan)'],
+        return csv([['Name', 'Roll Number', 'Grade', 'Section', 'Score', 'Total', 'Flags', 'Assignment %', 'Timestamp'],
             ...rows.map(row => [row.name, row.rollNum, gradeLabel(row.grade), section(row), row.score, row.total,
                 (row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0), row.assignmentPercentage ?? '',
                 row.date ? new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }) : ''])]);

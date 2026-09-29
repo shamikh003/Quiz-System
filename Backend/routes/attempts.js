@@ -17,7 +17,7 @@ async function resultView(result) {
         const question = byId.get(String(key.questionId));
         const selected = answers.get(String(key.questionId)) || null;
         return { questionText: question?.text || 'Question removed', selected,
-            correct: key.correct, options: question?.options || [] };
+            options: question?.options || [] };
     }) };
 }
 

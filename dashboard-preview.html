@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard — Preview</title>
+    <link rel="stylesheet" href="dashboard-preview.css">
+</head>
+<body>
+
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">QB</div>
+                <div class="sidebar-brand-text">QuizBoard</div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="sidebar-link active"><span class="icon">&#9632;</span> Dashboard</button>
+                <button class="sidebar-link"><span class="icon">&#10010;</span> Add / Edit Question</button>
+                <button class="sidebar-link"><span class="icon">&#9776;</span> Manage Questions</button>
+                <button class="sidebar-link"><span class="icon">&#128206;</span> Assignments</button>
+                <button class="sidebar-link"><span class="icon">&#128101;</span> Students</button>
+                <button class="sidebar-link"><span class="icon">&#128202;</span> Reports</button>
+                <button class="sidebar-link"><span class="icon">&#9881;</span> Settings</button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="sidebar-avatar">MS</div>
+                    <div>
+                        <div class="sidebar-user-name">Muhammad Shamikh</div>
+                        <div class="sidebar-user-role">Teacher</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Teacher Dashboard</h1>
+                    <p class="page-subtitle">Manage questions, assignments, and track student progress.</p>
+                </div>
+                <div class="page-date">Sat, 26 Sep 2026</div>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">&#9776;</div>
+                    <p class="stat-label">Total Questions</p>
+                    <div class="stat-value">42</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon teal">&#128206;</div>
+                    <p class="stat-label">Total Assignments</p>
+                    <div class="stat-value">8</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon blue">&#128101;</div>
+                    <p class="stat-label">Total Students</p>
+                    <div class="stat-value">48</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon warn">&#8987;</div>
+                    <p class="stat-label">Pending Submissions</p>
+                    <div class="stat-value">6</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">Recent results</h2>
+                    <a class="panel-link" href="#">View all</a>
+                </div>
+                <table class="v2-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Grade</th>
+                            <th>Score</th>
+                            <th>Flags</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Ali Raza</td>
+                            <td class="mono">Grade 6</td>
+                            <td class="mono">9 / 10</td>
+                            <td><span class="pill good">Clean</span></td>
+                            <td class="mono">25 Sep 2026</td>
+                        </tr>
+                        <tr>
+                            <td>Fatima Noor</td>
+                            <td class="mono">Grade 5</td>
+                            <td class="mono">7 / 10</td>
+                            <td><span class="pill warn">1 flag</span></td>
+                            <td class="mono">25 Sep 2026</td>
+                        </tr>
+                        <tr>
+                            <td>Hamza Tariq</td>
+                            <td class="mono">Grade 7</td>
+                            <td class="mono">10 / 10</td>
+                            <td><span class="pill good">Clean</span></td>
+                            <td class="mono">24 Sep 2026</td>
+                        </tr>
+                        <tr>
+                            <td>Zainab Iqbal</td>
+                            <td class="mono">Grade 4</td>
+                            <td class="mono">5 / 10</td>
+                            <td><span class="pill bad">3 flags</span></td>
+                            <td class="mono">24 Sep 2026</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

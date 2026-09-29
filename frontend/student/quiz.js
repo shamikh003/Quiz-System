@@ -1,15 +1,14 @@
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
 const $ = id => document.getElementById(id);
 const labels = {
- section:['Section','سیکشن'], sectionHelp:['Enter the section your teacher assigned. Otherwise leave blank.','استاد کا دیا ہوا سیکشن لکھیں۔ اگر مقرر نہیں ہوا تو خالی چھوڑ دیں۔'],
- review:['Your answer','آپ کا جواب'], correct:['Correct answer','درست جواب'], unanswered:['Not answered','جواب نہیں دیا'],
+ review:['Your answer','آپ کا جواب'], unanswered:['Not answered','جواب نہیں دیا'],
  login:['Student Login','طالب علم لاگ اِن'], loginHelp:['Use the account and password your teacher gave you.','استاد کا دیا ہوا رول نمبر اور پاس ورڈ استعمال کریں۔'],
  roll:['Roll number','رول نمبر'], grade:['Grade','کلاس'], choose:['Choose grade','کلاس منتخب کریں'], password:['Password','پاس ورڈ'], logout:['Log out','لاگ آؤٹ'],
- dailyRule:['One quiz attempt per day (Pakistan time). An unfinished quiz resumes with its original deadline.','پاکستانی وقت کے مطابق روزانہ ایک کوئز۔ ادھورا کوئز اپنے اصل وقت کے ساتھ جاری ہوگا۔'],
+ dailyRule:['One quiz attempt per day. An unfinished quiz resumes with its original deadline.','روزانہ ایک کوئز۔ ادھورا کوئز اپنے اصل وقت کے ساتھ جاری ہوگا۔'],
  start:['Start / Resume Quiz','کوئز شروع / جاری کریں'], refresh:['Refresh report','رپورٹ تازہ کریں'], scores:['My Test Scores','میرے ٹیسٹ کے نمبر'], date:['Date','تاریخ'], score:['Score','نمبر'],
- previous:['Previous','پچھلا'], next:['Next','اگلا'], assignments:['My Assignments','میری اسائنمنٹس'], skip:['Skip — return at end','چھوڑیں — آخر میں دوبارہ'],
+ previous:['Previous','پچھلا'], next:['Next','اگلا'], assignments:['My Assignments','میری اسائنمنٹس'], skip:['Skip','چھوڑیں'],
  saveNext:['Save & Next','محفوظ کریں اور آگے جائیں'], finish:['Submit Quiz','کوئز جمع کریں'], complete:['Quiz Complete','کوئز مکمل'],
- completedRule:['Your result is saved. Another quiz will be available tomorrow (Pakistan time).','نتیجہ محفوظ ہو گیا۔ اگلا کوئز کل پاکستانی وقت کے مطابق دستیاب ہوگا۔'],
+ completedRule:['Your result is saved. Another quiz will be available tomorrow.','نتیجہ محفوظ ہو گیا۔ اگلا کوئز کل دستیاب ہوگا۔'],
  retry:['Retry submission','دوبارہ جمع کریں'], back:['Back to my report','میری رپورٹ پر واپس'], emptyScores:['No test results yet.','ابھی کوئی نتیجہ نہیں۔'], emptyAssignments:['No assignments yet.','ابھی کوئی اسائنمنٹ نہیں۔'],
  pending:['Not submitted','جمع نہیں ہوئی'], submitted:['Submitted — waiting for marking','جمع ہو گئی — استاد کی جانچ باقی ہے'], graded:['Graded','نمبر مل گئے'],
  download:['Download assignment','اسائنمنٹ ڈاؤن لوڈ کریں'], upload:['Submit completed file','مکمل فائل جمع کریں'], busy:['Please wait…','براہ کرم انتظار کریں…'],
@@ -65,7 +64,7 @@ const post = (path, body = {}) => api(path, { method:'POST', headers:{'Content-T
 $('login-form').onsubmit = async event => {
  event.preventDefault(); $('login-btn').disabled = true; notify(t('busy'));
  try {
-  const data = await post('/student/login', { rollNum:$('student-roll').value.trim(), grade:$('student-grade').value, section:$('student-section').value, password:$('student-password').value });
+  const data = await post('/student/login', { rollNum:$('student-roll').value.trim(), grade:$('student-grade').value, password:$('student-password').value });
   token = data.token; sessionStorage.setItem('studentToken', token); $('student-password').value = ''; page = 1; await loadReport();
  } catch (error) { notify(error.message); } finally { $('login-btn').disabled = false; }
 };
@@ -185,8 +184,7 @@ function displayResult(result) {
  for (const [index, answer] of (result.details || []).entries()) {
   const card = element('article',undefined,'result-item');
   const selectedText = answer.options.find(option => option.id === answer.selected)?.text || answer.selected || t('unanswered');
-  const correctText = answer.options.find(option => option.id === answer.correct)?.text || answer.correct;
-  card.append(element('h3',`${index + 1}. ${answer.questionText}`),element('p',`${t('review')}: ${selectedText}`),element('p',`${t('correct')}: ${correctText}`));
+  card.append(element('h3',`${index + 1}. ${answer.questionText}`),element('p',`${t('review')}: ${selectedText}`));
   $('answer-review').append(card);
  }
  $('retry-btn').classList.add('hidden'); $('back-btn').disabled = false; document.querySelector('[data-i18n="completedRule"]').classList.remove('hidden');

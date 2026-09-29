@@ -23,8 +23,11 @@ router.post('/student/login', rateLimit({ windowMs: 15 * 60000, max: 60, skipSuc
     if (typeof rollNum !== 'string' || !validGrade(grade) || typeof password !== 'string' || password.length > 72) {
         return res.status(400).json({ error: 'Roll number, grade and password are required.' });
     }
-    const student = await Student.findOne({ rollNum: rollNum.trim(), grade: Number(grade), sectionKey: sectionKey(req.body.section) }).select('+passwordHash');
-    if (!student || !await bcrypt.compare(password, student.passwordHash)) return res.status(401).json({ error: 'Incorrect roll number, grade, section or password.' });
+    const candidates = await Student.find({ rollNum: rollNum.trim(), grade: Number(grade) }).select('+passwordHash');
+    const matches = [];
+    for (const candidate of candidates) if (await bcrypt.compare(password, candidate.passwordHash)) matches.push(candidate);
+    const student = matches.length === 1 ? matches[0] : null;
+    if (!student) return res.status(401).json({ error: 'Incorrect roll number, grade or password.' });
     await linkLegacyRecords(student);
     const token = jwt.sign({ id: student._id, role: 'student', version: student.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '8h' });
     res.json({ token, student: profile(student) });
