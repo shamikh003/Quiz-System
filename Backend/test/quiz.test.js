@@ -1,0 +1,222 @@
+const { test, before, after } = require('node:test');
+const assert = require('node:assert/strict');
+const express = require('express');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+const fs = require('node:fs');
+const path = require('node:path');
+const models = require('../models/models');
+const { pakistanDay, gradeAttempt, validateAnswers } = require('../quiz-policy');
+let database, server, base, adminToken, studentToken, otherToken, studentId, attemptId;
+const request = async (path, token, body, method) => {
+    const response = await fetch(base + path, { method: method || (body ? 'POST' : 'GET'),
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        ...(body ? { body: JSON.stringify(body) } : {}) });
+    return { status: response.status, data: await response.json() };
+};
+before(async () => {
+    process.env.JWT_SECRET = 'isolated-test-secret-not-used-outside-tests';
+    const binary = path.join(__dirname, '../.mongodb-binaries/mongod.exe');
+    database = await MongoMemoryServer.create(fs.existsSync(binary) ? { binary: { systemBinary: binary } } : {});
+    await mongoose.connect(database.getUri());
+    await Promise.all(Object.values(models).map(model => model.init()));
+    const app = express(); app.use(express.json());
+    for (const name of ['students', 'attempts', 'questions', 'results', 'dashboard', 'assignments']) app.use('/api', require(`../routes/${name}`));
+    app.use((error, req, res, next) => res.status(500).json({ error: error.message }));
+    server = app.listen(0, '127.0.0.1');
+    await new Promise(resolve => server.once('listening', resolve));
+    base = `http://127.0.0.1:${server.address().port}/api`;
+    adminToken = jwt.sign({ id: new mongoose.Types.ObjectId(), role: 'admin' }, process.env.JWT_SECRET);
+}, { timeout: 180000 });
+after(async () => { if (server) await new Promise(resolve => server.close(resolve)); await mongoose.disconnect(); if (database) await database.stop(); });
+
+test('bulk clear requires a grade and preserves other grades, reports and active quizzes', async () => {
+    const make = grade => models.Question.create({ grade, text: 'Bulk deletion fixture', correct: 'A',
+        options: [{ id: 'A', text: 'One' }, { id: 'B', text: 'Two' }, { id: 'C', text: 'Three' }] });
+    const hifz = await make(0), four = await make(4), seven = await make(7);
+    const lock = await models.Attempt.create({ student: new mongoose.Types.ObjectId(), day: '2026-01-01',
+        expiresAt: new Date(Date.now() + 60000), questions: [{ questionId: seven._id, correct: 'A', options: ['A', 'B', 'C'] }] });
+    const result = await models.Result.create({ name: 'Preserved report', rollNum: 'BULK', grade: 0, score: 1, total: 1 });
+    const ids = [hifz._id, four._id, seven._id];
+    try {
+        assert.equal((await request('/admin/questions?grade=4', null, undefined, 'DELETE')).status, 401);
+        for (const query of ['', '?grade=', '?grade=99', '?grade=all', '?grade=4&grade=5']) {
+            assert.equal((await request('/admin/questions' + query, adminToken, undefined, 'DELETE')).status, 400);
+        }
+        assert.equal(await models.Question.countDocuments({ _id: { $in: ids } }), 3);
+        const cleared = await request('/admin/questions?grade=0', adminToken, undefined, 'DELETE');
+        assert.equal(cleared.status, 200); assert.equal(cleared.data.deletedCount, 1);
+        assert.equal(await models.Question.findById(hifz._id), null);
+        assert.ok(await models.Question.exists({ _id: four._id }));
+        assert.ok(await models.Result.exists({ _id: result._id }));
+        assert.equal((await request('/admin/questions?grade=7', adminToken, undefined, 'DELETE')).status, 409);
+        assert.ok(await models.Question.exists({ _id: seven._id }));
+        assert.equal((await request('/admin/questions?grade=4', adminToken, undefined, 'DELETE')).data.deletedCount, 1);
+        assert.equal((await request('/admin/questions?grade=4', adminToken, undefined, 'DELETE')).data.deletedCount, 0);
+        await models.Attempt.updateOne({ _id: lock._id }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
+        assert.equal((await request('/admin/questions?grade=7', adminToken, undefined, 'DELETE')).data.deletedCount, 1);
+    } finally {
+        await models.Question.deleteMany({ _id: { $in: ids } });
+        await models.Attempt.deleteOne({ _id: lock._id });
+        await models.Result.deleteOne({ _id: result._id });
+    }
+});
+
+test('Pakistan calendar and full-question marking', () => {
+    assert.equal(pakistanDay(new Date('2026-09-28T18:59:59Z')), '2026-09-28');
+    assert.equal(pakistanDay(new Date('2026-09-28T19:00:00Z')), '2026-09-29');
+    const questions = [{ questionId: '1', correct: 'A', options: ['A', 'B'] }, { questionId: '2', correct: 'B', options: ['A', 'B'] }];
+    assert.deepEqual(gradeAttempt({ questions, answers: [{ questionId: '1', selected: 'A' }] }), { score: 1, total: 2 });
+    assert.throws(() => validateAnswers(questions, [{ questionId: '1', selected: 'A' }, { questionId: '1', selected: 'A' }]));
+    assert.throws(() => validateAnswers(questions, [{ questionId: '3', selected: 'A' }]));
+    assert.throws(() => validateAnswers(questions, [{ questionId: '1', selected: 'X' }]));
+});
+
+test('section migration preserves records and replaces retired indexes', async () => {
+    const { migrateSections } = require('../services/sections');
+    await models.Student.collection.createIndex({ rollNum: 1, grade: 1 }, { unique: true });
+    await models.Submission.collection.createIndex({ assignment: 1, rollNum: 1 }, { unique: true });
+    const id = new mongoose.Types.ObjectId();
+    await models.Student.collection.insertOne({ _id: id, name: 'Legacy', rollNum: 'LEGACY', grade: 7, passwordHash: 'unused' });
+    await models.Result.collection.insertOne({ name: 'Legacy', rollNum: 'LEGACY', grade: 7, score: 2, total: 3 });
+    await migrateSections(); await migrateSections();
+    assert.equal((await models.Student.findById(id)).section, 'Unassigned');
+    assert.equal(String((await models.Result.findOne({ rollNum: 'LEGACY' })).student), String(id));
+    assert.ok(!(await models.Student.collection.indexes()).some(i => i.name === 'rollNum_1_grade_1'));
+    assert.ok(!(await models.Submission.collection.indexes()).some(i => i.name === 'assignment_1_rollNum_1'));
+});
+
+test('same roll in different sections keeps reports, assignment marks and daily locks separate', async () => {
+    const body = { name: 'Section Student', rollNum: 'SEC-01', grade: 5, password: 'sample123', section: 'Section A' };
+    const a = await request('/admin/students', adminToken, body);
+    const b = await request('/admin/students', adminToken, { ...body, section: 'Section B' });
+    assert.equal(a.status, 201); assert.equal(b.status, 201);
+    assert.equal((await request('/admin/students', adminToken, { ...body, section: ' section   a ' })).status, 409);
+    assert.equal((await request('/admin/students', adminToken, { ...body, section: {} })).status, 400);
+    const tokenA = (await request('/student/login', null, { ...body, section: ' section a ' })).data.token;
+    const tokenB = (await request('/student/login', null, { ...body, section: 'Section B' })).data.token;
+    assert.ok(tokenA); assert.ok(tokenB);
+    assert.equal((await request('/student/login', null, { ...body, section: '' })).status, 401);
+    await models.Result.create({ student: a.data.id, name: body.name, rollNum: body.rollNum, grade: 5, section: 'Section A', score: 1, total: 1 });
+    await models.Question.create({ grade: 5, text: 'Input device?', options: [{ id: 'A', text: 'Keyboard' }, { id: 'B', text: 'Monitor' }, { id: 'C', text: 'Printer' }], correct: 'A' });
+    assert.equal((await request('/quiz/start', tokenA, {})).status, 409);
+    assert.equal((await request('/quiz/start', tokenB, {})).status, 200);
+    const assignment = await models.Assignment.create({ title: 'Sections', grade: 5, maxMarks: 10, fileName: 'task.docx', fileUrl: 'https://example.invalid/task', filePath: 'test' });
+    for (const [account, section, marks] of [[a, 'Section A', 8], [b, 'Section B', 3]]) {
+        await models.Submission.create({ assignment: assignment._id, student: account.data.id, name: body.name, rollNum: body.rollNum, grade: 5, section, fileName: 'done.docx', fileUrl: 'https://example.invalid/done', filePath: 'test', marks, percentage: marks * 10, status: 'graded' });
+    }
+    const reportA = (await request('/student/report', tokenA)).data;
+    const reportB = (await request('/student/report', tokenB)).data;
+    assert.equal(reportA.results.length, 1); assert.equal(reportB.results.length, 0);
+    assert.equal(reportA.assignments[0].submission.marks, 8); assert.equal(reportB.assignments[0].submission.marks, 3);
+    const filtered = await request('/results?grade=5&section=Section%20A&rollNum=SEC-01', adminToken);
+    assert.equal(filtered.data.length, 1); assert.equal(filtered.data[0].assignmentPercentage, 80);
+    assert.equal((await request('/results?grade=5&section=Section%20B', adminToken)).data.length, 0);
+    assert.equal((await request(`/admin/students/${a.data.id}/section`, adminToken, { section: 'Section B' })).status, 409);
+    assert.equal((await request(`/admin/students/${a.data.id}/section`, adminToken, { section: 'Final Name' })).status, 200);
+    assert.equal((await models.Result.findOne({ student: a.data.id })).section, 'Final Name');
+    assert.equal((await models.Submission.findOne({ student: a.data.id })).section, 'Final Name');
+    assert.equal((await request('/student/report', tokenA)).data.results.length, 1);
+    assert.equal((await request('/quiz/start', tokenA, {})).status, 409);
+    await models.Attempt.deleteMany({ student: { $in: [a.data.id, b.data.id] } });
+});
+
+test('student accounts, private reports and daily attempts', async t => {
+    await t.test('teacher creates Hifz account; duplicate account and blank grade rejected', async () => {
+        const body = { name: 'Hifz Student', rollNum: 'H-01', grade: 0, password: 'sample123' };
+        const created = await request('/admin/students', adminToken, body);
+        assert.equal(created.status, 201); assert.equal(created.data.grade, 0); studentId = created.data.id;
+        assert.equal((await request('/admin/students', adminToken, body)).status, 409);
+        assert.equal((await request('/admin/students', adminToken, { ...body, grade: '' })).status, 400);
+        assert.equal((await request('/admin/students', null, body)).status, 401);
+        await request('/admin/students', adminToken, { ...body, rollNum: 'H-02', name: 'Other Student' });
+    });
+    await t.test('login rejects wrong password and student tokens cannot access teacher routes', async () => {
+        const login = { rollNum: 'H-01', grade: '0', password: 'sample123' };
+        assert.equal((await request('/student/login', null, { ...login, password: 'incorrect' })).status, 401);
+        const loggedIn = await request('/student/login', null, login); assert.equal(loggedIn.status, 200); studentToken = loggedIn.data.token;
+        otherToken = (await request('/student/login', null, { ...login, rollNum: 'H-02' })).data.token;
+        assert.equal((await request('/admin/students', studentToken)).status, 403);
+        assert.equal((await request('/results', studentToken)).status, 403);
+        assert.equal((await request('/student/report', null)).status, 401);
+        assert.equal((await request('/quiz/start', null, {})).status, 401);
+    });
+    await t.test('Hifz questions; concurrent starts produce one attempt; answer keys stay private', async () => {
+        for (const text of ['Keyboard', 'Monitor', 'Mouse']) {
+            const response = await request('/admin/questions', adminToken, { text, grade: 0, options: [{ id: 'A', text: 'Input' }, { id: 'B', text: 'Output' }, { id: 'C', text: 'Storage' }], correct: 'A' });
+            assert.equal(response.status, 201);
+        }
+        const starts = await Promise.all(Array.from({ length: 5 }, () => request('/quiz/start', studentToken, {})));
+        for (const start of starts) assert.equal(start.status, 200);
+        attemptId = starts[0].data.attemptId;
+        assert.equal(new Set(starts.map(s => s.data.attemptId)).size, 1);
+        assert.equal(await models.Attempt.countDocuments(), 1);
+        assert.equal(starts[0].data.questions.length, 3);
+        assert.ok(starts[0].data.questions.every(q => q.correct === undefined));
+        assert.equal((await request('/quiz/submit', otherToken, { attemptId })).status, 404);
+        assert.equal((await request('/admin/questions/' + starts[0].data.questions[0]._id, adminToken, undefined, 'DELETE')).status, 409);
+    });
+    await t.test('saved answers resume; invalid, duplicate and stale saves rejected', async () => {
+        const start = (await request('/quiz/start', studentToken, {})).data;
+        const answer = { questionId: start.questions[0]._id, selected: 'A' };
+        assert.equal((await request('/quiz/save', studentToken, { attemptId, revision: 0, answers: [answer, answer] })).status, 400);
+        assert.equal((await request('/quiz/save', studentToken, { attemptId, revision: 0, answers: [{ ...answer, selected: 'X' }] })).status, 400);
+        assert.equal((await request('/quiz/save', studentToken, { attemptId, revision: 0, answers: [answer] })).status, 200);
+        assert.equal((await request('/quiz/save', studentToken, { attemptId, revision: 0, answers: [] })).status, 409);
+        const resumed = (await request('/quiz/start', studentToken, {})).data;
+        assert.equal(resumed.expiresAt, start.expiresAt); assert.equal(resumed.answers.length, 1);
+    });
+    await t.test('concurrent submissions create one result with full denominator; restart blocked', async () => {
+        const submissions = await Promise.all(Array.from({ length: 5 }, () => request('/quiz/submit', studentToken, { attemptId, name: 'Impersonation', score: 999 })));
+        for (const submitted of submissions) { assert.equal(submitted.status, 200); assert.equal(submitted.data.score, 1); assert.equal(submitted.data.total, 3); }
+        assert.equal(await models.Result.countDocuments({ attempt: attemptId }), 1);
+        const result = await models.Result.findOne({ attempt: attemptId }); assert.equal(result.name, 'Hifz Student'); assert.equal(result.details.length, 0);
+        assert.equal((await request('/quiz/start', studentToken, {})).status, 409);
+        assert.ok((await models.Attempt.findById(attemptId)).purgeAt);
+    });
+    await t.test('private report includes legacy scores and assignment marks, ignoring query spoofing', async () => {
+        await models.Result.create({ name: 'Old name', rollNum: 'H-01', grade: 0, score: 8, total: 10, date: new Date('2025-01-01') });
+        const assignment = await models.Assignment.create({ title: 'Word task', grade: 0, maxMarks: 50, fileName: 'task.docx', fileUrl: 'https://example.invalid/task', filePath: 'test' });
+        await models.Submission.create({ assignment: assignment._id, name: 'Hifz Student', rollNum: 'H-01', grade: 0, fileName: 'done.docx', fileUrl: 'https://example.invalid/done', filePath: 'test', marks: 40, percentage: 80, status: 'graded' });
+        const report = (await request('/student/report?rollNum=H-02&grade=4', studentToken)).data;
+        assert.equal(report.student.rollNum, 'H-01'); assert.equal(report.results.length, 2); assert.equal(report.assignments[0].submission.marks, 40);
+        const other = (await request('/student/report', otherToken)).data; assert.equal(other.results.length, 0); assert.equal(other.assignments[0].submission, null);
+    });
+    await t.test('expired quiz cannot accept new answers; zero-answer result counts all questions', async () => {
+        const start = (await request('/quiz/start', otherToken, {})).data;
+        await models.Attempt.updateOne({ _id: start.attemptId }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
+        const save = await request('/quiz/save', otherToken, { attemptId: start.attemptId, revision: 0, answers: [{ questionId: start.questions[0]._id, selected: 'A' }] });
+        assert.equal(save.status, 409); assert.equal(save.data.result.score, 0); assert.equal(save.data.result.total, 3);
+    });
+    await t.test('teacher password reset revokes previous student session', async () => {
+        assert.equal((await request(`/admin/students/${studentId}/password`, adminToken, { password: 'newpass123' })).status, 200);
+        assert.equal((await request('/student/report', studentToken)).status, 401);
+        assert.equal((await request('/student/login', null, { rollNum: 'H-01', grade: 0, password: 'newpass123' })).status, 200);
+    });
+    await t.test('new login cannot bypass completed attempt and old daily history blocks new accounts', async () => {
+        const relogin = await request('/student/login', null, { rollNum: 'H-01', grade: 0, password: 'newpass123' });
+        assert.equal((await request('/quiz/start', relogin.data.token, {})).status, 409);
+        await request('/admin/students', adminToken, { name: 'Grade Four', rollNum: '4-01', grade: 4, password: 'sample123' });
+        await models.Result.create({ name: 'Grade Four', rollNum: '4-01', grade: 4, score: 1, total: 3 });
+        const login = await request('/student/login', null, { rollNum: '4-01', grade: 4, password: 'sample123' });
+        assert.equal((await request('/quiz/start', login.data.token, {})).status, 409);
+        const assignment = await models.Assignment.findOne({ grade: 0 });
+        assert.equal((await request(`/assignments/${assignment._id}/download`, login.data.token)).status, 403);
+    });
+    await t.test('new Pakistan day permits a fresh attempt and old permanent scores remain', async () => {
+        const previousDay = pakistanDay(new Date(Date.now() - 86400000));
+        const other = await models.Student.findOne({ rollNum: 'H-02' });
+        await models.Attempt.updateMany({ student: other._id }, { $set: { day: previousDay } });
+        await models.Result.updateMany({ student: other._id }, { $set: { date: new Date(Date.now() - 86400000) } });
+        assert.equal((await request('/quiz/start', otherToken, {})).status, 200);
+        assert.equal(await models.Result.countDocuments({ student: other._id }), 1);
+    });
+    await t.test('clearing results does not reopen the same-day attempt or restore deleted reports', async () => {
+        const relogin = await request('/student/login', null, { rollNum: 'H-01', grade: 0, password: 'newpass123' });
+        assert.equal((await request('/results', adminToken, undefined, 'DELETE')).status, 200);
+        assert.equal((await request('/quiz/start', relogin.data.token, {})).status, 409);
+        assert.equal((await request('/student/report', relogin.data.token)).data.results.length, 0);
+        assert.equal(await models.Result.countDocuments({ student: studentId }), 0);
+    });
+});

@@ -3,14 +3,14 @@
   "name": "QuizBoard Quiz",
   "short_name": "QB Quiz",
   "description": "Student quiz for QuizBoard",
-  "start_url": "/student/quiz.html",
-  "scope": "/student/",
+  "start_url": "./student/quiz.html",
+  "scope": "./student/",
   "display": "standalone",
   "background_color": "#66a6ff",
   "theme_color": "#6c5ce7",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "./logo.png",
       "sizes": "256x256",
       "type": "image/png",
       "purpose": "any maskable"

@@ -3,14 +3,14 @@
   "name": "QuizBoard Admin",
   "short_name": "QB Admin",
   "description": "Teacher admin panel for QuizBoard",
-  "start_url": "/admin/index.html",
-  "scope": "/admin/",
+  "start_url": "./admin/index.html",
+  "scope": "./admin/",
   "display": "standalone",
   "background_color": "#66a6ff",
   "theme_color": "#6c5ce7",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "./logo.png",
       "sizes": "256x256",
       "type": "image/png",
       "purpose": "any maskable"

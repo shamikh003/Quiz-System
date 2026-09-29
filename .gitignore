@@ -2,3 +2,7 @@ Backend/node_modules
 Backend/.env
 node_modules
 .env
+
+# Local isolated test downloads
+Backend/.npm-cache/
+Backend/.mongodb-binaries/

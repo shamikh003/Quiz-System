@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Panel</title>
-    <link rel="icon" type="image/png" href="/logo.png">
-    <link rel="apple-touch-icon" href="/logo.png">
-    <link rel="manifest" href="/manifest-admin.json">
+    <link rel="icon" type="image/png" href="../logo.png">
+    <link rel="apple-touch-icon" href="../logo.png">
+    <link rel="manifest" href="../manifest-admin.json">
     <meta name="theme-color" content="#1F4E79">
-    <link rel="stylesheet" href="/style.css?v=3.0">
+    <link rel="stylesheet" href="../style.css?v=5.0">
 </head>
 <body>
 
@@ -40,6 +40,7 @@
                 <button type="button" id="tab-add" class="sidebar-link"><span class="icon">&#10010;</span> Add / Edit Question</button>
                 <button type="button" id="tab-manage" class="sidebar-link"><span class="icon">&#9776;</span> Manage Questions <span class="badge" id="question-count">0</span></button>
                 <button type="button" id="tab-assignments" class="sidebar-link"><span class="icon">&#128206;</span> Assignments</button>
+                <a href="students.html" class="sidebar-link"><span class="icon">&#128101;</span> Students</a>
                 <a href="results.html" class="sidebar-link"><span class="icon">&#128202;</span> Reports</a>
             </nav>
 
@@ -120,7 +121,7 @@
                                 <option value="4">Grade 4</option>
                                 <option value="5">Grade 5</option>
                                 <option value="6">Grade 6</option>
-                                <option value="7">Grade 7</option>
+                                <option value="7">Grade 7</option><option value="0">Hifz</option>
                             </select>
                         </div>
                         <div class="field">
@@ -167,6 +168,10 @@
                         <option value="D" id="correct-option-d">D</option>
                     </select>
 
+                    <label for="question-image">Question Image (optional, max 5 MB):</label>
+                    <input type="file" id="question-image" accept="image/png,image/jpeg,image/webp,image/gif">
+                    <p id="current-question-image" class="muted-text"></p>
+
                     <p class="error-text" id="form-error"></p>
 
                     <button type="submit" id="save-question-btn">Save Question</button>
@@ -182,10 +187,10 @@
                     <option value="4">Grade 4</option>
                     <option value="5">Grade 5</option>
                     <option value="6">Grade 6</option>
-                    <option value="7">Grade 7</option>
+                    <option value="7">Grade 7</option><option value="0">Hifz</option>
                 </select>
                 <div id="question-list" class="question-list"></div>
-                <button type="button" id="clear-questions-btn" class="btn-danger">Clear All Saved Questions</button>
+                <button type="button" id="clear-questions-btn" class="btn-danger" disabled>Select a Grade to Clear Questions</button>
             </div>
 
             <div id="assignments-tab-content" class="hidden">
@@ -202,7 +207,7 @@
                                 <option value="4">Grade 4</option>
                                 <option value="5">Grade 5</option>
                                 <option value="6">Grade 6</option>
-                                <option value="7">Grade 7</option>
+                                <option value="7">Grade 7</option><option value="0">Hifz</option>
                             </select>
                         </div>
                         <div class="field">
@@ -236,6 +241,7 @@
         </main>
     </div>
 
-    <script src="admin.js?v=3.0"></script>
+    <script src="../config.js?v=5.0"></script>
+<script src="admin.js?v=5.1"></script>
 </body>
 </html>

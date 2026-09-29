@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizBoard — Students</title><link rel="icon" href="../logo.png"><link rel="stylesheet" href="../style.css?v=5.0"></head>
+<body><main class="container wide">
+<div class="student-page-header">
+    <a href="index.html" class="dashboard-back-link"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M19 12H5m6 6-6-6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Back to Teacher Dashboard</span></a>
+    <span class="page-context">Student management</span>
+</div>
+<h1 class="portal-section-title">Student Accounts</h1>
+<p>Create one account per student. Students log in with their grade, section, roll number and password. You can leave the section blank for now and assign it later.</p>
+<p id="account-message" role="status" aria-live="polite"></p>
+<form id="account-form">
+<label for="account-name">Student name</label><input id="account-name" required maxlength="100">
+<div class="field-row"><div class="field"><label for="account-roll">Roll number</label><input id="account-roll" required maxlength="40"></div>
+<div class="field"><label for="account-grade">Grade</label><select id="account-grade" required><option value="">Choose grade</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div></div>
+<label for="account-section">Section (optional)</label><input id="account-section" maxlength="80" placeholder="Enter section name when confirmed" list="section-suggestions">
+<datalist id="section-suggestions"></datalist>
+<p class="field-help">Leave blank to use Unassigned. Names can be updated later.</p>
+<label for="account-password">Password (at least 6 characters)</label><input id="account-password" type="password" required minlength="6" maxlength="72" autocomplete="new-password">
+<button id="create-account" type="submit">Create Student Account</button></form>
+<h2 class="portal-section-title">Registered Students</h2>
+<div class="report-filters">
+    <div><label for="student-filter-grade">Grade</label><select id="student-filter-grade"><option value="">All Grades</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div>
+    <div><label for="student-filter-section">Section</label><select id="student-filter-section"><option value="">All Sections</option></select></div>
+    <div><label for="student-search">Name or roll number</label><input id="student-search" type="search" placeholder="Search students"></div>
+</div>
+<div class="report-toolbar"><p id="students-count" role="status"></p><button id="export-students-btn" type="button" class="btn-secondary" disabled>Export Filtered Students</button></div>
+<div id="students-list"></div>
+</main><script src="../config.js?v=5.0"></script>
+<script src="report-utils.js?v=5.0"></script>
+<script src="students.js?v=5.0"></script></body></html>

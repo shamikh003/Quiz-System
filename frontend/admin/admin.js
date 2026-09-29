@@ -1,5 +1,7 @@
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const gradeLabel = grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`;
 // Backend server ka URL
-const BACKEND_URL = 'https://quiz-system-wf0d.onrender.com';
+const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
 
 // ---------- Theme toggle (shared logic, works on any page) ----------
 function applyStoredTheme() {
@@ -43,11 +45,6 @@ function showLoggedInView() {
     loadDashboard();
 }
 
-if (getToken()) {
-    showLoggedInView();
-} else {
-    showLoggedOutView();
-}
 
 loginFormAdmin.addEventListener('submit', async function (event) {
     event.preventDefault();
@@ -160,8 +157,8 @@ async function loadDashboard() {
             const dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
             return `
                 <tr>
-                    <td>${r.name}</td>
-                    <td class="mono">Grade ${r.grade}</td>
+                    <td>${escapeHtml(r.name)}</td>
+                    <td class="mono">${gradeLabel(r.grade)}</td>
                     <td class="mono">${r.score} / ${r.total}</td>
                     <td><span class="pill ${pillClass}">${pillText}</span></td>
                     <td class="mono">${dateStr}</td>
@@ -227,6 +224,10 @@ function resetForm({ keepGrade = false } = {}) {
     correctOptionD.classList.remove('hidden');
     optionDInput.required = true;
     editingQuestionId = null;
+    const imageInput = document.getElementById('question-image');
+    if (imageInput) imageInput.value = '';
+    const currentImage = document.getElementById('current-question-image');
+    if (currentImage) currentImage.textContent = '';
     saveBtn.textContent = 'Save Question';
     cancelEditBtn.classList.add('hidden');
     formError.textContent = '';
@@ -266,16 +267,27 @@ questionForm.addEventListener('submit', async function (event) {
             options: optionsArray,
             correct: document.getElementById('correct-answer').value
         };
+        const questionImage = document.getElementById('question-image').files[0];
+        if (questionImage && questionImage.size > 5 * 1024 * 1024) {
+            formError.textContent = 'Question image must be 5 MB or smaller.';
+            return;
+        }
 
         const url = editingQuestionId
             ? `${BACKEND_URL}/api/admin/questions/${editingQuestionId}`
             : `${BACKEND_URL}/api/admin/questions`;
         const method = editingQuestionId ? 'PUT' : 'POST';
 
+        const formData = new FormData();
+        formData.append('text', questionData.text);
+        formData.append('grade', String(questionData.grade));
+        formData.append('options', JSON.stringify(questionData.options));
+        formData.append('correct', questionData.correct);
+        if (questionImage) formData.append('image', questionImage);
         const response = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify(questionData)
+            headers: authHeaders(),
+            body: formData
         });
 
         const data = await response.json();
@@ -302,20 +314,39 @@ questionForm.addEventListener('submit', async function (event) {
 });
 
 // ---------- Question list (manage tab) ----------
+let questionListRequest = 0;
+let loadedQuestionGrade = null;
+let loadedQuestionCount = 0;
+let clearingQuestions = false;
+function updateClearQuestionsButton() {
+    const grade = filterGradeSelect.value;
+    clearBtn.disabled = clearingQuestions || grade === '' || loadedQuestionGrade !== grade || loadedQuestionCount === 0;
+    clearBtn.textContent = clearingQuestions ? 'Deleting...' : grade === ''
+        ? 'Select a Grade to Clear Questions' : `Clear ${gradeLabel(grade)} Questions`;
+}
 async function loadQuestionList() {
+    const requestId = ++questionListRequest;
+    const gradeFilter = filterGradeSelect.value;
+    loadedQuestionGrade = null;
+    updateClearQuestionsButton();
     questionListDiv.innerHTML = '<p class="empty-state">Loading questions...</p>';
     try {
-        const gradeFilter = filterGradeSelect ? filterGradeSelect.value : '';
         const url = gradeFilter
             ? `${BACKEND_URL}/api/admin/questions?grade=${gradeFilter}`
             : `${BACKEND_URL}/api/admin/questions`;
         const response = await fetch(url, { headers: authHeaders() });
+        if (requestId !== questionListRequest) return;
         if (response.status === 401) {
             localStorage.removeItem('adminToken');
             showLoggedOutView();
             return;
         }
+        if (!response.ok) throw new Error('Could not load questions.');
         const questions = await response.json();
+        if (requestId !== questionListRequest) return;
+        loadedQuestionGrade = gradeFilter;
+        loadedQuestionCount = questions.length;
+        updateClearQuestionsButton();
         questionCountBadge.textContent = questions.length;
 
         if (questions.length === 0) {
@@ -327,9 +358,10 @@ async function loadQuestionList() {
         questions.forEach(q => {
             const card = document.createElement('div');
             card.className = 'question-card';
-            const optionsText = q.options.map(o => `${o.id}: ${o.text}${o.id === q.correct ? ' ✅' : ''}`).join(' | ');
+            const optionsText = q.options.map(o => `${escapeHtml(o.id)}: ${escapeHtml(o.text)}${o.id === q.correct ? ' ✅' : ''}`).join(' | ');
             card.innerHTML = `
-                <p><strong>${q.text}</strong> <span class="badge">Grade ${q.grade}</span></p>
+                ${q.imageUrl ? `<img class="question-thumbnail" src="${escapeHtml(q.imageUrl)}" alt="Question illustration">` : ''}
+                <p><strong>${escapeHtml(q.text)}</strong> <span class="badge">${gradeLabel(q.grade)}</span></p>
                 <p class="q-options">${optionsText}</p>
                 <div class="q-actions">
                     <button type="button" class="btn-secondary btn-small edit-q-btn">Edit</button>
@@ -341,6 +373,7 @@ async function loadQuestionList() {
             questionListDiv.appendChild(card);
         });
     } catch (error) {
+        if (requestId !== questionListRequest) return;
         questionListDiv.innerHTML = '<p class="empty-state">Could not load questions. Server may be offline.</p>';
     }
 }
@@ -363,6 +396,8 @@ function startEditQuestion(q) {
         optionDInput.value = q.options.find(o => o.id === 'D')?.text || '';
     }
     document.getElementById('correct-answer').value = q.correct;
+    document.getElementById('question-image').value = '';
+    document.getElementById('current-question-image').textContent = q.imageUrl ? 'An image is attached. Choose a new image to replace it.' : '';
 
     saveBtn.textContent = 'Update Question';
     cancelEditBtn.classList.remove('hidden');
@@ -391,31 +426,38 @@ async function deleteQuestion(id) {
     }
 }
 
-// "Clear All" logic
+// Bulk deletion always requires an explicit grade; All Grades is view-only.
 clearBtn.addEventListener('click', async function () {
-    if (confirm('Are you sure you want to delete ALL questions from the database?')) {
-        clearBtn.disabled = true;
-        clearBtn.innerHTML = 'Deleting... <span class="spinner"></span>';
+    const grade = filterGradeSelect.value;
+    if (clearBtn.disabled || grade === '' || loadedQuestionGrade !== grade) return;
+    const label = gradeLabel(grade);
+    if (confirm(`Delete all ${loadedQuestionCount} saved questions for ${label}? Other grades will keep their questions. This cannot be undone.`)) {
+        clearingQuestions = true;
+        filterGradeSelect.disabled = true;
+        updateClearQuestionsButton();
 
         try {
-            const response = await fetch(`${BACKEND_URL}/api/admin/questions`, {
+            const response = await fetch(`${BACKEND_URL}/api/admin/questions?grade=${encodeURIComponent(grade)}`, {
                 method: 'DELETE',
                 headers: authHeaders()
             });
             if (response.ok) {
-                alert('All questions deleted from database.');
-                loadQuestionList();
+                const data = await response.json();
+                alert(`${data.deletedCount} questions deleted for ${label}.`);
+                await loadQuestionList();
             } else if (response.status === 401) {
                 localStorage.removeItem('adminToken');
                 showLoggedOutView();
             } else {
-                alert('Error deleting questions.');
+                const data = await response.json();
+                alert(data.error || 'Error deleting questions.');
             }
         } catch (error) {
             alert('Could not connect to server to delete questions.');
         } finally {
-            clearBtn.disabled = false;
-            clearBtn.innerHTML = 'Clear All Saved Questions';
+            clearingQuestions = false;
+            filterGradeSelect.disabled = false;
+            updateClearQuestionsButton();
         }
     }
 });
@@ -497,8 +539,8 @@ async function loadAssignments() {
             const card = document.createElement('div');
             card.className = 'question-card';
             card.innerHTML = `
-                <p><strong>${a.title}</strong> <span class="badge">Grade ${a.grade}</span></p>
-                <p class="q-options">📎 ${a.fileName} • Max Marks: ${a.maxMarks} • Submissions: ${a.submissionCount} (${a.gradedCount} graded)</p>
+                <p><strong>${escapeHtml(a.title)}</strong> <span class="badge">${gradeLabel(a.grade)}</span></p>
+                <p class="q-options">📎 ${escapeHtml(a.fileName)} • Max Marks: ${a.maxMarks} • Submissions: ${a.submissionCount} (${a.gradedCount} graded)</p>
                 <div class="q-actions">
                     <button type="button" class="btn-secondary btn-small view-submissions-btn">View Submissions</button>
                     <button type="button" class="btn-danger btn-small delete-assignment-btn">Delete</button>
@@ -562,8 +604,8 @@ async function viewSubmissions(assignment) {
                 ? `<span class="badge" style="background:var(--success-subtle); color:var(--success);">Graded — ${s.percentage}%</span>`
                 : `<span class="badge">Pending</span>`;
             card.innerHTML = `
-                <p><strong>${s.name}</strong> (Roll: ${s.rollNum}) ${statusBadge}</p>
-                <p class="q-options">📎 ${s.fileName} • Submitted: ${new Date(s.submittedAt).toLocaleString('en-US')}</p>
+                <p><strong>${escapeHtml(s.name)}</strong> (Roll: ${escapeHtml(s.rollNum)} · Section: ${escapeHtml(s.section || 'Unassigned')}) ${statusBadge}</p>
+                <p class="q-options">📎 ${escapeHtml(s.fileName)} • Submitted: ${new Date(s.submittedAt).toLocaleString('en-US')}</p>
                 <div class="q-actions">
                     <button type="button" class="btn-secondary btn-small download-submission-btn">⬇ Download File</button>
                     <input type="number" class="marks-input" placeholder="Marks / ${assignment.maxMarks}" min="0" max="${assignment.maxMarks}" value="${s.marks !== null && s.marks !== undefined ? s.marks : ''}" style="max-width:140px;">
@@ -635,8 +677,15 @@ backToAssignmentsBtn.addEventListener('click', () => submissionsPanel.classList.
 // ---------- PWA: register service worker (offline app-shell caching) ----------
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(err => {
+        navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(err => {
             console.warn('Service worker registration failed:', err);
         });
     });
 }
+
+// Initialize after all form/table bindings exist. Older tokens require fresh login.
+try {
+    const payload = JSON.parse(atob((getToken() || '').split('.')[1] || ''));
+    if (payload.role !== 'admin') localStorage.removeItem('adminToken');
+} catch { localStorage.removeItem('adminToken'); }
+if (getToken()) showLoggedInView(); else showLoggedOutView();

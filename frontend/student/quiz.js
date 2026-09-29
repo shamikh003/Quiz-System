@@ -1,583 +1,203 @@
-// Backend URL
-const BACKEND_URL = 'https://quiz-system-wf0d.onrender.com';
-
-// ---------- Language toggle (English / Urdu) ----------
-const translations = {
-    en: {
-        welcome: 'Welcome to the Quiz',
-        labelName: 'Enter Your Name:',
-        labelRoll: 'Enter Your Roll Number:',
-        labelGrade: 'Select Your Grade:',
-        chooseGrade: 'Choose grade',
-        grade4: 'Grade 4', grade5: 'Grade 5', grade6: 'Grade 6', grade7: 'Grade 7',
-        fullscreenNotice: "This quiz runs in full-screen mode. Please don't switch tabs or exit full-screen once it starts.",
-        startQuiz: 'Start Quiz',
-        loadingTitle: 'Loading Quiz...',
-        loadingText: 'Please wait, Quiz is starting',
-        nextQuestion: 'Next Question',
-        finishQuiz: 'Finish Quiz',
-        detailedResults: 'Your Detailed Results',
-        retakeQuiz: 'Take Quiz Again',
-        progressText: (cur, total) => `Question ${cur} of ${total}`,
-        noQuestions: (grade) => `No quiz available for Grade ${grade} yet.`,
-        noQuestionsSub: 'Please check with your teacher.',
-        connError: 'Error connecting to server.',
-        connErrorSub: 'Please try refreshing the page in a minute.',
-        timeUpAlert: "Time's up! Your quiz has been automatically submitted.",
-        submitFailTitle: 'Could not submit your quiz.',
-        submitFailSub: 'Please check your connection and contact your teacher.',
-        greetExcellent: (name) => `Excellent, ${name}!`,
-        greetGood: (name) => `Good Job, ${name}!`,
-        greetTryAgain: (name) => `Don't give up, ${name}!`,
-        finalScore: (score, total) => `Your final score: ${score} / ${total}`,
-        questionLabel: (n) => `Question ${n}:`,
-        youAnswered: 'You answered:',
-        noAnswer: 'No Answer',
-        correctAnswerLabel: 'Correct Answer:',
-        tabSwitchWarning: (count) => `⚠ Warning: You switched away from the quiz tab (${count} time${count > 1 ? 's' : ''}). This has been recorded.`,
-        fullscreenExitWarning: (count) => `⚠ Warning: You exited full-screen mode (${count} time${count > 1 ? 's' : ''}). Please return to full-screen. This has been recorded.`,
-        reenterFullscreen: 'Return to Full-Screen',
-        assignmentAvailable: '📎 Assignment Available',
-        downloadAssignment: '⬇ Download Assignment',
-        uploadCompletedFile: 'Upload Completed File:',
-        submitAssignment: 'Submit Assignment',
-        assignmentSubmitted: '✅ Assignment submitted successfully!',
-        assignmentAlreadySubmitted: 'You have already submitted this assignment.',
-        assignmentFillDetailsFirst: 'Please fill your name, roll number, and grade first.',
-        assignmentChooseFile: 'Please choose a file to upload.'
-    },
-    ur: {
-        welcome: 'کوئز میں خوش آمدید',
-        labelName: 'اپنا نام درج کریں:',
-        labelRoll: 'اپنا رول نمبر درج کریں:',
-        labelGrade: 'اپنا گریڈ منتخب کریں:',
-        chooseGrade: 'گریڈ منتخب کریں',
-        grade4: 'گریڈ 4', grade5: 'گریڈ 5', grade6: 'گریڈ 6', grade7: 'گریڈ 7',
-        fullscreenNotice: 'یہ کوئز فل اسکرین موڈ میں چلتا ہے۔ شروع ہونے کے بعد براہ کرم ٹیب تبدیل نہ کریں یا فل اسکرین سے باہر نہ نکلیں۔',
-        startQuiz: 'کوئز شروع کریں',
-        loadingTitle: 'کوئز لوڈ ہو رہا ہے...',
-        loadingText: 'براہ کرم انتظار کریں، کوئز شروع ہو رہا ہے',
-        nextQuestion: 'اگلا سوال',
-        finishQuiz: 'کوئز مکمل کریں',
-        detailedResults: 'آپ کے تفصیلی نتائج',
-        retakeQuiz: 'دوبارہ کوئز دیں',
-        progressText: (cur, total) => `سوال ${cur} از ${total}`,
-        noQuestions: (grade) => `گریڈ ${grade} کے لیے ابھی کوئی کوئز دستیاب نہیں ہے۔`,
-        noQuestionsSub: 'براہ کرم اپنے استاد سے رابطہ کریں۔',
-        connError: 'سرور سے رابطہ کرنے میں خرابی۔',
-        connErrorSub: 'براہ کرم ایک منٹ بعد صفحہ ریفریش کریں۔',
-        timeUpAlert: 'وقت ختم ہو گیا! آپ کا کوئز خود بخود جمع کر دیا گیا ہے۔',
-        submitFailTitle: 'آپ کا کوئز جمع نہیں ہو سکا۔',
-        submitFailSub: 'براہ کرم اپنا کنکشن چیک کریں اور اپنے استاد سے رابطہ کریں۔',
-        greetExcellent: (name) => `بہت خوب، ${name}!`,
-        greetGood: (name) => `اچھا کام، ${name}!`,
-        greetTryAgain: (name) => `ہمت نہ ہاریں، ${name}!`,
-        finalScore: (score, total) => `آپ کا حتمی اسکور: ${score} / ${total}`,
-        questionLabel: (n) => `سوال ${n}:`,
-        youAnswered: 'آپ کا جواب:',
-        noAnswer: 'کوئی جواب نہیں',
-        correctAnswerLabel: 'درست جواب:',
-        tabSwitchWarning: (count) => `⚠ انتباہ: آپ نے کوئز ٹیب سے دوسری جگہ رخ کیا (${count} بار)۔ یہ ریکارڈ کر لیا گیا ہے۔`,
-        fullscreenExitWarning: (count) => `⚠ انتباہ: آپ فل اسکرین موڈ سے باہر نکلے (${count} بار)۔ براہ کرم فل اسکرین پر واپس جائیں۔ یہ ریکارڈ کر لیا گیا ہے۔`,
-        reenterFullscreen: 'فل اسکرین پر واپس جائیں',
-        assignmentAvailable: '📎 اسائنمنٹ دستیاب ہے',
-        downloadAssignment: '⬇ اسائنمنٹ ڈاؤن لوڈ کریں',
-        uploadCompletedFile: 'مکمل شدہ فائل اپ لوڈ کریں:',
-        submitAssignment: 'اسائنمنٹ جمع کروائیں',
-        assignmentSubmitted: '✅ اسائنمنٹ کامیابی سے جمع ہو گئی!',
-        assignmentAlreadySubmitted: 'آپ یہ اسائنمنٹ پہلے ہی جمع کروا چکے ہیں۔',
-        assignmentFillDetailsFirst: 'براہ کرم پہلے اپنا نام، رول نمبر، اور گریڈ درج کریں۔',
-        assignmentChooseFile: 'براہ کرم اپ لوڈ کرنے کے لیے فائل منتخب کریں۔'
-    }
+const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
+const $ = id => document.getElementById(id);
+const labels = {
+ section:['Section','سیکشن'], sectionHelp:['Enter the section your teacher assigned. Otherwise leave blank.','استاد کا دیا ہوا سیکشن لکھیں۔ اگر مقرر نہیں ہوا تو خالی چھوڑ دیں۔'],
+ review:['Your answer','آپ کا جواب'], correct:['Correct answer','درست جواب'], unanswered:['Not answered','جواب نہیں دیا'],
+ login:['Student Login','طالب علم لاگ اِن'], loginHelp:['Use the account and password your teacher gave you.','استاد کا دیا ہوا رول نمبر اور پاس ورڈ استعمال کریں۔'],
+ roll:['Roll number','رول نمبر'], grade:['Grade','کلاس'], choose:['Choose grade','کلاس منتخب کریں'], password:['Password','پاس ورڈ'], logout:['Log out','لاگ آؤٹ'],
+ dailyRule:['One quiz attempt per day (Pakistan time). An unfinished quiz resumes with its original deadline.','پاکستانی وقت کے مطابق روزانہ ایک کوئز۔ ادھورا کوئز اپنے اصل وقت کے ساتھ جاری ہوگا۔'],
+ start:['Start / Resume Quiz','کوئز شروع / جاری کریں'], refresh:['Refresh report','رپورٹ تازہ کریں'], scores:['My Test Scores','میرے ٹیسٹ کے نمبر'], date:['Date','تاریخ'], score:['Score','نمبر'],
+ previous:['Previous','پچھلا'], next:['Next','اگلا'], assignments:['My Assignments','میری اسائنمنٹس'], skip:['Skip — return at end','چھوڑیں — آخر میں دوبارہ'],
+ saveNext:['Save & Next','محفوظ کریں اور آگے جائیں'], finish:['Submit Quiz','کوئز جمع کریں'], complete:['Quiz Complete','کوئز مکمل'],
+ completedRule:['Your result is saved. Another quiz will be available tomorrow (Pakistan time).','نتیجہ محفوظ ہو گیا۔ اگلا کوئز کل پاکستانی وقت کے مطابق دستیاب ہوگا۔'],
+ retry:['Retry submission','دوبارہ جمع کریں'], back:['Back to my report','میری رپورٹ پر واپس'], emptyScores:['No test results yet.','ابھی کوئی نتیجہ نہیں۔'], emptyAssignments:['No assignments yet.','ابھی کوئی اسائنمنٹ نہیں۔'],
+ pending:['Not submitted','جمع نہیں ہوئی'], submitted:['Submitted — waiting for marking','جمع ہو گئی — استاد کی جانچ باقی ہے'], graded:['Graded','نمبر مل گئے'],
+ download:['Download assignment','اسائنمنٹ ڈاؤن لوڈ کریں'], upload:['Submit completed file','مکمل فائل جمع کریں'], busy:['Please wait…','براہ کرم انتظار کریں…'],
+ saved:['Answer saved','جواب محفوظ ہو گیا'], saving:['Saving answer…','جواب محفوظ ہو رہا ہے…'], saveError:['Answer not saved. Check your connection, then retry Save & Next.','جواب محفوظ نہیں ہوا۔ انٹرنیٹ چیک کر کے دوبارہ محفوظ کریں۔'],
+ network:['Could not connect. Please try again.','رابطہ نہیں ہو سکا۔ دوبارہ کوشش کریں۔'], todayDone:['Today’s quiz is complete','آج کا کوئز مکمل ہو گیا'],
+ question:['Question','سوال'], answered:['answered','جوابات دیے'], remaining:['remaining','باقی'], skipped:['Skipped question moved to the end.','چھوڑا گیا سوال آخر میں دوبارہ آئے گا۔'],
+ confirm:['Submit now? Unanswered questions count as zero.','ابھی جمع کریں؟ جن سوالات کے جواب نہیں دیے ان کے نمبر صفر ہوں گے۔'],
+ file:['Choose a Word, Excel or PowerPoint file (maximum 15 MB).','ورڈ، ایکسل یا پاورپوائنٹ فائل منتخب کریں (زیادہ سے زیادہ 15 MB)۔'],
+ flags:['Leaving the quiz tab or full-screen is recorded. Click here to return to full-screen.','ٹیب یا فل اسکرین چھوڑنا ریکارڈ ہوتا ہے۔ فل اسکرین پر واپس جانے کے لیے یہاں کلک کریں۔'],
+ submitError:['Submission not confirmed. Keep this page open and retry.','جمع ہونے کی تصدیق نہیں ہوئی۔ صفحہ کھلا رکھیں اور دوبارہ کوشش کریں۔'],
+ timeUp:['Time is up. Submitting saved answers…','وقت ختم۔ محفوظ جوابات جمع ہو رہے ہیں…'],
+ reload:['Answers changed in another tab or time expired. Reload to resume safely.','دوسرے ٹیب میں جوابات تبدیل ہوئے یا وقت ختم ہو گیا۔ صفحہ دوبارہ لوڈ کریں۔'],
+ fullscreen:['The quiz uses full-screen. Please stay on this tab until you finish.','کوئز فل اسکرین میں ہوگا۔ مکمل ہونے تک اسی ٹیب پر رہیں۔']
 };
-
-let currentLang = localStorage.getItem('quizLang') || 'en';
-
-function t(key, ...args) {
-    const entry = translations[currentLang][key];
-    return typeof entry === 'function' ? entry(...args) : entry;
+let language = localStorage.getItem('quizLang') === 'ur' ? 'ur' : 'en';
+let token = sessionStorage.getItem('studentToken');
+let report, page = 1, attempt, queue = [], selected = null, answers = new Map();
+let timer, clockOffset = 0, active = false, submitting = false, savePromise = null, conflict = false;
+let tabSwitchCount = 0, fullscreenExitCount = 0;
+const t = key => labels[key]?.[language === 'ur' ? 1 : 0] || key;
+const gradeLabel = grade => Number(grade) === 0 ? (language === 'ur' ? 'حفظ' : 'Hifz') : `${t('grade')} ${grade}`;
+const notify = text => { $('message').textContent = text; };
+function element(tag, text, className) {
+ const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node;
 }
-
 function applyLanguage() {
-    document.documentElement.setAttribute('lang', currentLang === 'ur' ? 'ur' : 'en');
-    document.documentElement.setAttribute('dir', currentLang === 'ur' ? 'rtl' : 'ltr');
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        const value = translations[currentLang][key];
-        if (typeof value === 'string') el.textContent = value;
-    });
-    const langBtn = document.getElementById('lang-toggle');
-    if (langBtn) langBtn.textContent = currentLang === 'ur' ? 'English' : 'اردو';
-    // Re-render dynamic bits that depend on language, if the quiz is already running.
-    if (typeof updateProgress === 'function' && document.getElementById('quiz-container').style.display === 'block') {
-        updateProgress();
-    }
+ document.documentElement.lang = language; document.documentElement.dir = language === 'ur' ? 'rtl' : 'ltr';
+ document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = t(node.dataset.i18n); });
+ $('lang-toggle').textContent = language === 'ur' ? 'English' : 'اردو';
+ if (report) renderReport(); if (active) renderQuestion();
 }
-
-function toggleLanguage() {
-    currentLang = currentLang === 'ur' ? 'en' : 'ur';
-    localStorage.setItem('quizLang', currentLang);
-    applyLanguage();
+$('lang-toggle').onclick = () => { language = language === 'en' ? 'ur' : 'en'; localStorage.setItem('quizLang', language); applyLanguage(); };
+function applyTheme() {
+ const dark = localStorage.getItem('quizTheme') === 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light'; $('theme-toggle').textContent = dark ? '☀ Light' : '☾ Dark';
 }
-
-document.addEventListener('DOMContentLoaded', applyLanguage);
-applyLanguage();
-document.getElementById('lang-toggle') && document.getElementById('lang-toggle').addEventListener('click', toggleLanguage);
-
-// ---------- Theme toggle ----------
-function applyStoredTheme() {
-    const theme = localStorage.getItem('quizTheme') || 'light';
-    document.documentElement.setAttribute('data-theme', theme);
-    document.querySelectorAll('.theme-toggle').forEach(btn => {
-        btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
-    });
+$('theme-toggle').onclick = () => { localStorage.setItem('quizTheme', document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); applyTheme(); };
+function screen(name) {
+ for (const id of ['login-container','dashboard','quiz-container','result-container']) { $(id).classList.toggle('hidden', id !== name); $(id).style.display = id === name ? 'block' : 'none'; }
+ $('logout-btn').classList.toggle('hidden', !token || name === 'quiz-container');
 }
-function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') || 'light';
-    const next = current === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('quizTheme', next);
-    applyStoredTheme();
+async function api(path, options = {}) {
+ let response;
+ try { response = await fetch(`${BACKEND_URL}/api${path}`, { ...options, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers } }); }
+ catch { throw new Error(t('network')); }
+ const data = await response.json();
+ if (!response.ok) {
+  if (response.status === 401) { token = null; sessionStorage.removeItem('studentToken'); active = false; clearInterval(timer); screen('login-container'); }
+  const error = new Error(data.error || t('network')); error.status = response.status; error.result = data.result; throw error;
+ }
+ return data;
 }
-applyStoredTheme();
-document.querySelectorAll('.theme-toggle').forEach(btn => btn.addEventListener('click', toggleTheme));
-
-// DOM Elements
-const loginContainer = document.getElementById('login-container');
-const quizContainer = document.getElementById('quiz-container');
-const resultContainer = document.getElementById('result-container');
-const loginForm = document.getElementById('login-form');
-const loadingContainer = document.getElementById('loading-container');
-
-const questionTitle = document.getElementById('question-title');
-const optionsContainer = document.getElementById('options-container');
-const nextBtn = document.getElementById('next-btn');
-const scoreDisplay = document.getElementById('score-display');
-const greetingMessage = document.getElementById('greeting-message');
-const timerDisplay = document.getElementById('time-left');
-const timerDisplayWrapper = document.getElementById('timer-display');
-const progressText = document.getElementById('progress-text');
-const progressPercent = document.getElementById('progress-percent');
-const progressFill = document.getElementById('progress-fill');
-
-// Assignment section elements
-const studentGradeSelect = document.getElementById('student-grade');
-const assignmentSection = document.getElementById('assignment-section');
-const assignmentNameEl = document.getElementById('assignment-name');
-const downloadAssignmentBtn = document.getElementById('download-assignment-btn');
-const assignmentFileInput = document.getElementById('assignment-file-input');
-const submitAssignmentBtn = document.getElementById('submit-assignment-btn');
-const assignmentStatusText = document.getElementById('assignment-status-text');
-let currentAssignment = null;
-
-// Timer Variables
-let quizTimer;
-let timeRemainingInSeconds;
-
-// Quiz State
-let allQuestions = []; // fetched WITHOUT the correct answer
-let currentQuestionIndex = 0;
-let studentName = '';
-let studentRollNum = '';
-let studentGrade = '';
-let studentAnswers = []; // [{ questionId, selected }]
-
-// Anti-cheating state
-let quizInProgress = false;
-let tabSwitchCount = 0;
-let fullscreenExitCount = 0;
-let violationBannerTimeout;
-
-loginForm.addEventListener('submit', async function (event) {
-    event.preventDefault();
-    studentName = document.getElementById('student-name').value;
-    studentRollNum = document.getElementById('student-roll').value;
-    studentGrade = document.getElementById('student-grade').value;
-
-    if (studentName && studentRollNum && studentGrade) {
-        currentQuestionIndex = 0;
-        studentAnswers = [];
-        tabSwitchCount = 0;
-        fullscreenExitCount = 0;
-
-        loginContainer.style.display = 'none';
-        resultContainer.style.display = 'none';
-        loadingContainer.style.display = 'block';
-        quizContainer.style.display = 'none';
-
-        try {
-            await loadQuiz();
-            await startTimer();
-            await requestFullscreen();
-
-            loadingContainer.style.display = 'none';
-            quizContainer.style.display = 'block';
-            quizInProgress = true;
-        } catch (error) {
-            console.error("Error loading data:", error);
-            if (error.message === 'NO_QUESTIONS_FOR_GRADE') {
-                loadingContainer.innerHTML = `<h2>${t('noQuestions', studentGrade)}</h2><p>${t('noQuestionsSub')}</p>`;
-            } else {
-                loadingContainer.innerHTML = `<h2>${t('connError')}</h2><p>${t('connErrorSub')}</p>`;
-            }
-        }
-    }
-});
-
-nextBtn.addEventListener('click', function () {
-    currentQuestionIndex++;
-    if (currentQuestionIndex < allQuestions.length) {
-        displayQuestion();
-    } else {
-        showResults(false);
-    }
-});
-
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
+const post = (path, body = {}) => api(path, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+$('login-form').onsubmit = async event => {
+ event.preventDefault(); $('login-btn').disabled = true; notify(t('busy'));
+ try {
+  const data = await post('/student/login', { rollNum:$('student-roll').value.trim(), grade:$('student-grade').value, section:$('student-section').value, password:$('student-password').value });
+  token = data.token; sessionStorage.setItem('studentToken', token); $('student-password').value = ''; page = 1; await loadReport();
+ } catch (error) { notify(error.message); } finally { $('login-btn').disabled = false; }
+};
+$('logout-btn').onclick = () => { token = null; report = null; sessionStorage.removeItem('studentToken'); screen('login-container'); notify(''); };
+async function loadReport() {
+ try { report = await api(`/student/report?page=${page}`); screen('dashboard'); renderReport(); notify(''); } catch (error) { notify(error.message); }
 }
-
-// ---------- Anti-cheating: full-screen enforcement ----------
-async function requestFullscreen() {
-    const el = document.documentElement;
-    try {
-        if (el.requestFullscreen) await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-        else if (el.msRequestFullscreen) await el.msRequestFullscreen();
-    } catch (err) {
-        // Some browsers/devices (e.g. iOS Safari) don't support the Fullscreen API,
-        // or the user's browser blocks it. Don't fail the quiz because of that.
-        console.warn('Fullscreen request failed or unsupported:', err);
-    }
+function renderReport() {
+ $('student-heading').textContent = `${report.student.name} · ${gradeLabel(report.student.grade)} · ${report.student.section || 'Unassigned'}`;
+ const done = report.today?.status === 'submitted'; $('start-btn').disabled = done; $('start-btn').textContent = t(done ? 'todayDone' : 'start');
+ $('scores-body').replaceChildren();
+ if (!report.results.length) { const cell = element('td',t('emptyScores')); cell.colSpan = 3; const row = element('tr'); row.append(cell); $('scores-body').append(row); }
+ for (const result of report.results) {
+  const row = element('tr'); row.append(element('td',new Date(result.date).toLocaleString(language === 'ur' ? 'ur-PK' : 'en-GB',{timeZone:'Asia/Karachi'})),element('td',`${result.score} / ${result.total}`),element('td',`${result.total ? Math.round(result.score / result.total * 100) : 0}%`)); $('scores-body').append(row);
+ }
+ $('page-label').textContent = `${report.page} / ${report.pages}`; $('prev-page').disabled = report.page <= 1; $('next-page').disabled = report.page >= report.pages;
+ $('assignments-list').replaceChildren(); if (!report.assignments.length) $('assignments-list').append(element('p',t('emptyAssignments')));
+ for (const assignment of report.assignments) {
+  const card = element('article',undefined,'assignment-report-card'); card.append(element('h3',assignment.title),element('p',assignment.fileName));
+  const submission = assignment.submission;
+  card.append(element('p',submission?.status === 'graded' ? `${t('graded')}: ${submission.marks} / ${assignment.maxMarks} (${submission.percentage}%)` : t(submission ? 'submitted' : 'pending'),'assignment-status'));
+  const download = element('button',t('download'),'btn-secondary'); download.type = 'button';
+  download.onclick = async () => {
+   download.disabled = true;
+   try {
+    const response = await fetch(`${BACKEND_URL}/api/assignments/${assignment._id}/download`,{headers:{Authorization:`Bearer ${token}`}});
+    if (!response.ok) throw new Error(t('network'));
+    const url = URL.createObjectURL(await response.blob()); const link = element('a'); link.href = url; link.download = assignment.fileName; link.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
+   } catch (error) { notify(error.message); } finally { download.disabled = false; }
+  };
+  card.append(download);
+  if (!submission) {
+   const label = element('label',t('file')); const input = element('input'); input.type = 'file'; input.accept = '.doc,.docx,.xls,.xlsx,.ppt,.pptx'; input.id = `file-${assignment._id}`; label.htmlFor = input.id;
+   const upload = element('button',t('upload')); upload.type = 'button';
+   upload.onclick = async () => {
+    if (!input.files[0] || input.files[0].size > 15 * 1024 * 1024) return notify(t('file'));
+    upload.disabled = true; notify(t('busy'));
+    try { const data = new FormData(); data.append('file',input.files[0]); await api(`/assignments/${assignment._id}/submit`,{method:'POST',body:data}); await loadReport(); }
+    catch (error) { notify(error.message); upload.disabled = false; }
+   };
+   card.append(label,input,upload);
+  }
+  $('assignments-list').append(card);
+ }
 }
-
-function isFullscreenActive() {
-    return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+$('refresh-btn').onclick = loadReport;
+$('prev-page').onclick = () => { page--; loadReport(); };
+$('next-page').onclick = () => { page++; loadReport(); };
+$('back-btn').onclick = loadReport;
+$('start-btn').onclick = async () => {
+ $('start-btn').disabled = true; notify(t('busy'));
+ try {
+  attempt = await post('/quiz/start'); clockOffset = new Date(attempt.serverNow).getTime() - Date.now();
+  answers = new Map(attempt.answers.map(a => [a.questionId,a.selected])); queue = attempt.questions.map(q => q._id).filter(id => !answers.has(id));
+  try { const saved = JSON.parse(sessionStorage.getItem(`queue-${attempt.attemptId}`)); if (Array.isArray(saved)) queue = [...new Set([...saved.filter(id => queue.includes(id)),...queue])]; } catch { /* Ignore invalid local queue. */ }
+  tabSwitchCount = attempt.tabSwitchCount; fullscreenExitCount = attempt.fullscreenExitCount;
+  active = true; conflict = false; selected = null; screen('quiz-container'); notify(t('fullscreen')); await enterFullscreen();
+  if (!queue.length) return submit();
+  renderQuestion(); clearInterval(timer); timer = setInterval(tick,1000); tick();
+ } catch (error) { if (error.result) displayResult(error.result); else notify(error.message); }
+ finally { if (report && !active) $('start-btn').disabled = report.today?.status === 'submitted'; }
+};
+function rememberQueue() { sessionStorage.setItem(`queue-${attempt.attemptId}`,JSON.stringify(queue)); }
+function renderQuestion() {
+ if (!queue.length) return;
+ const question = attempt.questions.find(q => q._id === queue[0]);
+ $('question-title').textContent = `${t('question')} ${attempt.questions.indexOf(question) + 1}: ${question.text}`;
+ $('progress-text').textContent = `${answers.size} / ${attempt.questions.length} ${t('answered')} · ${queue.length} ${t('remaining')}`;
+ $('progress-fill').style.width = `${answers.size / attempt.questions.length * 100}%`; $('options-container').replaceChildren();
+ const oldImage = document.getElementById('question-image-preview');
+ if (oldImage) oldImage.remove();
+ if (question.imageUrl) {
+  const image = element('img', undefined, 'question-image-preview'); image.id = 'question-image-preview'; image.src = question.imageUrl; image.alt = 'Question illustration';
+  $('options-container').before(image);
+ }
+ question.options.forEach(option => {
+  const button = element('button',`${option.id}: ${option.text}`,'option-btn'); button.type = 'button'; button.classList.toggle('selected',selected === option.id); button.setAttribute('aria-pressed',String(selected === option.id)); button.disabled = conflict || !!savePromise;
+  button.onclick = () => { selected = option.id; renderQuestion(); }; $('options-container').append(button);
+ });
+ $('next-btn').disabled = !selected || conflict || !!savePromise; $('skip-btn').disabled = conflict || !!savePromise; $('finish-btn').disabled = conflict || !!savePromise;
 }
-
-function showViolationBanner(message) {
-    const banner = document.getElementById('violation-banner');
-    if (!banner) return;
-    banner.textContent = message;
-    banner.classList.remove('hidden');
-    banner.onclick = () => requestFullscreen();
-    clearTimeout(violationBannerTimeout);
-    violationBannerTimeout = setTimeout(() => banner.classList.add('hidden'), 6000);
+$('skip-btn').onclick = () => { queue.push(queue.shift()); selected = null; rememberQueue(); renderQuestion(); $('save-status').textContent = t('skipped'); $('question-title').focus(); };
+async function persistSelection() {
+ if (!selected || !queue.length) return;
+ const questionId = queue[0], selection = selected; const updated = new Map(answers); updated.set(questionId,selection); $('save-status').textContent = t('saving');
+ const operation = post('/quiz/save',{attemptId:attempt.attemptId,revision:attempt.revision,answers:[...updated].map(([questionId,selected]) => ({questionId,selected})),tabSwitchCount,fullscreenExitCount});
+ savePromise = operation; renderQuestion();
+ try {
+  const data = await operation; attempt.revision = data.revision; answers = updated; queue = queue.filter(id => id !== questionId); selected = null; rememberQueue(); $('save-status').textContent = t('saved');
+ } catch (error) {
+  if (error.result) { displayResult(error.result); return; }
+  if (error.status === 409) { conflict = true; $('save-status').textContent = t('reload'); } else $('save-status').textContent = t('saveError');
+  throw error;
+ } finally { savePromise = null; if (active) renderQuestion(); }
 }
-
-document.addEventListener('fullscreenchange', handleFullscreenChange);
-document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-document.addEventListener('msfullscreenchange', handleFullscreenChange);
-
-function handleFullscreenChange() {
-    if (!quizInProgress) return;
-    if (!isFullscreenActive()) {
-        fullscreenExitCount++;
-        showViolationBanner(t('fullscreenExitWarning', fullscreenExitCount));
-    }
+$('next-btn').onclick = async () => { try { await persistSelection(); if (active && !queue.length) await submit(); else if (active) $('question-title').focus(); } catch (error) { notify(error.message); } };
+function tick() {
+ if (!active) return;
+ const seconds = Math.max(0,Math.ceil((new Date(attempt.expiresAt).getTime() - Date.now() - clockOffset) / 1000));
+ $('time-left').textContent = `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`;
+ $('timer-display').classList.toggle('time-warning',seconds <= 30); if (!seconds) { notify(t('timeUp')); submit(); }
 }
-
-// ---------- Anti-cheating: tab-switch / window-blur detection ----------
-document.addEventListener('visibilitychange', function () {
-    if (!quizInProgress) return;
-    if (document.visibilityState === 'hidden') {
-        tabSwitchCount++;
-        showViolationBanner(t('tabSwitchWarning', tabSwitchCount));
-    }
-});
-
-async function startTimer() {
-    const response = await fetch(`${BACKEND_URL}/api/settings`);
-    const settings = await response.json();
-
-    timeRemainingInSeconds = (settings && settings.time ? settings.time : 10) * 60;
-
-    if (quizTimer) clearInterval(quizTimer);
-    quizTimer = setInterval(updateTimer, 1000);
-    updateTimer();
+$('finish-btn').onclick = async () => { if (!confirm(t('confirm'))) return; try { await persistSelection(); if (active) await submit(); } catch (error) { notify(error.message); } };
+async function submit() {
+ if (submitting) return; submitting = true; clearInterval(timer);
+ if (savePromise) { try { await savePromise; } catch { /* Only persisted answers are marked. */ } }
+ active = false; exitFullscreen(); screen('result-container'); $('score-display').textContent = t('busy'); $('retry-btn').classList.add('hidden'); $('back-btn').disabled = true;
+ document.querySelector('[data-i18n="completedRule"]').classList.add('hidden');
+ try { displayResult(await post('/quiz/submit',{attemptId:attempt.attemptId,tabSwitchCount,fullscreenExitCount})); }
+ catch (error) { $('score-display').textContent = t('submitError'); notify(error.message); $('retry-btn').classList.remove('hidden'); }
+ finally { submitting = false; }
 }
-
-function updateTimer() {
-    if (timeRemainingInSeconds <= 0) {
-        timerDisplay.innerText = "00:00";
-        showResults(true);
-    } else {
-        const minutes = Math.floor(timeRemainingInSeconds / 60);
-        const seconds = timeRemainingInSeconds % 60;
-        timerDisplay.innerText = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        timerDisplayWrapper.classList.toggle('time-warning', timeRemainingInSeconds <= 30);
-        timeRemainingInSeconds--;
-    }
+function displayResult(result) {
+ active = false; clearInterval(timer); exitFullscreen(); screen('result-container'); notify('');
+ $('score-display').textContent = `${result.score} / ${result.total} (${result.total ? Math.round(result.score / result.total * 100) : 0}%)`;
+ $('answer-review').replaceChildren();
+ for (const [index, answer] of (result.details || []).entries()) {
+  const card = element('article',undefined,'result-item');
+  const selectedText = answer.options.find(option => option.id === answer.selected)?.text || answer.selected || t('unanswered');
+  const correctText = answer.options.find(option => option.id === answer.correct)?.text || answer.correct;
+  card.append(element('h3',`${index + 1}. ${answer.questionText}`),element('p',`${t('review')}: ${selectedText}`),element('p',`${t('correct')}: ${correctText}`));
+  $('answer-review').append(card);
+ }
+ $('retry-btn').classList.add('hidden'); $('back-btn').disabled = false; document.querySelector('[data-i18n="completedRule"]').classList.remove('hidden');
+ if (attempt) sessionStorage.removeItem(`queue-${attempt.attemptId}`);
 }
-
-async function loadQuiz() {
-    // Note: this endpoint never returns the correct answers to the browser.
-    // Only questions matching the student's selected grade are returned.
-    const response = await fetch(`${BACKEND_URL}/api/quiz/questions?grade=${studentGrade}`);
-    allQuestions = await response.json();
-
-    if (allQuestions.length === 0) {
-        throw new Error(`NO_QUESTIONS_FOR_GRADE`);
-    }
-
-    shuffleArray(allQuestions);
-
-    const resultsListDiv = document.getElementById('detailed-results-list');
-    resultsListDiv.innerHTML = '';
-
-    displayQuestion();
-}
-
-function updateProgress() {
-    const total = allQuestions.length;
-    const current = currentQuestionIndex + 1;
-    const percent = Math.round((current / total) * 100);
-    progressText.textContent = t('progressText', current, total);
-    progressPercent.textContent = `${percent}%`;
-    progressFill.style.width = `${percent}%`;
-}
-
-function displayQuestion() {
-    optionsContainer.innerHTML = '';
-    let q = allQuestions[currentQuestionIndex];
-    questionTitle.innerText = q.text;
-    updateProgress();
-
-    q.options.forEach(option => {
-        const button = document.createElement('button');
-        button.innerText = `${option.id}: ${option.text}`;
-        button.classList.add('option-btn');
-        button.dataset.id = option.id;
-        button.addEventListener('click', handleAnswerClick);
-        optionsContainer.appendChild(button);
-    });
-
-    nextBtn.style.display = 'none';
-}
-
-function handleAnswerClick(event) {
-    const selectedButton = event.target;
-    const selectedAnswer = selectedButton.dataset.id;
-    const currentQuestion = allQuestions[currentQuestionIndex];
-
-    studentAnswers.push({
-        questionId: currentQuestion._id,
-        selected: selectedAnswer
-    });
-
-    Array.from(optionsContainer.children).forEach(btn => { btn.disabled = true; });
-    selectedButton.classList.add('selected');
-
-    nextBtn.style.display = 'block';
-    nextBtn.innerText = (currentQuestionIndex === allQuestions.length - 1) ? t('finishQuiz') : t('nextQuestion');
-}
-
-// Show Results: submits answers to the server, which computes the score
-// and returns the detailed correct/wrong breakdown.
-async function showResults(isTimeUp) {
-    clearInterval(quizTimer);
-    quizInProgress = false; // stop counting tab-switches/fullscreen exits once the quiz is done
-    exitFullscreenIfActive();
-
-    if (isTimeUp) {
-        alert(t('timeUpAlert'));
-    }
-    quizContainer.style.display = 'none';
-    resultContainer.style.display = 'block';
-
-    let submission;
-    try {
-        submission = await submitQuiz();
-    } catch (error) {
-        console.error('Error submitting quiz:', error);
-        greetingMessage.innerText = t('submitFailTitle');
-        scoreDisplay.innerText = t('submitFailSub');
-        return;
-    }
-
-    const { score, total, details } = submission;
-    let percentage = total > 0 ? (score / total) * 100 : 0;
-
-    if (percentage === 100) {
-        greetingMessage.innerText = t('greetExcellent', studentName);
-    } else if (percentage >= 60) {
-        greetingMessage.innerText = t('greetGood', studentName);
-    } else {
-        greetingMessage.innerText = t('greetTryAgain', studentName);
-    }
-    scoreDisplay.innerText = t('finalScore', score, total);
-
-    const resultsListDiv = document.getElementById('detailed-results-list');
-    resultsListDiv.innerHTML = '';
-    details.forEach((answer, index) => {
-        const resultItem = document.createElement('div');
-        resultItem.classList.add('result-item');
-        const studentOption = answer.options.find(opt => opt.id === answer.selected);
-        const studentText = studentOption ? studentOption.text : t('noAnswer');
-
-        const innerHTML = `
-            <p><strong>${t('questionLabel', index + 1)}</strong> ${answer.questionText}</p>
-            <p>${t('youAnswered')} ${studentText}</p>
-        `;
-
-        resultItem.innerHTML = innerHTML;
-        resultsListDiv.appendChild(resultItem);
-    });
-}
-
-function exitFullscreenIfActive() {
-    if (!isFullscreenActive()) return;
-    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    else if (document.msExitFullscreen) document.msExitFullscreen();
-}
-
-async function submitQuiz() {
-    const resultData = {
-        name: studentName,
-        rollNum: studentRollNum,
-        grade: studentGrade,
-        answers: studentAnswers,
-        tabSwitchCount,
-        fullscreenExitCount
-    };
-    const response = await fetch(`${BACKEND_URL}/api/quiz/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(resultData)
-    });
-    if (!response.ok) throw new Error('Submit failed');
-    return response.json();
-}
-
-// ================= ASSIGNMENT SECTION =================
-// Checks whether an assignment exists for the selected grade, and only then
-// reveals the section. If the student already submitted it (matched by roll
-// number), the form is shown as already-submitted instead of re-openable.
-async function checkAssignmentForGrade() {
-    const grade = studentGradeSelect.value;
-    assignmentStatusText.textContent = '';
-
-    if (!grade) {
-        assignmentSection.classList.add('hidden');
-        currentAssignment = null;
-        return;
-    }
-
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/assignments?grade=${grade}`);
-        const assignments = await response.json();
-
-        if (!Array.isArray(assignments) || assignments.length === 0) {
-            currentAssignment = null;
-            assignmentSection.classList.add('hidden');
-            return;
-        }
-
-        currentAssignment = assignments[0]; // most recently uploaded assignment for this grade
-        assignmentNameEl.textContent = `${currentAssignment.title} (Max Marks: ${currentAssignment.maxMarks})`;
-        assignmentSection.classList.remove('hidden');
-        assignmentFileInput.value = '';
-        submitAssignmentBtn.disabled = false;
-        submitAssignmentBtn.textContent = t('submitAssignment');
-
-        await refreshAssignmentSubmissionStatus();
-    } catch (error) {
-        currentAssignment = null;
-        assignmentSection.classList.add('hidden');
-    }
-}
-
-// If the roll number is already filled in, check whether this student already submitted.
-async function refreshAssignmentSubmissionStatus() {
-    if (!currentAssignment) return;
-    const roll = document.getElementById('student-roll').value.trim();
-    if (!roll) return;
-
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/assignments/${currentAssignment._id}/status?rollNum=${encodeURIComponent(roll)}`);
-        const data = await response.json();
-        if (data.submitted) {
-            assignmentStatusText.style.color = 'var(--success)';
-            assignmentStatusText.textContent = data.status === 'graded'
-                ? `✅ Submitted — Graded (${data.percentage}%)`
-                : '✅ Submitted — waiting for teacher to grade it.';
-            submitAssignmentBtn.disabled = true;
-            submitAssignmentBtn.textContent = 'Submitted';
-        }
-    } catch (error) {
-        // Silent — this is just a convenience check, not required for the flow to work.
-    }
-}
-
-studentGradeSelect.addEventListener('change', checkAssignmentForGrade);
-document.getElementById('student-roll').addEventListener('blur', refreshAssignmentSubmissionStatus);
-
-downloadAssignmentBtn.addEventListener('click', () => {
-    if (!currentAssignment) return;
-    window.open(`${BACKEND_URL}/api/assignments/${currentAssignment._id}/download`, '_blank');
-});
-
-submitAssignmentBtn.addEventListener('click', async () => {
-    if (!currentAssignment) return;
-
-    const name = document.getElementById('student-name').value;
-    const roll = document.getElementById('student-roll').value;
-    const grade = studentGradeSelect.value;
-
-    assignmentStatusText.style.color = '';
-    if (!name || !roll || !grade) {
-        assignmentStatusText.textContent = t('assignmentFillDetailsFirst');
-        return;
-    }
-    if (!assignmentFileInput.files[0]) {
-        assignmentStatusText.textContent = t('assignmentChooseFile');
-        return;
-    }
-
-    submitAssignmentBtn.disabled = true;
-    submitAssignmentBtn.innerHTML = 'Submitting... <span class="spinner"></span>';
-    assignmentStatusText.textContent = '';
-
-    try {
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('rollNum', roll);
-        formData.append('grade', grade);
-        formData.append('file', assignmentFileInput.files[0]);
-
-        const response = await fetch(`${BACKEND_URL}/api/assignments/${currentAssignment._id}/submit`, {
-            method: 'POST',
-            body: formData
-        });
-        const data = await response.json();
-
-        if (response.ok) {
-            assignmentStatusText.style.color = 'var(--success)';
-            assignmentStatusText.textContent = t('assignmentSubmitted');
-            submitAssignmentBtn.textContent = 'Submitted';
-        } else if (response.status === 409) {
-            assignmentStatusText.textContent = t('assignmentAlreadySubmitted');
-            submitAssignmentBtn.textContent = 'Submitted';
-        } else {
-            assignmentStatusText.textContent = data.error || 'Could not submit assignment.';
-            submitAssignmentBtn.disabled = false;
-            submitAssignmentBtn.textContent = t('submitAssignment');
-        }
-    } catch (error) {
-        assignmentStatusText.textContent = 'Could not connect to server.';
-        submitAssignmentBtn.disabled = false;
-        submitAssignmentBtn.textContent = t('submitAssignment');
-    }
-});
-
-// ---------- PWA: register service worker (offline app-shell caching) ----------
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(err => {
-            console.warn('Service worker registration failed:', err);
-        });
-    });
-}
+$('retry-btn').onclick = () => submit();
+async function enterFullscreen() { try { await document.documentElement.requestFullscreen?.(); } catch { /* Unsupported browsers may continue. */ } }
+function exitFullscreen() { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
+function flag() { $('violation-banner').textContent = t('flags'); $('violation-banner').classList.remove('hidden'); }
+$('violation-banner').onclick = enterFullscreen;
+document.addEventListener('visibilitychange',() => { if (active && document.hidden) { tabSwitchCount++; flag(); } });
+document.addEventListener('fullscreenchange',() => { if (active && !document.fullscreenElement) { fullscreenExitCount++; flag(); } });
+applyLanguage(); applyTheme(); screen('login-container'); if (token) loadReport();
+if ('serviceWorker' in navigator) window.addEventListener('load',() => navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {}));

@@ -40,6 +40,15 @@ stronger.
 - **Dark mode toggle**, remembered across visits.
 - Clearer error messages instead of generic alerts (e.g. wrong password,
   validation errors on the question form).
+- **Hifz grade** is available alongside Grades 4–7.
+- **Student accounts and personal reports**: teachers create accounts, and
+  students can see only their own quiz scores and assignment marks.
+- **One quiz attempt per Pakistan calendar day**: a refresh, second browser,
+  or repeated submit cannot create a second attempt. An unfinished attempt
+  resumes until its original deadline.
+- **Skip and return**: students can move a question to the end of the queue.
+- **Image questions**: teachers can attach a PNG, JPG, WEBP or GIF (up to 5 MB)
+  to a question; it is stored in Cloudinary rather than MongoDB.
 
 ### 🛠 Backend restructuring
 The old single 90-line `index.js` is now organized into:
@@ -114,3 +123,27 @@ deployed backend's URL back in.
   so it reseeds, or by adding a small change-password endpoint).
 - Add question categories/subjects if you want multiple quizzes.
 - Add per-question timers or negative marking if needed.
+
+### Student accounts
+
+After logging into the Teacher Panel, open **Students** and create one account
+for each student. Students use their roll number, grade/Hifz, section, and teacher-set
+password at `/student/quiz.html`. Leave section blank until names are confirmed:
+these accounts appear as **Unassigned**, and students leave section blank at login.
+Use **Save Section** on a student card to assign or change its name later. Existing
+scores and assignment submissions stay linked and move into that section's filters.
+
+Students and Results pages support grade and section filters plus name/roll search
+(roll search on Results). CSV exports contain exactly the currently visible rows,
+including section. Different sections can use the same roll number; matching is
+case-insensitive for section names and ignores extra spaces.
+
+Restart the backend after updating. Startup automatically fills missing sections,
+links old results/submissions to existing accounts, and replaces the retired
+roll-number-only indexes without deleting records. Old anonymous records with no
+section are only matched to an Unassigned account with the same grade and roll.
+Assign that account's section afterward to retain its history. Refresh the frontend
+with Ctrl+Shift+R to load the updated login fields.
+
+Deleting old questions does not delete saved scores or reset the once-per-Pakistan-day
+attempt limit. Question changes are blocked while students have an active quiz.

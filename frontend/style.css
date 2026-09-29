@@ -890,3 +890,30 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 }
 
 
+
+/* Student accounts and personal reports */
+.portal-section-title { margin-top: 28px; }
+.student-page-header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:20px; border-bottom:1px solid var(--border); }
+.dashboard-back-link { display:inline-flex; align-items:center; gap:10px; min-height:42px; padding:10px 16px; border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface); color:var(--accent); font-family:var(--font-ui); font-size:13px; font-weight:600; text-decoration:none; transition:background var(--transition),border-color var(--transition); }
+.dashboard-back-link:hover { background:var(--accent-subtle); border-color:var(--accent); }
+.dashboard-back-link:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.dashboard-back-link svg { flex-shrink:0; }
+.page-context,.field-help { color:var(--text-secondary); font-size:12px; }
+.report-filters { display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:16px; margin:20px 0; }
+.report-filters input,.report-filters select { width:100%; margin-bottom:0; }
+.report-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px; }
+.report-toolbar button { width:auto; margin-top:0; }
+.section-edit-form { padding:8px 0 20px; margin-bottom:16px; border-bottom:1px solid var(--border); }
+@media (max-width:600px) { .report-filters { grid-template-columns:1fr; } .student-page-header,.report-toolbar { align-items:flex-start; flex-direction:column; } .page-context { display:none; } }
+.portal-actions { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
+.portal-actions button { flex: 1; margin-top: 0; }
+.portal-actions span { white-space: nowrap; }
+.assignment-report-card { padding: 20px; margin: 16px 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.question-image-preview { display:block; max-width:100%; max-height:320px; object-fit:contain; margin:16px 0; border:1px solid var(--border); border-radius:var(--radius-md); }
+.question-thumbnail { display:block; max-width:180px; max-height:110px; object-fit:contain; margin:8px 0; border-radius:var(--radius-sm); }
+.assignment-status { font-weight: 600; }
+.report-table-wrap { overflow-x: auto; }
+#message, #account-message, #save-status { overflow-wrap: anywhere; }
+.student-portal #login-container { max-width: 420px; margin-inline: auto; }
+.student-portal #question-title { margin-top: 24px; }
+@media (max-width: 600px) { .portal-actions { flex-wrap: wrap; } .portal-actions button { min-width: 120px; } }

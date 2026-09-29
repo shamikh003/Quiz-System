@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Results</title>
-    <link rel="icon" type="image/png" href="/logo.png">
-    <link rel="apple-touch-icon" href="/logo.png">
-    <link rel="manifest" href="/manifest-admin.json">
+    <link rel="icon" type="image/png" href="../logo.png">
+    <link rel="apple-touch-icon" href="../logo.png">
+    <link rel="manifest" href="../manifest-admin.json">
     <meta name="theme-color" content="#6c5ce7">
-    <link rel="stylesheet" href="/style.css?v=2.0">
+    <link rel="stylesheet" href="../style.css?v=5.0">
 </head>
 <body>
 
@@ -16,14 +16,17 @@
         <button class="theme-toggle" id="theme-toggle">🌙 Dark</button>
         <h1>Leaderboard</h1>
 
-        <label for="filter-grade">Filter by Grade:</label>
+        <div class="report-filters"><div><label for="filter-grade">Grade</label>
         <select id="filter-grade">
             <option value="">All Grades</option>
             <option value="4">Grade 4</option>
             <option value="5">Grade 5</option>
             <option value="6">Grade 6</option>
-            <option value="7">Grade 7</option>
+            <option value="7">Grade 7</option><option value="0">Hifz</option>
         </select>
+        </div><div><label for="filter-section">Section</label><select id="filter-section"><option value="">All Sections</option></select></div>
+        <div><label for="filter-roll">Roll number</label><input type="search" id="filter-roll" placeholder="Search roll number"></div></div>
+        <p id="results-count" role="status"></p>
 
         <table>
             <thead>
@@ -31,6 +34,7 @@
                     <th>Student Name</th>
                     <th>Roll Number</th>
                     <th>Grade</th>
+                    <th>Section</th>
                     <th>Quiz Score</th>
                     <th>Flags</th>
                     <th>Assignment %</th>
@@ -41,7 +45,7 @@
         </table>
 
         <div class="top-bar" style="margin-top: 15px;">
-            <button id="export-csv-btn" class="btn-secondary" style="width: auto;">⬇ Export as CSV</button>
+            <button id="export-csv-btn" class="btn-secondary" style="width: auto;" disabled>Export Filtered Results</button>
             <button id="clear-results-btn" class="btn-danger hidden" style="width: auto;">Clear All Results</button>
         </div>
 
@@ -52,7 +56,9 @@
         </div>
     </div>
 
-    <script src="results.js?v=2.0"></script>
+    <script src="../config.js?v=5.0"></script>
+<script src="report-utils.js?v=5.0"></script>
+<script src="results.js?v=5.0"></script>
 
 </body>
 </html>

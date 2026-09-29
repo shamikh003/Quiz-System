@@ -1,5 +1,7 @@
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const gradeLabel = grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`;
 // Backend URL
-const BACKEND_URL = 'https://quiz-system-wf0d.onrender.com';
+const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
 
 // ---------- Theme toggle ----------
 function applyStoredTheme() {
@@ -27,7 +29,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     const exportBtn = document.getElementById('export-csv-btn');
     const resultsNote = document.getElementById('results-note');
     const filterGradeSelect = document.getElementById('filter-grade');
-    let results = [];
+    const filterSection = document.getElementById('filter-section');
+    const filterRoll = document.getElementById('filter-roll');
+    const filters = () => ({ grade: filterGradeSelect.value, section: filterSection.value, roll: filterRoll.value });
+    let results = [], visibleResults = [];
 
     // Only show the "Clear All Results" button to a logged-in teacher.
     if (getToken()) {
@@ -37,40 +42,44 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function fetchResults() {
-        const gradeFilter = filterGradeSelect.value;
-        const url = gradeFilter
-            ? `${BACKEND_URL}/api/results?grade=${gradeFilter}`
-            : `${BACKEND_URL}/api/results`;
+        const url = `${BACKEND_URL}/api/results`;
         try {
-            const response = await fetch(url);
+            const response = await fetch(url, { headers: authHeaders() });
+            if (!response.ok) throw new Error('Please log in as teacher to view reports.');
             results = await response.json();
         } catch (error) {
             console.error("Error fetching results:", error);
-            resultsBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Could not load results. Server may be offline.</td></tr>';
+            results = [];
+            resultsNote.textContent = error.message;
         }
     }
 
     await fetchResults();
+    ReportUtils.fillSections(filterSection, results, filterGradeSelect.value);
 
     function renderTable() {
+        visibleResults = ReportUtils.filterRows(results, filters());
+        document.getElementById('results-count').textContent = `${visibleResults.length} of ${results.length} results shown`;
+        exportBtn.disabled = !visibleResults.length;
         resultsBody.innerHTML = '';
 
-        if (results.length === 0) {
-            resultsBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No results found in database.</td></tr>';
+        if (visibleResults.length === 0) {
+            resultsBody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No results match these filters.</td></tr>';
             return;
         }
 
-        results.forEach((result) => {
+        visibleResults.forEach((result) => {
             const row = document.createElement('tr');
             const flagCount = (result.tabSwitchCount || 0) + (result.fullscreenExitCount || 0);
             const assignmentCell = (result.assignmentPercentage !== null && result.assignmentPercentage !== undefined)
                 ? `${result.assignmentPercentage}%`
                 : '—';
-            const formattedDate = result.date ? new Date(result.date).toLocaleString('en-US') : '—';
+            const formattedDate = result.date ? new Date(result.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }) : '—';
             row.innerHTML = `
-                <td>${result.name}</td>
-                <td>${result.rollNum}</td>
-                <td>${result.grade}</td>
+                <td>${escapeHtml(result.name)}</td>
+                <td>${escapeHtml(result.rollNum)}</td>
+                <td>${gradeLabel(result.grade)}</td>
+                <td>${escapeHtml(ReportUtils.section(result))}</td>
                 <td>${result.score} / ${result.total}</td>
                 <td>${flagCount}</td>
                 <td>${assignmentCell}</td>
@@ -82,41 +91,14 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     renderTable();
 
-    filterGradeSelect.addEventListener('change', async function () {
-        resultsBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading...</td></tr>';
-        await fetchResults();
+    filterGradeSelect.addEventListener('change', () => {
+        ReportUtils.fillSections(filterSection, results, filterGradeSelect.value);
         renderTable();
     });
-
-    exportBtn.addEventListener('click', function () {
-        if (results.length === 0) {
-            alert('No results to export.');
-            return;
-        }
-        const header = ['Name', 'Roll Number', 'Grade', 'Score', 'Total', 'Flags', 'Assignment %', 'Timestamp'];
-        const rows = results.map((r) => [
-            r.name,
-            r.rollNum,
-            r.grade,
-            r.score,
-            r.total,
-            (r.tabSwitchCount || 0) + (r.fullscreenExitCount || 0),
-            (r.assignmentPercentage !== null && r.assignmentPercentage !== undefined) ? r.assignmentPercentage : '',
-            r.date ? new Date(r.date).toLocaleString('en-US') : ''
-        ]);
-        const csvContent = [header, ...rows]
-            .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-            .join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `quiz-results-${new Date().toISOString().slice(0, 10)}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+    filterSection.addEventListener('change', renderTable);
+    filterRoll.addEventListener('input', renderTable);
+    exportBtn.addEventListener('click', () => {
+        if (visibleResults.length) ReportUtils.download(ReportUtils.resultCsv(visibleResults), 'quiz-results', filters());
     });
 
     clearBtn.addEventListener('click', async function () {
@@ -131,6 +113,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 });
                 if (response.ok) {
                     results = [];
+                    ReportUtils.fillSections(filterSection, results, filterGradeSelect.value);
                     renderTable();
                     alert('All results deleted from database.');
                 } else if (response.status === 401) {

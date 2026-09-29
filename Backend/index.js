@@ -35,7 +35,7 @@ app.use(express.json());
 // General rate limit for the whole API
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 300,
+    max: 10000, // Shared school IP: authenticated answer saves from a whole lab.
     standardHeaders: true,
     legacyHeaders: false
 });
@@ -56,6 +56,10 @@ mongoose.connect(process.env.MONGO_URI)
     .then(async () => {
         console.log('MongoDB Connected... 🗄️');
         await seedAdminIfNeeded();
+        // Unique indexes must exist before concurrent quiz starts are accepted.
+        await Promise.all(Object.values(require('./models/models')).map(model => model.init()));
+        await require('./services/sections').migrateSections();
+        app.listen(port, () => console.log(`Backend server is live on http://localhost:${port}`));
     })
     .catch(err => console.log('MongoDB Connection Error:', err));
 
@@ -74,6 +78,8 @@ async function seedAdminIfNeeded() {
 
 // 4. ROUTES
 app.use('/api/auth', authRoutes);
+app.use('/api', require('./routes/students'));
+app.use('/api', require('./routes/attempts'));
 app.use('/api', questionRoutes);
 app.use('/api', resultRoutes);
 app.use('/api', settingsRoutes);
@@ -84,7 +90,9 @@ app.get('/', (req, res) => {
     res.send('Quiz System backend is running.');
 });
 
-// 5. START SERVER
-app.listen(port, () => {
-    console.log(`Backend server is live on http://localhost:${port} 🚀`);
+// Consistent JSON errors, without exposing internals.
+app.use((err, req, res, next) => {
+    console.error('Request failed:', err.message);
+    res.status(err.name === 'CastError' || err.name === 'ValidationError' ? 400 : 500)
+        .json({ error: err.name === 'CastError' ? 'Invalid record ID.' : 'Could not complete the request. Please try again.' });
 });

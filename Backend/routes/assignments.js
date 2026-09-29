@@ -3,11 +3,12 @@ const path = require('path');
 const stream = require('stream');
 const multer = require('multer');
 const { Assignment, Submission } = require('../models/models');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, requireStudent } = require('../middleware/auth');
 const { uploadBuffer, deleteFile } = require('../cloudinary');
+const { sectionName, studentRecords } = require('../sections');
 
 const router = express.Router();
-const VALID_GRADES = [4, 5, 6, 7];
+const { VALID_GRADES, validGrade } = require('../grades');
 
 // ---- Storage setup ----
 const ALLOWED_EXTENSIONS = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'];
@@ -35,7 +36,7 @@ router.post('/admin/assignments', requireAdmin, (req, res) => {
         try {
             const { title, grade, maxMarks } = req.body;
             if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required.' });
-            if (!VALID_GRADES.includes(Number(grade))) return res.status(400).json({ error: 'Grade must be 4-7.' });
+            if (!validGrade(grade)) return res.status(400).json({ error: 'Choose Grade 4, 5, 6, 7 or Hifz.' });
             if (!req.file) return res.status(400).json({ error: 'A file is required.' });
 
             const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/assignments', req.file.originalname);
@@ -72,6 +73,7 @@ router.get('/admin/assignments', requireAdmin, async (req, res) => {
 router.delete('/admin/assignments/:id', requireAdmin, async (req, res) => {
     const assignment = await Assignment.findByIdAndDelete(req.params.id);
     if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
+        if (req.student && assignment.grade !== req.student.grade) return res.status(403).json({ error: 'This assignment belongs to another grade.' });
 
     const subs = await Submission.find({ assignment: assignment._id });
     for (const s of subs) {
@@ -84,10 +86,11 @@ router.delete('/admin/assignments/:id', requireAdmin, async (req, res) => {
 });
 
 // Download the original assignment file (Student facing - fixed with proper filename and extension)
-router.get('/assignments/:id/download', async (req, res) => {
+router.get('/assignments/:id/download', requireStudent, async (req, res) => {
     try {
         const assignment = await Assignment.findById(req.params.id);
         if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
+        if (req.student && assignment.grade !== req.student.grade) return res.status(403).json({ error: 'This assignment belongs to another grade.' });
 
         const fileResponse = await fetch(assignment.fileUrl);
         if (!fileResponse.ok || !fileResponse.body) {
@@ -105,18 +108,18 @@ router.get('/assignments/:id/download', async (req, res) => {
 // ================= PUBLIC: student-facing =================
 
 // Assignments available for a grade
-router.get('/assignments', async (req, res) => {
-    const grade = Number(req.query.grade);
+router.get('/assignments', requireStudent, async (req, res) => {
+    const grade = req.student.grade;
     if (!VALID_GRADES.includes(grade)) return res.status(400).json({ error: 'A valid grade (4-7) is required.' });
     const assignments = await Assignment.find({ grade }).sort({ createdAt: -1 });
     res.json(assignments);
 });
 
 // Check whether a given roll number has already submitted a given assignment
-router.get('/assignments/:id/status', async (req, res) => {
-    const rollNum = req.query.rollNum;
+router.get('/assignments/:id/status', requireStudent, async (req, res) => {
+    const rollNum = req.student.rollNum;
     if (!rollNum) return res.json({ submitted: false });
-    const existing = await Submission.findOne({ assignment: req.params.id, rollNum: String(rollNum).trim() });
+    const existing = await Submission.findOne({ assignment: req.params.id, ...studentRecords(req.student) });
     res.json({
         submitted: !!existing,
         status: existing ? existing.status : null,
@@ -125,22 +128,26 @@ router.get('/assignments/:id/status', async (req, res) => {
 });
 
 // Student submits their completed file
-router.post('/assignments/:id/submit', (req, res) => {
+router.post('/assignments/:id/submit', requireStudent, (req, res) => {
     uploader(req, res, async (err) => {
         if (err) return res.status(400).json({ error: err.message });
         try {
             const assignment = await Assignment.findById(req.params.id);
             if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
+            if (req.student && assignment.grade !== req.student.grade) return res.status(403).json({ error: 'This assignment belongs to another grade.' });
 
-            const { name, rollNum, grade } = req.body;
-            if (!name || !rollNum || !VALID_GRADES.includes(Number(grade))) {
+            const { name, rollNum, grade } = req.student;
+            if (!name || !rollNum || !validGrade(grade)) {
                 return res.status(400).json({ error: 'Name, roll number, and a valid grade are required.' });
             }
             if (!req.file) return res.status(400).json({ error: 'A file is required.' });
 
+            if (await Submission.exists({ assignment: assignment._id, ...studentRecords(req.student) })) return res.status(409).json({ error: 'You have already submitted this assignment.' });
             const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/submissions', req.file.originalname);
 
             const submission = new Submission({
+                student: req.student._id,
+                section: sectionName(req.student.section),
                 assignment: assignment._id,
                 name: String(name).trim(),
                 rollNum: String(rollNum).trim(),
@@ -149,7 +156,10 @@ router.post('/assignments/:id/submit', (req, res) => {
                 fileUrl: uploaded.secure_url,
                 filePath: uploaded.public_id
             });
-            await submission.save();
+            try { await submission.save(); } catch (error) {
+                await deleteFile(uploaded.public_id).catch(() => {});
+                throw error;
+            }
             res.status(201).json({ message: 'Assignment submitted successfully.' });
         } catch (e) {
             if (e.code === 11000) {
