@@ -147,3 +147,21 @@ with Ctrl+Shift+R to load the updated login fields.
 
 Deleting old questions does not delete saved scores or reset the once-per-Pakistan-day
 attempt limit. Question changes are blocked while students have an active quiz.
+
+### Marks and timed ranking
+
+Students rank by marks percentage first. Completion time only breaks equal
+percentages: a faster student cannot outrank a student with a higher percentage.
+There is no speed bonus or weighted percentage; original marks stay unchanged.
+
+Completion is recorded on the first server submission and capped at the original
+deadline. Reloads/resumes include the time already spent; retries cannot change
+the recorded duration. Duration stays with the permanent
+result after temporary attempt data expires. Client-supplied times are ignored.
+
+Older results have no trustworthy completion duration: their time is shown as
+`—`, and their marks percentage is unchanged.
+No historical finish times are guessed or backfilled. Dashboard and Reports use
+the same order: marks percentage, shorter known duration, earlier
+quiz start, then record ID. Exact ties remain possible. Filters preserve this
+order and CSV includes marks percentage, duration and timing availability.

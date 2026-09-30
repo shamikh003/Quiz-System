@@ -2,6 +2,7 @@ const express = require('express');
 const { Result, Submission, Attempt } = require('../models/models');
 const { requireAdmin } = require('../middleware/auth');
 const { sectionName, sectionKey, studentRecords } = require('../sections');
+const { rankingStages } = require('../result-ranking');
 
 const router = express.Router();
 
@@ -21,10 +22,7 @@ router.get('/results', requireAdmin, async (req, res) => {
         filter.sectionKey = key === 'unassigned' ? { $in: [null, key] } : key;
     }
     if (typeof req.query.rollNum === 'string' && req.query.rollNum.trim()) filter.rollNum = req.query.rollNum.trim();
-    const results = await Result.find(filter)
-        .select('-details')
-        .sort({ score: -1, date: 1 })
-        .lean();
+    const results = await Result.aggregate([{ $match: filter }, ...rankingStages()]);
 
     const withAssignments = await Promise.all(results.map(async (r) => {
         const submission = await Submission.findOne({

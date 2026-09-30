@@ -4,10 +4,11 @@ const { requireStudent } = require('../middleware/auth');
 const { pakistanDay, validateAnswers } = require('../quiz-policy');
 const { finalizeAttempt } = require('../services/attempts');
 const { studentRecords } = require('../sections');
+const { resultMetrics } = require('../result-ranking');
 const router = express.Router();
 router.use('/quiz', requireStudent);
 async function resultView(result) {
-    const summary = { score: result.score, total: result.total, date: result.date };
+    const summary = { score: result.score, total: result.total, date: result.date, ...resultMetrics(result) };
     const attempt = result.attempt && await Attempt.findById(result.attempt);
     if (!attempt) return summary;
     const questions = await Question.find({ _id: { $in: attempt.questions.map(q => q.questionId) } });

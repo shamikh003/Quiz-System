@@ -33,9 +33,9 @@ after(async () => { if (server) await new Promise(resolve => server.close(resolv
 
 test('dashboard ranks top five percentages across all grades and sections, not recent results', async () => {
     const rows = [
-        { name: 'Perfect A', grade: 4, section: 'A', score: 10, total: 10 },
-        { name: 'Perfect B', grade: 4, section: 'A', score: 20, total: 20 },
-        { name: 'Hifz', grade: 0, section: 'B', score: 19, total: 20 },
+        { name: 'Perfect A', grade: 4, section: 'A', score: 10, total: 10, elapsedMs: 600000, timeLimitMs: 900000 },
+        { name: 'Perfect B', grade: 4, section: 'A', score: 20, total: 20, elapsedMs: 700000, timeLimitMs: 900000 },
+        { name: 'Hifz', grade: 0, section: 'B', score: 19, total: 20, elapsedMs: 1, timeLimitMs: 900000, rankingPercentage: 999 },
         { name: 'Other section', grade: 4, section: 'B', score: 9, total: 10 },
         { name: 'Other grade', grade: 7, section: 'A', score: 25, total: 30 },
         { name: 'Recent lower', grade: 6, section: 'C', score: 20, total: 30 },
@@ -46,11 +46,65 @@ test('dashboard ranks top five percentages across all grades and sections, not r
         assert.equal((await request('/admin/dashboard', null)).status, 401);
         const response = await request('/admin/dashboard', adminToken);
         assert.equal(response.status, 200);
-        assert.deepEqual(response.data.topResults.map(r => r.name), ['Perfect B', 'Perfect A', 'Hifz', 'Other section', 'Other grade']);
+        assert.deepEqual(response.data.topResults.map(r => r.name), ['Perfect A', 'Perfect B', 'Hifz', 'Other section', 'Other grade']);
         assert.equal(response.data.topResults[2].percentage, 95);
         assert.equal(response.data.topResults[3].section, 'B');
         assert.ok(response.data.topResults.every(r => !Object.hasOwn(r, 'details')));
+        const reports = await request('/results', adminToken);
+        assert.deepEqual(response.data.topResults.map(r => r._id), reports.data.slice(0, 5).map(r => r._id));
+        assert.equal(response.data.topResults[0].rankingPercentage, 100);
     } finally { await models.Result.deleteMany({ _id: { $in: inserted.map(r => r._id) } }); }
+});
+
+test('server timing persists once, survives retries and ranks identically in every report', async () => {
+    const { finalizeAttempt } = require('../services/attempts');
+    const ids = [];
+    const student = await models.Student.create({ name: 'Timing test', rollNum: 'TIME-1', grade: 4, section: 'A', passwordHash: 'unused' });
+    const studentJwt = jwt.sign({ id: student._id, role: 'student', version: 0 }, process.env.JWT_SECRET);
+    const createAttempt = async (day, elapsed, duration, extra = {}) => {
+        const startedAt = new Date(Date.now() - elapsed);
+        const questionId = new mongoose.Types.ObjectId();
+        const attempt = await models.Attempt.create({ student: student._id, day, startedAt, expiresAt: new Date(startedAt.getTime() + duration),
+            questions: [{ questionId, correct: 'A', options: ['A', 'B', 'C'] }], answers: [{ questionId, selected: 'A' }], ...extra });
+        ids.push(attempt._id); return attempt;
+    };
+    try {
+        const slow = await createAttempt('timing-slow', 180000, 600000);
+        const slowResult = await finalizeAttempt(slow, student);
+        const fast = await createAttempt('timing-fast', 60000, 600000);
+        const responses = await Promise.all(Array.from({ length: 3 }, () => request('/quiz/submit', studentJwt,
+            { attemptId: String(fast._id), elapsedMs: 0, timeLimitMs: 99999999, rankingPercentage: 100 })));
+        for (const response of responses) {
+            assert.equal(response.status, 200);
+            assert.ok(response.data.elapsedMs >= 60000 && response.data.elapsedMs < 90000);
+            assert.equal(response.data.rankingPercentage, 100);
+            assert.equal(response.data.elapsedMs, responses[0].data.elapsedMs);
+        }
+        const saved = await models.Result.findOne({ attempt: fast._id });
+        assert.equal(saved.rankingPercentage, slowResult.rankingPercentage);
+        assert.equal(saved.timeLimitMs, 600000); assert.ok(saved.completedAt);
+        assert.equal((await finalizeAttempt(fast, student)).elapsedMs, saved.elapsedMs);
+        const expired = await createAttempt('timing-expired', 700000, 600000);
+        const timedOut = await finalizeAttempt(expired, student);
+        assert.equal(timedOut.elapsedMs, 600000); assert.equal(timedOut.speedBonus, 0);
+        const old = await createAttempt('timing-old-sealed', 700000, 600000, { status: 'submitted' });
+        const legacy = await finalizeAttempt(old, student);
+        assert.equal(legacy.elapsedMs, undefined); assert.equal(legacy.speedBonus, 0);
+        const dashboard = (await request('/admin/dashboard', adminToken)).data;
+        const reports = (await request('/results', adminToken)).data;
+        assert.deepEqual(dashboard.topResults.map(r => r._id), reports.slice(0, 5).map(r => r._id));
+        assert.equal(reports[0]._id, String(saved._id));
+        assert.equal(reports[0].elapsedMs, saved.elapsedMs);
+        const filtered = (await request('/results?grade=4&section=A', adminToken)).data;
+        assert.deepEqual(filtered.map(r => r._id), reports.map(r => r._id));
+        const own = (await request('/student/report', studentJwt)).data.results.find(r => r._id === String(saved._id));
+        assert.equal(own.rankingPercentage, reports[0].rankingPercentage);
+        assert.equal(own.elapsedMs, saved.elapsedMs);
+    } finally {
+        await models.Attempt.deleteMany({ _id: { $in: ids } });
+        await models.Result.deleteMany({ student: student._id });
+        await models.Student.deleteOne({ _id: student._id });
+    }
 });
 
 test('bulk clear requires a grade and preserves other grades, reports and active quizzes', async () => {

@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         resultsBody.innerHTML = '';
 
         if (visibleResults.length === 0) {
-            resultsBody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No results match these filters.</td></tr>';
+            resultsBody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No results match these filters.</td></tr>';
             return;
         }
 
@@ -81,6 +81,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 <td>${gradeLabel(result.grade)}</td>
                 <td>${escapeHtml(ReportUtils.section(result))}</td>
                 <td>${result.score} / ${result.total}</td>
+                <td>${ReportUtils.percent(result.percentage)}</td>
+                <td title="${result.timingKnown ? 'Minutes:seconds' : 'Time unavailable'}">${ReportUtils.duration(result.elapsedMs)}</td>
                 <td>${flagCount}</td>
                 <td>${assignmentCell}</td>
                 <td>${formattedDate}</td>

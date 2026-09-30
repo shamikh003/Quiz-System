@@ -1,6 +1,7 @@
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
 const $ = id => document.getElementById(id);
 const labels = {
+ marksPercent:['Marks %','نمبر %'], timeTaken:['Time','وقت'],
  review:['Your answer','آپ کا جواب'], unanswered:['Not answered','جواب نہیں دیا'],
  login:['Student Login','طالب علم لاگ اِن'], loginHelp:['Use the account and password your teacher gave you.','استاد کا دیا ہوا رول نمبر اور پاس ورڈ استعمال کریں۔'],
  roll:['Roll number','رول نمبر'], grade:['Grade','کلاس'], choose:['Choose grade','کلاس منتخب کریں'], password:['Password','پاس ورڈ'], logout:['Log out','لاگ آؤٹ'],
@@ -76,9 +77,9 @@ function renderReport() {
  $('student-heading').textContent = `${report.student.name} · ${gradeLabel(report.student.grade)} · ${report.student.section || 'Unassigned'}`;
  const done = report.today?.status === 'submitted'; $('start-btn').disabled = done; $('start-btn').textContent = t(done ? 'todayDone' : 'start');
  $('scores-body').replaceChildren();
- if (!report.results.length) { const cell = element('td',t('emptyScores')); cell.colSpan = 3; const row = element('tr'); row.append(cell); $('scores-body').append(row); }
+ if (!report.results.length) { const cell = element('td',t('emptyScores')); cell.colSpan = 4; const row = element('tr'); row.append(cell); $('scores-body').append(row); }
  for (const result of report.results) {
-  const row = element('tr'); row.append(element('td',new Date(result.date).toLocaleString(language === 'ur' ? 'ur-PK' : 'en-GB',{timeZone:'Asia/Karachi'})),element('td',`${result.score} / ${result.total}`),element('td',`${result.total ? Math.round(result.score / result.total * 100) : 0}%`)); $('scores-body').append(row);
+  const row = element('tr'); row.append(element('td',new Date(result.date).toLocaleString(language === 'ur' ? 'ur-PK' : 'en-GB',{timeZone:'Asia/Karachi'})),element('td',`${result.score} / ${result.total}`),element('td',ReportUtils.percent(result.percentage)),element('td',ReportUtils.duration(result.elapsedMs))); $('scores-body').append(row);
  }
  $('page-label').textContent = `${report.page} / ${report.pages}`; $('prev-page').disabled = report.page <= 1; $('next-page').disabled = report.page >= report.pages;
  $('assignments-list').replaceChildren(); if (!report.assignments.length) $('assignments-list').append(element('p',t('emptyAssignments')));
@@ -172,6 +173,7 @@ async function submit() {
  if (submitting) return; submitting = true; clearInterval(timer);
  if (savePromise) { try { await savePromise; } catch { /* Only persisted answers are marked. */ } }
  active = false; exitFullscreen(); screen('result-container'); $('score-display').textContent = t('busy'); $('retry-btn').classList.add('hidden'); $('back-btn').disabled = true;
+ $('ranking-display').textContent = ''; $('answer-review').replaceChildren();
  document.querySelector('[data-i18n="completedRule"]').classList.add('hidden');
  try { displayResult(await post('/quiz/submit',{attemptId:attempt.attemptId,tabSwitchCount,fullscreenExitCount})); }
  catch (error) { $('score-display').textContent = t('submitError'); notify(error.message); $('retry-btn').classList.remove('hidden'); }
@@ -180,6 +182,7 @@ async function submit() {
 function displayResult(result) {
  active = false; clearInterval(timer); exitFullscreen(); screen('result-container'); notify('');
  $('score-display').textContent = `${result.score} / ${result.total} (${result.total ? Math.round(result.score / result.total * 100) : 0}%)`;
+ $('ranking-display').textContent = `${t('timeTaken')}: ${ReportUtils.duration(result.elapsedMs)}`;
  $('answer-review').replaceChildren();
  for (const [index, answer] of (result.details || []).entries()) {
   const card = element('article',undefined,'result-item');

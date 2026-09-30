@@ -37,7 +37,7 @@
         <button id="start-btn" type="button" data-i18n="start">Start / Resume Quiz</button>
         <button id="refresh-btn" type="button" class="btn-secondary" data-i18n="refresh">Refresh report</button>
         <h2 class="portal-section-title" data-i18n="scores">My Test Scores</h2>
-        <div class="report-table-wrap"><table><thead><tr><th data-i18n="date">Date</th><th data-i18n="score">Score</th><th>%</th></tr></thead><tbody id="scores-body"></tbody></table></div>
+        <div class="report-table-wrap"><table><thead><tr><th data-i18n="date">Date</th><th data-i18n="score">Score</th><th data-i18n="marksPercent">Marks %</th><th data-i18n="timeTaken">Time</th></tr></thead><tbody id="scores-body"></tbody></table></div>
         <div class="portal-actions"><button id="prev-page" type="button" class="btn-secondary" data-i18n="previous">Previous</button><span id="page-label"></span><button id="next-page" type="button" class="btn-secondary" data-i18n="next">Next</button></div>
         <h2 class="portal-section-title" data-i18n="assignments">My Assignments</h2>
         <div id="assignments-list"></div>
@@ -58,6 +58,7 @@
     </section>
     <section id="result-container" style="display:none">
         <h1 data-i18n="complete">Quiz Complete</h1><h2 id="score-display"></h2>
+        <p id="ranking-display"></p>
         <div id="answer-review"></div>
         <p data-i18n="completedRule">Your result is saved. Another quiz will be available tomorrow.</p>
         <button id="retry-btn" class="hidden" type="button" data-i18n="retry">Retry submission</button>
@@ -65,5 +66,6 @@
     </section>
 </main>
 <script src="../config.js?v=5.0"></script>
-<script src="quiz.js?v=5.0"></script>
+<script src="../admin/report-utils.js?v=5.8"></script>
+<script src="quiz.js?v=5.8"></script>
 </body></html>

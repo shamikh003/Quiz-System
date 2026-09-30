@@ -25,6 +25,11 @@
         select.value = matching ? matching.value : '';
     }
     const gradeLabel = grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`;
+    const percent = value => Number.isFinite(value) ? `${value.toFixed(2)}%` : '—';
+    function duration(ms) {
+        if (!Number.isFinite(ms) || ms < 0) return '—';
+        return `${Math.floor(ms / 60000)}:${(Math.floor(ms % 60000) / 1000).toFixed(3).padStart(6, '0')}`;
+    }
     function csv(rows) {
         // BOM preserves Urdu names in Excel; neutralize spreadsheet formulas.
         return '\uFEFF' + rows.map(row => row.map(value => {
@@ -34,8 +39,9 @@
         }).join(',')).join('\r\n');
     }
     function resultCsv(rows) {
-        return csv([['Name', 'Roll Number', 'Grade', 'Section', 'Score', 'Total', 'Flags', 'Assignment %', 'Timestamp'],
+        return csv([['Name', 'Roll Number', 'Grade', 'Section', 'Score', 'Total', 'Marks %', 'Time Taken', 'Timing Available', 'Flags', 'Assignment %', 'Timestamp'],
             ...rows.map(row => [row.name, row.rollNum, gradeLabel(row.grade), section(row), row.score, row.total,
+                row.percentage ?? '', duration(row.elapsedMs), row.timingKnown ? 'Yes' : 'No',
                 (row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0), row.assignmentPercentage ?? '',
                 row.date ? new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }) : ''])]);
     }
@@ -50,7 +56,7 @@
         link.download = `${prefix}-${suffix}-${new Date().toISOString().slice(0, 10)}.csv`;
         document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
-    const api = { section, filterRows, sections, fillSections, gradeLabel, csv, resultCsv, studentCsv, download };
+    const api = { section, filterRows, sections, fillSections, gradeLabel, percent, duration, csv, resultCsv, studentCsv, download };
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.ReportUtils = api;
 })(typeof window === 'undefined' ? globalThis : window);

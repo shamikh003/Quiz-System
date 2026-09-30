@@ -1,6 +1,7 @@
 const express = require('express');
 const { Question, Result, Assignment, Submission, Student } = require('../models/models');
 const { requireAdmin } = require('../middleware/auth');
+const { rankingStages } = require('../result-ranking');
 
 const router = express.Router();
 router.get('/admin/dashboard', requireAdmin, async (req, res) => {
@@ -12,12 +13,11 @@ router.get('/admin/dashboard', requireAdmin, async (req, res) => {
                 Submission.countDocuments({ status: 'pending' }),
                 Student.countDocuments(),
                 Result.aggregate([
-                    { $match: { total: { $gt: 0 }, score: { $gte: 0 }, $expr: { $lte: ['$score', '$total'] } } },
-                    { $addFields: { percentage: { $multiply: [{ $divide: ['$score', '$total'] }, 100] } } },
-                    { $sort: { percentage: -1, date: -1, _id: 1 } },
+                    ...rankingStages(),
                     { $limit: 5 },
                     { $project: { name: 1, rollNum: 1, grade: 1, section: 1, score: 1, total: 1,
-                        percentage: 1, tabSwitchCount: 1, fullscreenExitCount: 1, date: 1 } }
+                        percentage: 1, rankingPercentage: 1, elapsedMs: 1, timingKnown: 1,
+                        tabSwitchCount: 1, fullscreenExitCount: 1, date: 1 } }
                 ])
             ]);
 

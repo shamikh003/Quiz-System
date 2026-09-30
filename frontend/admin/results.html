@@ -28,7 +28,7 @@
         <div><label for="filter-roll">Roll number</label><input type="search" id="filter-roll" placeholder="Search roll number"></div></div>
         <p id="results-count" role="status"></p>
 
-        <table>
+        <div class="report-table-wrap"><table>
             <thead>
                 <tr>
                     <th>Student Name</th>
@@ -36,13 +36,15 @@
                     <th>Grade</th>
                     <th>Section</th>
                     <th>Quiz Score</th>
+                    <th>Marks %</th>
+                    <th>Time</th>
                     <th>Flags</th>
                     <th>Assignment %</th>
                     <th>Timestamp</th>
                 </tr>
             </thead>
             <tbody id="results-body"></tbody>
-        </table>
+        </table></div>
 
         <div class="top-bar" style="margin-top: 15px;">
             <button id="export-csv-btn" class="btn-secondary" style="width: auto;" disabled>Export Filtered Results</button>
@@ -57,8 +59,8 @@
     </div>
 
     <script src="../config.js?v=5.0"></script>
-<script src="report-utils.js?v=5.0"></script>
-<script src="results.js?v=5.0"></script>
+<script src="report-utils.js?v=5.8"></script>
+<script src="results.js?v=5.8"></script>
 
 </body>
 </html>

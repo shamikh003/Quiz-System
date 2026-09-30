@@ -147,7 +147,7 @@ async function loadDashboard() {
 
         if (!Array.isArray(data.topResults)) throw new Error('Dashboard update required');
         if (data.topResults.length === 0) {
-            resultsBody.innerHTML = '<tr><td colspan="7" class="shell-empty">No quiz results yet.</td></tr>';
+            resultsBody.innerHTML = '<tr><td colspan="8" class="shell-empty">No quiz results yet.</td></tr>';
             return;
         }
 
@@ -162,13 +162,14 @@ async function loadDashboard() {
                     <td class="mono">${gradeLabel(r.grade)}</td>
                     <td>${escapeHtml(r.section || 'Unassigned')}</td>
                     <td class="mono">${r.score} / ${r.total}</td>
-                    <td class="mono">${Number(r.percentage).toFixed(1)}%</td>
+                    <td class="mono">${ReportUtils.percent(r.percentage)}</td>
+                    <td class="mono" title="${r.timingKnown ? 'Minutes:seconds' : 'Time unavailable'}">${ReportUtils.duration(r.elapsedMs)}</td>
                     <td><span class="pill ${pillClass}">${pillText}</span></td>
                     <td class="mono">${dateStr}</td>
                 </tr>`;
         }).join('');
     } catch (error) {
-        resultsBody.innerHTML = '<tr><td colspan="7" class="shell-empty">Could not load dashboard data.</td></tr>';
+        resultsBody.innerHTML = '<tr><td colspan="8" class="shell-empty">Could not load dashboard data.</td></tr>';
     }
 }
 

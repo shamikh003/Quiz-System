@@ -18,3 +18,10 @@ test('CSV preserves Urdu, quotes, commas and neutralizes formulas', () => {
     assert.ok(csv.startsWith('\uFEFF')); assert.ok(csv.includes('علی, ""طالب""'));
     assert.ok(csv.includes("\"'=1+1\"")); assert.ok(csv.includes('"Unassigned"'));
 });
+
+test('CSV includes unchanged marks and completion time', () => {
+    const row = { name: 'Timed', score: 8, total: 10, percentage: 80,
+        elapsedMs: 300000, timingKnown: true };
+    assert.ok(utils.resultCsv([row]).includes('"80","5:00.000","Yes"'));
+    assert.equal(utils.duration(null), '—'); assert.equal(utils.duration(61123), '1:01.123');
+});

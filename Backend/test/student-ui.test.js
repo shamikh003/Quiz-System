@@ -11,7 +11,7 @@ function browser() {
         append(...children) { this.children.push(...children); }, replaceChildren(...children) { this.children = children; } });
     const node = id => { if (!nodes.has(id)) nodes.set(id, make()); return nodes.get(id); };
     const storage = () => { const map = new Map(); return { getItem: key => map.get(key) || null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) }; };
-    const context = vm.createContext({ console, document: { getElementById: node, createElement: make,
+    const context = vm.createContext({ console, ReportUtils: require('../../frontend/admin/report-utils'), document: { getElementById: node, createElement: make,
         querySelectorAll: () => [], querySelector: () => node('completedRule'), documentElement: make(), addEventListener() {} },
         window: { addEventListener() {} }, localStorage: storage(), sessionStorage: storage(), navigator: {},
         setInterval: () => 1, clearInterval() {}, setTimeout: () => 1, confirm: () => true,
@@ -46,4 +46,11 @@ test('every JavaScript element ID is present in the student page', () => {
     const source = fs.readFileSync(path.join(__dirname, '../../frontend/student/quiz.js'), 'utf8');
     const html = fs.readFileSync(path.join(__dirname, '../../frontend/student/quiz.html'), 'utf8');
     for (const match of source.matchAll(/\$\('([^']+)'\)/g)) assert.ok(html.includes(`id="${match[1]}"`), match[1]);
+});
+
+test('student completion shows unchanged marks and time without a speed score', () => {
+    const { context, node } = browser();
+    vm.runInContext('displayResult({score:8,total:10,percentage:80,elapsedMs:300000})', context);
+    assert.equal(node('score-display').textContent, '8 / 10 (80%)');
+    assert.equal(node('ranking-display').textContent, 'Time: 5:00.000');
 });
