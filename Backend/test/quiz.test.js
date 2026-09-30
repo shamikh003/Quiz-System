@@ -31,6 +31,28 @@ before(async () => {
 }, { timeout: 180000 });
 after(async () => { if (server) await new Promise(resolve => server.close(resolve)); await mongoose.disconnect(); if (database) await database.stop(); });
 
+test('dashboard ranks top five percentages across all grades and sections, not recent results', async () => {
+    const rows = [
+        { name: 'Perfect A', grade: 4, section: 'A', score: 10, total: 10 },
+        { name: 'Perfect B', grade: 4, section: 'A', score: 20, total: 20 },
+        { name: 'Hifz', grade: 0, section: 'B', score: 19, total: 20 },
+        { name: 'Other section', grade: 4, section: 'B', score: 9, total: 10 },
+        { name: 'Other grade', grade: 7, section: 'A', score: 25, total: 30 },
+        { name: 'Recent lower', grade: 6, section: 'C', score: 20, total: 30 },
+        { name: 'No total', grade: 4, score: 0, total: 0 }
+    ].map((row, i) => ({ ...row, rollNum: `TOP-${i}`, date: new Date(2025, 0, i + 1) }));
+    const inserted = await models.Result.insertMany(rows);
+    try {
+        assert.equal((await request('/admin/dashboard', null)).status, 401);
+        const response = await request('/admin/dashboard', adminToken);
+        assert.equal(response.status, 200);
+        assert.deepEqual(response.data.topResults.map(r => r.name), ['Perfect B', 'Perfect A', 'Hifz', 'Other section', 'Other grade']);
+        assert.equal(response.data.topResults[2].percentage, 95);
+        assert.equal(response.data.topResults[3].section, 'B');
+        assert.ok(response.data.topResults.every(r => !Object.hasOwn(r, 'details')));
+    } finally { await models.Result.deleteMany({ _id: { $in: inserted.map(r => r._id) } }); }
+});
+
 test('bulk clear requires a grade and preserves other grades, reports and active quizzes', async () => {
     const make = grade => models.Question.create({ grade, text: 'Bulk deletion fixture', correct: 'A',
         options: [{ id: 'A', text: 'One' }, { id: 'B', text: 'Two' }, { id: 'C', text: 'Three' }] });

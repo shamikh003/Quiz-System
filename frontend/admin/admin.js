@@ -145,12 +145,13 @@ async function loadDashboard() {
         statStudents.textContent = data.totalStudents;
         statPending.textContent = data.pendingSubmissions;
 
-        if (!data.recentResults || data.recentResults.length === 0) {
-            resultsBody.innerHTML = '<tr><td colspan="5" class="shell-empty">No quiz attempts yet.</td></tr>';
+        if (!Array.isArray(data.topResults)) throw new Error('Dashboard update required');
+        if (data.topResults.length === 0) {
+            resultsBody.innerHTML = '<tr><td colspan="7" class="shell-empty">No quiz results yet.</td></tr>';
             return;
         }
 
-        resultsBody.innerHTML = data.recentResults.map(r => {
+        resultsBody.innerHTML = data.topResults.map(r => {
             const flagCount = (r.tabSwitchCount || 0) + (r.fullscreenExitCount || 0);
             const pillClass = flagCount === 0 ? 'good' : (flagCount <= 2 ? 'warn' : 'bad');
             const pillText = flagCount === 0 ? 'Clean' : `${flagCount} flag${flagCount > 1 ? 's' : ''}`;
@@ -159,13 +160,15 @@ async function loadDashboard() {
                 <tr>
                     <td>${escapeHtml(r.name)}</td>
                     <td class="mono">${gradeLabel(r.grade)}</td>
+                    <td>${escapeHtml(r.section || 'Unassigned')}</td>
                     <td class="mono">${r.score} / ${r.total}</td>
+                    <td class="mono">${Number(r.percentage).toFixed(1)}%</td>
                     <td><span class="pill ${pillClass}">${pillText}</span></td>
                     <td class="mono">${dateStr}</td>
                 </tr>`;
         }).join('');
     } catch (error) {
-        resultsBody.innerHTML = '<tr><td colspan="5" class="shell-empty">Could not load dashboard data.</td></tr>';
+        resultsBody.innerHTML = '<tr><td colspan="7" class="shell-empty">Could not load dashboard data.</td></tr>';
     }
 }
 

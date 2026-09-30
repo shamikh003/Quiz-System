@@ -1,7 +1,7 @@
 // v5: cache only static assets. Private API responses are never cached.
-const CACHE_NAME = 'quizboard-cache-v5.6';
+const CACHE_NAME = 'quizboard-cache-v5.7';
 const APP_SHELL = ['/config.js?v=5.0','/index.html','/admin/index.html','/admin/results.html','/admin/students.html',
-    '/admin/admin.js?v=5.1','/admin/report-utils.js?v=5.0','/admin/results.js?v=5.0','/admin/students.js?v=5.0',
+    '/admin/admin.js?v=5.7','/admin/report-utils.js?v=5.0','/admin/results.js?v=5.0','/admin/students.js?v=5.0',
     '/student/quiz.html','/student/quiz.js?v=5.0','/style.css?v=5.6','/logo.png','/manifest-admin.json','/manifest-quiz.json']
     .map(path => new URL(path.slice(1), self.registration.scope).href);
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())));
