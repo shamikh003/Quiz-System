@@ -560,7 +560,7 @@ async function loadAssignments() {
 }
 
 async function deleteAssignment(id) {
-    if (!confirm('Delete this assignment and all its submissions?')) return;
+    if (!confirm('Delete this assignment and its files? Graded marks will stay in reports.')) return;
     try {
         const response = await fetch(`${BACKEND_URL}/api/admin/assignments/${id}`, {
             method: 'DELETE',

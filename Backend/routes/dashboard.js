@@ -9,8 +9,8 @@ router.get('/admin/dashboard', requireAdmin, async (req, res) => {
         const [totalQuestions, totalAssignments, pendingSubmissions, totalStudents, topResults] =
             await Promise.all([
                 Question.countDocuments(),
-                Assignment.countDocuments(),
-                Submission.countDocuments({ status: 'pending' }),
+                Assignment.countDocuments({ deletedAt: null }),
+                Submission.countDocuments({ status: 'pending', assignmentDeletedAt: null }),
                 Student.countDocuments(),
                 Result.aggregate([
                     ...rankingStages(),

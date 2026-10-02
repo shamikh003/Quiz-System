@@ -12,6 +12,7 @@ const labels = {
  completedRule:['Your result is saved. Another quiz will be available tomorrow.','نتیجہ محفوظ ہو گیا۔ اگلا کوئز کل دستیاب ہوگا۔'],
  retry:['Retry submission','دوبارہ جمع کریں'], back:['Back to my report','میری رپورٹ پر واپس'], emptyScores:['No test results yet.','ابھی کوئی نتیجہ نہیں۔'], emptyAssignments:['No assignments yet.','ابھی کوئی اسائنمنٹ نہیں۔'],
  pending:['Not submitted','جمع نہیں ہوئی'], submitted:['Submitted — waiting for marking','جمع ہو گئی — استاد کی جانچ باقی ہے'], graded:['Graded','نمبر مل گئے'],
+ archived:['Archived','محفوظ ریکارڈ'],
  download:['Download assignment','اسائنمنٹ ڈاؤن لوڈ کریں'], upload:['Submit completed file','مکمل فائل جمع کریں'], busy:['Please wait…','براہ کرم انتظار کریں…'],
  saved:['Answer saved','جواب محفوظ ہو گیا'], saving:['Saving answer…','جواب محفوظ ہو رہا ہے…'], saveError:['Answer not saved. Check your connection, then retry Save & Next.','جواب محفوظ نہیں ہوا۔ انٹرنیٹ چیک کر کے دوبارہ محفوظ کریں۔'],
  network:['Could not connect. Please try again.','رابطہ نہیں ہو سکا۔ دوبارہ کوشش کریں۔'], todayDone:['Today’s quiz is complete','آج کا کوئز مکمل ہو گیا'],
@@ -87,6 +88,11 @@ function renderReport() {
   const card = element('article',undefined,'assignment-report-card'); card.append(element('h3',assignment.title),element('p',assignment.fileName));
   const submission = assignment.submission;
   card.append(element('p',submission?.status === 'graded' ? `${t('graded')}: ${submission.marks} / ${assignment.maxMarks} (${submission.percentage}%)` : t(submission ? 'submitted' : 'pending'),'assignment-status'));
+  if (assignment.deletedAt) {
+   card.append(element('p',t('archived'),'assignment-status'));
+   $('assignments-list').append(card);
+   continue;
+  }
   const download = element('button',t('download'),'btn-secondary'); download.type = 'button';
   download.onclick = async () => {
    download.disabled = true;

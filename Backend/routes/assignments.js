@@ -60,7 +60,7 @@ router.post('/admin/assignments', requireAdmin, (req, res) => {
 
 // List all assignments (admin), with submission counts
 router.get('/admin/assignments', requireAdmin, async (req, res) => {
-    const assignments = await Assignment.find().sort({ createdAt: -1 });
+    const assignments = await Assignment.find({ deletedAt: null }).sort({ createdAt: -1 });
     const withCounts = await Promise.all(assignments.map(async (a) => {
         const submissionCount = await Submission.countDocuments({ assignment: a._id });
         const gradedCount = await Submission.countDocuments({ assignment: a._id, status: 'graded' });
@@ -69,20 +69,24 @@ router.get('/admin/assignments', requireAdmin, async (req, res) => {
     res.json(withCounts);
 });
 
-// Delete an assignment and all of its submissions (+ their files)
+// Delete files and close the assignment, retaining graded records for reports.
 router.delete('/admin/assignments/:id', requireAdmin, async (req, res) => {
-    const assignment = await Assignment.findByIdAndDelete(req.params.id);
+    const assignment = await Assignment.findOneAndUpdate({ _id: req.params.id, deletedAt: null },
+        { $set: { deletedAt: new Date() } }, { new: true }) || await Assignment.findById(req.params.id);
     if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
-        if (req.student && assignment.grade !== req.student.grade) return res.status(403).json({ error: 'This assignment belongs to another grade.' });
 
+    // Seal submissions before cleanup so a concurrent grade cannot get deleted.
+    await Submission.updateMany({ assignment: assignment._id }, { $set: { assignmentDeletedAt: assignment.deletedAt } });
     const subs = await Submission.find({ assignment: assignment._id });
     for (const s of subs) {
         await deleteFile(s.filePath);
     }
-    await Submission.deleteMany({ assignment: assignment._id });
+    await Submission.updateMany({ assignment: assignment._id }, { $unset: { fileUrl: 1, filePath: 1 } });
+    await Submission.deleteMany({ assignment: assignment._id, status: 'pending', assignmentDeletedAt: { $ne: null } });
     await deleteFile(assignment.filePath);
+    await Assignment.updateOne({ _id: assignment._id }, { $unset: { fileUrl: 1, filePath: 1 } });
 
-    res.json({ message: 'Assignment and its submissions deleted.' });
+    res.json({ message: 'Assignment files deleted. Graded marks remain in reports.' });
 });
 
 // Download the original assignment file (Student facing - fixed with proper filename and extension)
@@ -91,6 +95,7 @@ router.get('/assignments/:id/download', requireStudent, async (req, res) => {
         const assignment = await Assignment.findById(req.params.id);
         if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
         if (req.student && assignment.grade !== req.student.grade) return res.status(403).json({ error: 'This assignment belongs to another grade.' });
+        if (assignment.deletedAt) return res.status(410).json({ error: 'This assignment is no longer available.' });
 
         const fileResponse = await fetch(assignment.fileUrl);
         if (!fileResponse.ok || !fileResponse.body) {
@@ -111,7 +116,7 @@ router.get('/assignments/:id/download', requireStudent, async (req, res) => {
 router.get('/assignments', requireStudent, async (req, res) => {
     const grade = req.student.grade;
     if (!VALID_GRADES.includes(grade)) return res.status(400).json({ error: 'A valid grade (4-7) is required.' });
-    const assignments = await Assignment.find({ grade }).sort({ createdAt: -1 });
+    const assignments = await Assignment.find({ grade, deletedAt: null }).sort({ createdAt: -1 });
     res.json(assignments);
 });
 
@@ -135,6 +140,7 @@ router.post('/assignments/:id/submit', requireStudent, (req, res) => {
             const assignment = await Assignment.findById(req.params.id);
             if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
             if (req.student && assignment.grade !== req.student.grade) return res.status(403).json({ error: 'This assignment belongs to another grade.' });
+            if (assignment.deletedAt) return res.status(410).json({ error: 'This assignment is no longer available.' });
 
             const { name, rollNum, grade } = req.student;
             if (!name || !rollNum || !validGrade(grade)) {
@@ -144,6 +150,10 @@ router.post('/assignments/:id/submit', requireStudent, (req, res) => {
 
             if (await Submission.exists({ assignment: assignment._id, ...studentRecords(req.student) })) return res.status(409).json({ error: 'You have already submitted this assignment.' });
             const uploaded = await uploadBuffer(req.file.buffer, 'quiz-system/submissions', req.file.originalname);
+            if (!await Assignment.exists({ _id: assignment._id, deletedAt: null })) {
+                await deleteFile(uploaded.public_id);
+                return res.status(410).json({ error: 'This assignment was deleted during your upload.' });
+            }
 
             const submission = new Submission({
                 student: req.student._id,
@@ -159,6 +169,11 @@ router.post('/assignments/:id/submit', requireStudent, (req, res) => {
             try { await submission.save(); } catch (error) {
                 await deleteFile(uploaded.public_id).catch(() => {});
                 throw error;
+            }
+            if (!await Assignment.exists({ _id: assignment._id, deletedAt: null })) {
+                await deleteFile(uploaded.public_id);
+                await Submission.deleteOne({ _id: submission._id });
+                return res.status(410).json({ error: 'This assignment was deleted during your upload.' });
             }
             res.status(201).json({ message: 'Assignment submitted successfully.' });
         } catch (e) {
@@ -181,6 +196,7 @@ router.get('/admin/assignments/:id/submissions', requireAdmin, async (req, res) 
 router.get('/admin/submissions/:id/download', requireAdmin, async (req, res) => {
     const submission = await Submission.findById(req.params.id);
     if (!submission) return res.status(404).json({ error: 'Submission not found.' });
+    if (submission.assignmentDeletedAt || !submission.fileUrl) return res.status(410).json({ error: 'This submission file has been deleted. Its marks are retained.' });
 
     try {
         const fileResponse = await fetch(submission.fileUrl);
@@ -203,18 +219,17 @@ router.post('/admin/submissions/:id/marks', requireAdmin, async (req, res) => {
         if (!submission) return res.status(404).json({ error: 'Submission not found.' });
 
         const assignment = await Assignment.findById(submission.assignment);
+        if (!assignment || assignment.deletedAt) return res.status(410).json({ error: 'This assignment is no longer available for grading.' });
         const marks = Number(req.body.marks);
         if (isNaN(marks) || marks < 0 || marks > assignment.maxMarks) {
             return res.status(400).json({ error: `Marks must be between 0 and ${assignment.maxMarks}.` });
         }
 
-        submission.marks = marks;
-        submission.percentage = Math.round((marks / assignment.maxMarks) * 100);
-        submission.status = 'graded';
-        submission.gradedAt = new Date();
-        await submission.save();
-
-        res.json(submission);
+        const graded = await Submission.findOneAndUpdate({ _id: submission._id, assignmentDeletedAt: null }, { $set: {
+            marks, percentage: Math.round((marks / assignment.maxMarks) * 100), status: 'graded', gradedAt: new Date()
+        } }, { new: true });
+        if (!graded) return res.status(410).json({ error: 'This assignment is no longer available for grading.' });
+        res.json(graded);
     } catch (e) {
         console.error('Grading error:', e);
         res.status(500).json({ error: 'Could not save marks.' });

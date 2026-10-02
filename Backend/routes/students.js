@@ -115,12 +115,13 @@ router.get('/student/report', requireStudent, async (req, res) => {
     const [results, count, assignments, submissions, today] = await Promise.all([
         Result.find(filter).select('score total date elapsedMs timeLimitMs').sort({ date: -1 }).skip((page - 1) * 20).limit(20).lean(),
         Result.countDocuments(filter),
-        Assignment.find({ grade: student.grade }).select('title maxMarks fileName createdAt').sort({ createdAt: -1 }),
+        Assignment.find({ grade: student.grade }).select('title maxMarks fileName createdAt deletedAt').sort({ createdAt: -1 }),
         Submission.find(filter).select('assignment marks percentage status submittedAt gradedAt'),
         Attempt.findOne({ student: student._id, day: pakistanDay() }).select('status expiresAt')
     ]);
     const submissionMap = new Map(submissions.map(s => [String(s.assignment), s]));
     res.json({ student: profile(student), results: results.map(r => ({ ...r, ...resultMetrics(r) })), page, pages: Math.max(1, Math.ceil(count / 20)), totalResults: count,
-        today, assignments: assignments.map(a => ({ ...a.toObject(), submission: submissionMap.get(String(a._id)) || null })) });
+        today, assignments: assignments.filter(a => !a.deletedAt || submissionMap.get(String(a._id))?.status === 'graded')
+            .map(a => ({ ...a.toObject(), submission: submissionMap.get(String(a._id)) || null })) });
 });
 module.exports = router;

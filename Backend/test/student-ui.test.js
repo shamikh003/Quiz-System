@@ -6,7 +6,7 @@ const path = require('node:path');
 
 function browser() {
     const nodes = new Map();
-    const make = () => ({ style: {}, dataset: {}, children: [], value: '', textContent: '',
+    const make = (tagName = '') => ({ tagName, style: {}, dataset: {}, children: [], value: '', textContent: '',
         classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, remove() {}, focus() {},
         append(...children) { this.children.push(...children); }, replaceChildren(...children) { this.children = children; } });
     const node = id => { if (!nodes.has(id)) nodes.set(id, make()); return nodes.get(id); };
@@ -53,4 +53,17 @@ test('student completion shows unchanged marks and time without a speed score', 
     vm.runInContext('displayResult({score:8,total:10,percentage:80,elapsedMs:300000})', context);
     assert.equal(node('score-display').textContent, '8 / 10 (80%)');
     assert.equal(node('ranking-display').textContent, 'Time: 5:00.000');
+});
+
+test('archived assignment marks stay visible without download or upload controls', () => {
+    const { context, node } = browser();
+    vm.runInContext(`report = {student:{name:'Student',grade:4,section:'A'},results:[],page:1,pages:1,assignments:[
+        {title:'Old task',fileName:'old.docx',maxMarks:20,deletedAt:'2026-10-02T00:00:00Z',submission:{status:'graded',marks:18,percentage:90}},
+        {title:'New task',fileName:'new.docx',maxMarks:10,submission:null}
+    ]}; renderReport();`, context);
+    const [archived, active] = node('assignments-list').children;
+    assert.ok(archived.children.some(child => child.textContent === 'Graded: 18 / 20 (90%)'));
+    assert.ok(archived.children.some(child => child.textContent === 'Archived'));
+    assert.ok(archived.children.every(child => !['button', 'input'].includes(child.tagName)));
+    assert.equal(active.children.filter(child => child.tagName === 'button').length, 2);
 });

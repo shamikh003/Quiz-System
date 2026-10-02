@@ -75,8 +75,10 @@ const AssignmentSchema = new mongoose.Schema({
     grade: { type: Number, required: true, enum: VALID_GRADES },
     maxMarks: { type: Number, required: true, default: 100 },
     fileName: { type: String, required: true },   // original file name shown to users
-    fileUrl: { type: String, required: true },    // Cloudinary secure_url
-    filePath: { type: String, required: true },   // Cloudinary public_id (needed to delete later)
+    fileUrl: { type: String, required: function () { return !this.deletedAt; } },
+    filePath: { type: String, required: function () { return !this.deletedAt; } },
+    // Keep compact assignment metadata for earned-mark history after file deletion.
+    deletedAt: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -89,8 +91,9 @@ const SubmissionSchema = new mongoose.Schema({
     rollNum: { type: String, required: true },
     grade: { type: Number, required: true, enum: VALID_GRADES },
     fileName: { type: String, required: true },   // original file name
-    fileUrl: { type: String, required: true },    // Cloudinary secure_url
-    filePath: { type: String, required: true },   // Cloudinary public_id (needed to delete later)
+    fileUrl: { type: String, required: function () { return !this.assignmentDeletedAt; } },
+    filePath: { type: String, required: function () { return !this.assignmentDeletedAt; } },
+    assignmentDeletedAt: { type: Date, default: null },
     marks: { type: Number, default: null },
     percentage: { type: Number, default: null },
     status: { type: String, enum: ['pending', 'graded'], default: 'pending' },
