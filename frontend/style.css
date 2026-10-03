@@ -45,6 +45,8 @@
     --sidebar-ink: #C4CAD3;
     --sidebar-ink-active: #ffffff;
     --sidebar-active-bg: #2A3646;
+    --sidebar-control-bg: #2A3646;
+    --sidebar-border: #435168;
  
     /* --- Spacing scale (4px base) --- */
     --space-1: 4px;
@@ -117,6 +119,8 @@
     --sidebar-ink: #A6AEBA;
     --sidebar-ink-active: #ffffff;
     --sidebar-active-bg: #1C2531;
+    --sidebar-control-bg: #1C2531;
+    --sidebar-border: #354256;
  
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.24);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28), 0 2px 4px rgba(0, 0, 0, 0.24);
@@ -731,6 +735,7 @@ tr:nth-child(even) { background-color: var(--surface-sunken); }
     position: sticky;
     top: 0;
     height: 100vh;
+    overflow-y: auto;
 }
 
 .sidebar-brand {
@@ -741,22 +746,19 @@ tr:nth-child(even) { background-color: var(--surface-sunken); }
     color: #fff;
 }
 .sidebar-brand-icon {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--radius-sm);
-    background: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 15px;
+    display: block;
+    object-fit: contain;
     flex-shrink: 0;
 }
 .sidebar-brand-text {
     font-family: var(--font-heading);
     font-weight: 600;
     font-size: 16px;
+    color: #fff;
+    line-height: 1.4;
 }
 
 .sidebar-nav {
@@ -766,11 +768,11 @@ tr:nth-child(even) { background-color: var(--surface-sunken); }
     padding: 0 var(--space-3);
     flex: 1;
 }
-button.sidebar-link {
+.sidebar .sidebar-link {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: 9px var(--space-3);
+    gap: 10px;
+    padding: 12px;
     border-radius: var(--radius-sm);
     color: var(--sidebar-ink);
     text-decoration: none;
@@ -782,28 +784,30 @@ button.sidebar-link {
     background: transparent;
     width: 100%;
     text-align: left;
+    min-height: 44px;
+    line-height: 1.45;
+    box-shadow: none;
+    transform: none;
 }
-a.sidebar-link {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: 9px var(--space-3);
-    border-radius: var(--radius-sm);
-    color: var(--sidebar-ink);
-    text-decoration: none;
-    font-family: var(--font-ui);
-    font-size: 13.5px;
-    font-weight: 500;
-}
-.sidebar-link:hover { background: rgba(255,255,255,0.06); color: #fff; }
-.sidebar-link.active { background: var(--sidebar-active-bg); color: #fff; }
-.sidebar-link .icon { width: 16px; text-align: center; opacity: 0.9; font-size: 14px; }
+.sidebar .sidebar-link:hover { background: rgba(255,255,255,0.06); color: #fff; box-shadow: none; transform: none; }
+.sidebar .sidebar-link.active { background: var(--sidebar-active-bg); color: #fff; }
+.sidebar .sidebar-link:focus-visible { outline: 2px solid #B7D5F0; outline-offset: -2px; box-shadow: none; }
+.sidebar .sidebar-label { min-width: 0; flex: 1; color: inherit; }
+.sidebar .sidebar-link .icon { flex: 0 0 18px; display: flex; color: inherit; }
+.sidebar .sidebar-link .icon svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar .badge { flex-shrink: 0; color: #D9E9F7; background: var(--sidebar-control-bg); box-shadow: none; border: 1px solid var(--sidebar-border); padding: 1px 8px; font-size: 11px; }
 
 .sidebar-footer {
     padding: var(--space-3) var(--space-5) 0;
-    border-top: 1px solid rgba(255,255,255,0.08);
+    border-top: 1px solid var(--sidebar-border);
     margin-top: var(--space-3);
 }
+.sidebar-footer .theme-toggle, .sidebar-footer .btn-danger { display: block; min-height: 44px; margin-left: 0; padding: 10px 12px; font-size: 13px; box-shadow: none; transform: none; }
+.sidebar-footer .theme-toggle { color: #fff; background: var(--sidebar-control-bg); border: 1px solid var(--sidebar-border); }
+.sidebar-footer .theme-toggle:hover { color: #fff; background: var(--sidebar-active-bg); box-shadow: none; transform: none; }
+.sidebar-footer .btn-danger { color: #fff; background: #B3392E; }
+.sidebar-footer .btn-danger:hover { background: #9C2B22; box-shadow: none; transform: none; }
+.sidebar-footer button:focus-visible { outline: 2px solid #B7D5F0; outline-offset: 2px; box-shadow: none; }
 .sidebar-user { display: flex; align-items: center; gap: var(--space-3); padding-top: var(--space-4); }
 .sidebar-avatar {
     width: 32px; height: 32px; border-radius: 50%;

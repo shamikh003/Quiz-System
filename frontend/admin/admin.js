@@ -107,6 +107,7 @@ function activateTab(key) {
     // Close the mobile sidebar (if open) after picking a section.
     const sidebarEl = document.getElementById('sidebar');
     if (sidebarEl) sidebarEl.classList.remove('open');
+    document.getElementById('mobile-menu-btn')?.setAttribute('aria-expanded', 'false');
 }
 
 tabDashboard.addEventListener('click', () => activateTab('dashboard'));
@@ -117,7 +118,8 @@ tabAssignments.addEventListener('click', () => activateTab('assignments'));
 const mobileMenuBtn = document.getElementById('mobile-menu-btn');
 if (mobileMenuBtn) {
     mobileMenuBtn.addEventListener('click', () => {
-        document.getElementById('sidebar').classList.toggle('open');
+        const open = document.getElementById('sidebar').classList.toggle('open');
+        mobileMenuBtn.setAttribute('aria-expanded', String(open));
     });
 }
 

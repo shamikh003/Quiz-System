@@ -9,7 +9,7 @@
     <link rel="apple-touch-icon" href="../logo.png">
     <link rel="manifest" href="../manifest-admin.json">
     <meta name="theme-color" content="#1F4E79">
-    <link rel="stylesheet" href="../style.css?v=5.9">
+    <link rel="stylesheet" href="../style.css?v=6.0">
 </head>
 <body>
 
@@ -32,17 +32,17 @@
     <div class="app-shell" id="admin-panel" style="display:none;">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-brand">
-                <div class="sidebar-brand-icon">QS</div>
-                <div class="sidebar-brand-text">Quiz System</div>
+                <img class="sidebar-brand-icon" src="../logo.png" width="36" height="36" alt="">
+                <div class="sidebar-brand-text">QuizBoard</div>
             </div>
 
-            <nav class="sidebar-nav">
-                <button type="button" id="tab-dashboard" class="sidebar-link active"><span class="icon">&#9632;</span> Dashboard</button>
-                <button type="button" id="tab-add" class="sidebar-link"><span class="icon">&#10010;</span> Add / Edit Question</button>
-                <button type="button" id="tab-manage" class="sidebar-link"><span class="icon">&#9776;</span> Manage Questions <span class="badge" id="question-count">0</span></button>
-                <button type="button" id="tab-assignments" class="sidebar-link"><span class="icon">&#128206;</span> Assignments</button>
-                <a href="students.html" class="sidebar-link"><span class="icon">&#128101;</span> Students</a>
-                <a href="results.html" class="sidebar-link"><span class="icon">&#128202;</span> Reports</a>
+            <nav class="sidebar-nav" aria-label="Teacher navigation">
+                <button type="button" id="tab-dashboard" class="sidebar-link active"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="sidebar-label">Dashboard</span></button>
+                <button type="button" id="tab-add" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="sidebar-label">Add / Edit Question</span></button>
+                <button type="button" id="tab-manage" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span><span class="sidebar-label">Manage Questions</span><span class="badge" id="question-count">0</span></button>
+                <button type="button" id="tab-assignments" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7v10a4 4 0 0 0 8 0V6a3 3 0 0 0-6 0v11a1 1 0 0 0 2 0V7"/></svg></span><span class="sidebar-label">Assignments</span></button>
+                <a href="students.html" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-4-5"/></svg></span><span class="sidebar-label">Students</span></a>
+                <a href="results.html" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3v18h17M9 17v-5M14 17V7M19 17V4"/></svg></span><span class="sidebar-label">Reports</span></a>
             </nav>
 
             <div class="sidebar-footer">
@@ -52,7 +52,7 @@
         </aside>
 
         <main class="shell-main">
-            <button type="button" class="mobile-menu-btn" id="mobile-menu-btn">&#9776;</button>
+            <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle teacher navigation" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
 
             <div id="dashboard-tab-content">
                 <div class="shell-page-header">
@@ -250,6 +250,6 @@
 
     <script src="../config.js?v=5.0"></script>
 <script src="report-utils.js?v=6.0"></script>
-<script src="admin.js?v=6.0"></script>
+<script src="admin.js?v=6.3"></script>
 </body>
 </html>
