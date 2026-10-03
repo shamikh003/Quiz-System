@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="../logo.png">
     <link rel="manifest" href="../manifest-admin.json">
     <meta name="theme-color" content="#1F4E79">
-    <link rel="stylesheet" href="../style.css?v=5.6">
+    <link rel="stylesheet" href="../style.css?v=5.8">
 </head>
 <body>
 
@@ -90,7 +90,7 @@
                         <h2 class="shell-panel-title">Top 5 Scores</h2>
                         <a class="shell-panel-link" href="results.html">View all</a>
                     </div>
-                    <div class="report-table-wrap"><table class="v2-table">
+                    <div class="report-table-wrap result-desktop-table"><table class="v2-table">
                         <thead>
                             <tr>
                                 <th>Student</th>
@@ -107,6 +107,9 @@
                             <tr><td colspan="8" class="shell-empty">Loading…</td></tr>
                         </tbody>
                     </table></div>
+                    <div id="dashboard-result-cards" class="mobile-result-list" aria-label="Top 5 scores">
+                        <p class="shell-empty" role="status">Loading…</p>
+                    </div>
                 </div>
             </div>
 
@@ -245,7 +248,7 @@
     </div>
 
     <script src="../config.js?v=5.0"></script>
-<script src="report-utils.js?v=5.8"></script>
-<script src="admin.js?v=5.9"></script>
+<script src="report-utils.js?v=6.0"></script>
+<script src="admin.js?v=6.0"></script>
 </body>
 </html>

@@ -816,6 +816,7 @@ a.sidebar-link {
 
 .shell-main {
     flex: 1;
+    min-width: 0;
     padding: var(--space-8) var(--space-10);
     max-width: 1200px;
 }
@@ -917,6 +918,60 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .question-thumbnail { display:block; max-width:180px; max-height:110px; object-fit:contain; margin:8px 0; border-radius:var(--radius-sm); }
 .assignment-status { font-weight: 600; }
 .report-table-wrap { overflow-x: auto; }
+.mobile-result-list { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* Result tables remain available on desktop; narrow screens use readable cards. */
+@media (max-width: 860px) {
+    .result-desktop-table { display: none; }
+    .mobile-result-list { display: grid; gap: 12px; }
+    .mobile-result-card { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+    .mobile-result-header { display: flex; align-items: flex-start; gap: 10px; padding: 16px; }
+    .result-rank { flex: 0 0 28px; height: 28px; display: grid; place-items: center; background: var(--accent-subtle); color: var(--accent); border-radius: 50%; font-size: 12px; font-weight: 700; }
+    .result-rank-first { background: var(--warning-subtle); color: var(--warning); }
+    .mobile-result-student { min-width: 0; flex: 1; }
+    .mobile-result-student h3 { margin: 0; font-family: var(--font-ui); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+    .mobile-result-meta { margin: 5px 0 0; font-size: 11px; line-height: 1.6; color: var(--text-secondary); overflow-wrap: anywhere; }
+    .mobile-result-score { flex-shrink: 0; text-align: end; }
+    .mobile-result-score strong { display: block; color: var(--accent); font-family: var(--font-ui); font-size: 19px; line-height: 1.4; }
+    .mobile-result-score > span { display: block; margin-top: 5px; font-size: 11px; color: var(--text-secondary); }
+    .mobile-result-metrics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin: 0 16px 16px; }
+    .mobile-result-metrics > div { min-width: 0; padding: 12px; background: var(--surface-sunken); border-radius: var(--radius-md); }
+    .mobile-result-metrics span { display: block; font-size: 10px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
+    .mobile-result-metrics strong { display: block; font-family: var(--font-mono); font-size: 14px; color: var(--accent); overflow-wrap: anywhere; }
+    .mobile-result-details { border-top: 1px solid var(--border); }
+    .mobile-result-details summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--accent); cursor: pointer; list-style: none; }
+    .mobile-result-details summary::-webkit-details-marker { display: none; }
+    .mobile-result-details summary::after { content: '⌄'; font-size: 16px; }
+    .mobile-result-details[open] summary::after { content: '⌃'; }
+    .mobile-result-details summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: var(--radius-sm); }
+    .mobile-result-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin: 0; padding: 4px 16px 16px; }
+    .mobile-result-detail-grid dt { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
+    .mobile-result-detail-grid dd { font-size: 12px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+    .results-page .report-filters { grid-template-columns: minmax(0, 1fr); padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+    .results-page .report-filters > div { min-width: 0; }
+    .results-page .results-summary-toolbar { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .results-page .results-summary-toolbar p { margin: 0; font-size: 12px; }
+    .results-page .results-summary-toolbar button { flex: 0 1 auto; font-size: 12px; padding: 12px; }
+    .results-page .results-actions { flex-wrap: wrap; gap: 12px; }
+    .results-page .results-actions button { flex: 1 1 180px; margin-top: 0; }
+    .student-portal:has(#dashboard:not(.hidden)) { background: var(--bg); box-shadow: none; }
+    .student-portal #student-heading, .student-portal .assignment-report-card { overflow-wrap: anywhere; }
+    .student-portal .portal-start-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .student-portal .portal-start-actions button { flex: 1 1 140px; margin: 0; }
+    .student-portal #dashboard > .portal-actions { flex-wrap: nowrap; }
+    .student-portal #dashboard > .portal-actions button { min-width: 0; font-size: 13px; padding-inline: 10px; }
+}
+@media (max-width: 600px) {
+    #dashboard-tab-content .stat-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 24px; }
+    #dashboard-tab-content .stat-card { padding: 16px; min-width: 0; }
+    #dashboard-tab-content .stat-label { font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    #dashboard-tab-content .stat-icon { margin-bottom: 12px; }
+    #dashboard-tab-content .shell-panel { padding: 0; border: 0; background: transparent; }
+    #dashboard-tab-content .shell-page-header > div { min-width: 0; }
+    #dashboard-tab-content .shell-page-date { display: none; }
+    .results-page { background: var(--bg); padding: 20px 16px; box-shadow: none; }
+}
 #message, #account-message, #save-status { overflow-wrap: anywhere; }
 .student-portal #login-container { max-width: 420px; margin-inline: auto; }
 .student-portal #question-title { margin-top: 24px; }

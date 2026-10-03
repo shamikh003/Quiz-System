@@ -25,6 +25,7 @@ function authHeaders() { return { Authorization: `Bearer ${getToken()}` }; }
 
 document.addEventListener('DOMContentLoaded', async function () {
     const resultsBody = document.getElementById('results-body');
+    const resultCards = document.getElementById('report-result-cards');
     const clearBtn = document.getElementById('clear-results-btn');
     const exportBtn = document.getElementById('export-csv-btn');
     const resultsNote = document.getElementById('results-note');
@@ -65,9 +66,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         if (visibleResults.length === 0) {
             resultsBody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No results match these filters.</td></tr>';
+            resultCards.innerHTML = '<p class="shell-empty" role="status">No results match these filters.</p>';
             return;
         }
 
+        resultCards.innerHTML = ReportUtils.resultCards(visibleResults);
         visibleResults.forEach((result) => {
             const row = document.createElement('tr');
             const flagCount = (result.tabSwitchCount || 0) + (result.fullscreenExitCount || 0);

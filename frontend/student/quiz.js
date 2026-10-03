@@ -77,10 +77,26 @@ async function loadReport() {
 function renderReport() {
  $('student-heading').textContent = `${report.student.name} · ${gradeLabel(report.student.grade)} · ${report.student.section || 'Unassigned'}`;
  const done = report.today?.status === 'submitted'; $('start-btn').disabled = done; $('start-btn').textContent = t(done ? 'todayDone' : 'start');
- $('scores-body').replaceChildren();
- if (!report.results.length) { const cell = element('td',t('emptyScores')); cell.colSpan = 4; const row = element('tr'); row.append(cell); $('scores-body').append(row); }
+ $('scores-body').replaceChildren(); $('student-score-cards').replaceChildren();
+ $('student-score-cards').setAttribute('aria-label',t('scores'));
+ if (!report.results.length) { const cell = element('td',t('emptyScores')); cell.colSpan = 4; const row = element('tr'); row.append(cell); $('scores-body').append(row); $('student-score-cards').append(element('p',t('emptyScores'),'shell-empty')); }
  for (const result of report.results) {
   const row = element('tr'); row.append(element('td',new Date(result.date).toLocaleString(language === 'ur' ? 'ur-PK' : 'en-GB',{timeZone:'Asia/Karachi'})),element('td',`${result.score} / ${result.total}`),element('td',ReportUtils.percent(result.percentage)),element('td',ReportUtils.duration(result.elapsedMs))); $('scores-body').append(row);
+  const date = result.date ? new Date(result.date) : null;
+  const validDate = date && Number.isFinite(date.getTime());
+  const locale = language === 'ur' ? 'ur-PK' : 'en-GB';
+  const card = element('article',undefined,'mobile-result-card student-score-card');
+  const header = element('div',undefined,'mobile-result-header');
+  const info = element('div',undefined,'mobile-result-student');
+  info.append(element('h3',validDate ? date.toLocaleDateString(locale,{day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Karachi'}) : '—'),element('p',validDate ? date.toLocaleTimeString(locale,{timeZone:'Asia/Karachi'}) : '—','mobile-result-meta'));
+  const percent = element('div',undefined,'mobile-result-score');
+  percent.append(element('strong',ReportUtils.percent(result.percentage)),element('span',t('marksPercent')));
+  header.append(info,percent);
+  const metrics = element('div',undefined,'mobile-result-metrics');
+  for (const [label,value] of [[t('score'),`${result.score} / ${result.total}`],[t('timeTaken'),ReportUtils.duration(result.elapsedMs)]]) {
+   const metric = element('div'); metric.append(element('span',label),element('strong',value)); metrics.append(metric);
+  }
+  card.append(header,metrics); $('student-score-cards').append(card);
  }
  $('page-label').textContent = `${report.page} / ${report.pages}`; $('prev-page').disabled = report.page <= 1; $('next-page').disabled = report.page >= report.pages;
  $('assignments-list').replaceChildren(); if (!report.assignments.length) $('assignments-list').append(element('p',t('emptyAssignments')));

@@ -133,6 +133,7 @@ async function loadDashboard() {
     const statStudents = document.getElementById('stat-total-students');
     const statPending = document.getElementById('stat-pending-submissions');
     const resultsBody = document.getElementById('dashboard-results-body');
+    const resultCards = document.getElementById('dashboard-result-cards');
     if (!statQuestions) return; // dashboard markup not on this page
 
     try {
@@ -148,9 +149,11 @@ async function loadDashboard() {
         if (!Array.isArray(data.topResults)) throw new Error('Dashboard update required');
         if (data.topResults.length === 0) {
             resultsBody.innerHTML = '<tr><td colspan="8" class="shell-empty">No quiz results yet.</td></tr>';
+            resultCards.innerHTML = '<p class="shell-empty" role="status">No quiz results yet.</p>';
             return;
         }
 
+        resultCards.innerHTML = ReportUtils.resultCards(data.topResults, { dashboard: true });
         resultsBody.innerHTML = data.topResults.map(r => {
             const flagCount = (r.tabSwitchCount || 0) + (r.fullscreenExitCount || 0);
             const pillClass = flagCount === 0 ? 'good' : (flagCount <= 2 ? 'warn' : 'bad');
@@ -170,6 +173,7 @@ async function loadDashboard() {
         }).join('');
     } catch (error) {
         resultsBody.innerHTML = '<tr><td colspan="8" class="shell-empty">Could not load dashboard data.</td></tr>';
+        resultCards.innerHTML = '<p class="shell-empty" role="status">Could not load dashboard data.</p>';
     }
 }
 

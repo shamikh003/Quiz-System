@@ -4,7 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QuizBoard — Student</title>
 <link rel="icon" href="../logo.png"><link rel="manifest" href="../manifest-quiz.json">
-<meta name="theme-color" content="#1F4E79"><link rel="stylesheet" href="../style.css?v=5.6">
+<meta name="theme-color" content="#1F4E79"><link rel="stylesheet" href="../style.css?v=5.8">
 </head>
 <body>
 <main class="container wide student-portal">
@@ -34,10 +34,13 @@
     <section id="dashboard" class="hidden">
         <h1 id="student-heading"></h1>
         <p data-i18n="dailyRule">One quiz attempt per day. An unfinished quiz resumes with its original deadline.</p>
-        <button id="start-btn" type="button" data-i18n="start">Start / Resume Quiz</button>
-        <button id="refresh-btn" type="button" class="btn-secondary" data-i18n="refresh">Refresh report</button>
+        <div class="portal-start-actions">
+            <button id="start-btn" type="button" data-i18n="start">Start / Resume Quiz</button>
+            <button id="refresh-btn" type="button" class="btn-secondary" data-i18n="refresh">Refresh report</button>
+        </div>
         <h2 class="portal-section-title" data-i18n="scores">My Test Scores</h2>
-        <div class="report-table-wrap"><table><thead><tr><th data-i18n="date">Date</th><th data-i18n="score">Score</th><th data-i18n="marksPercent">Marks %</th><th data-i18n="timeTaken">Time</th></tr></thead><tbody id="scores-body"></tbody></table></div>
+        <div class="report-table-wrap result-desktop-table"><table><thead><tr><th data-i18n="date">Date</th><th data-i18n="score">Score</th><th data-i18n="marksPercent">Marks %</th><th data-i18n="timeTaken">Time</th></tr></thead><tbody id="scores-body"></tbody></table></div>
+        <div id="student-score-cards" class="mobile-result-list" aria-label="My test scores"></div>
         <div class="portal-actions"><button id="prev-page" type="button" class="btn-secondary" data-i18n="previous">Previous</button><span id="page-label"></span><button id="next-page" type="button" class="btn-secondary" data-i18n="next">Next</button></div>
         <h2 class="portal-section-title" data-i18n="assignments">My Assignments</h2>
         <div id="assignments-list"></div>
@@ -66,6 +69,6 @@
     </section>
 </main>
 <script src="../config.js?v=5.0"></script>
-<script src="../admin/report-utils.js?v=5.8"></script>
-<script src="quiz.js?v=5.9"></script>
+<script src="../admin/report-utils.js?v=6.0"></script>
+<script src="quiz.js?v=6.1"></script>
 </body></html>
