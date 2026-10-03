@@ -919,6 +919,19 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .assignment-status { font-weight: 600; }
 .report-table-wrap { overflow-x: auto; }
 .mobile-result-list { display: none; }
+.home-page { align-items: center; }
+.home-card { text-align: center; max-width: 520px; box-shadow: var(--shadow-md); }
+.home-logo { display: block; margin: 0 auto 20px; border-radius: var(--radius-md); }
+.home-eyebrow { color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.6; margin: 0 0 12px; }
+.home-card h1 { text-align: center; margin: 0 0 16px; font-size: 38px; }
+.home-description { font-size: 14px; color: var(--text-secondary); line-height: 1.8; margin: 0; }
+.home-features { display: grid; gap: 8px; list-style: none; padding: 20px 0; margin: 20px 0 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.home-features li { font-size: 13px; color: var(--text-primary); line-height: 1.6; }
+.home-links { gap: 12px; }
+.home-links a { display: flex; align-items: center; justify-content: space-between; min-height: 48px; gap: 12px; text-align: start; }
+.home-links a[href="./admin/index.html"] { background: var(--surface); border: 1px solid var(--border-strong); color: var(--accent); }
+.home-links a[href="./admin/index.html"]:hover { background: var(--accent-subtle); }
+.home-grades { margin: 20px 0 0; color: var(--text-secondary); font-size: 12px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
 /* Result tables remain available on desktop; narrow screens use readable cards. */
@@ -963,6 +976,8 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
     .student-portal #dashboard > .portal-actions button { min-width: 0; font-size: 13px; padding-inline: 10px; }
 }
 @media (max-width: 600px) {
+    .home-page { padding: 16px; }
+    .home-card { padding: 24px; margin: 16px auto; }
     #dashboard-tab-content .stat-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 24px; }
     #dashboard-tab-content .stat-card { padding: 16px; min-width: 0; }
     #dashboard-tab-content .stat-label { font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }

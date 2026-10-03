@@ -3,21 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuizBoard</title>
+    <title>QuizBoard | Computer Quizzes &amp; Assignments</title>
+    <meta name="description" content="QuizBoard is a classroom assessment platform for computer education, with timed quizzes, image questions, assignments and student progress reports.">
+    <meta name="theme-color" content="#1F4E79">
+    <link rel="canonical" href="https://quizboard-io.netlify.app/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="QuizBoard">
+    <meta property="og:title" content="QuizBoard | Computer Quizzes &amp; Assignments">
+    <meta property="og:description" content="Timed quizzes, assignments and progress reports for the computer classroom.">
+    <meta property="og:url" content="https://quizboard-io.netlify.app/">
+    <meta property="og:image" content="https://quizboard-io.netlify.app/logo.png">
+    <meta property="og:image:alt" content="QuizBoard logo">
+    <meta name="twitter:card" content="summary">
     <link rel="icon" type="image/png" href="./logo.png">
-    <link rel="stylesheet" href="./style.css?v=5.8">
+    <link rel="stylesheet" href="./style.css?v=5.9">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "QuizBoard",
+        "url": "https://quizboard-io.netlify.app/",
+        "description": "A classroom assessment platform for computer quizzes, assignments and student progress reports."
+    }
+    </script>
 </head>
-<body>
+<body class="home-page">
 
-    <div class="container" style="text-align: center;">
-        <h1>Welcome to QuizBoard</h1>
-        <p style="color: var(--text-secondary); margin-bottom: 24px;">Choose where you'd like to go.</p>
+    <main class="container home-card">
+        <img class="home-logo" src="./logo.png" width="56" height="56" alt="">
+        <p class="home-eyebrow">Built for the computer classroom</p>
+        <h1>QuizBoard</h1>
+        <p class="home-description">Take quizzes, submit assignments and track your progress. One place for students to learn and teachers to manage assessments.</p>
 
-        <div class="nav-links">
-            <a href="./admin/index.html">Teacher / Admin Panel</a>
-            <a href="./student/quiz.html">Student Quiz</a>
-        </div>
-    </div>
+        <ul class="home-features" aria-label="QuizBoard features">
+            <li>Timed &amp; image quizzes</li>
+            <li>Assignment submissions</li>
+            <li>Scores &amp; progress reports</li>
+        </ul>
+
+        <nav class="nav-links home-links" aria-label="Choose your portal">
+            <a href="./student/quiz.html">Student Login <span aria-hidden="true">→</span></a>
+            <a href="./admin/index.html">Teacher Dashboard <span aria-hidden="true">→</span></a>
+        </nav>
+        <p class="home-grades">Grades 4–7 &amp; Hifz</p>
+    </main>
 
 </body>
 </html>
