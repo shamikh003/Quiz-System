@@ -48,6 +48,33 @@ test('every JavaScript element ID is present in the student page', () => {
     for (const match of source.matchAll(/\$\('([^']+)'\)/g)) assert.ok(html.includes(`id="${match[1]}"`), match[1]);
 });
 
+test('countdown ring follows the original deadline and server clock without altering quiz state', () => {
+    const { context, node, read } = browser();
+    let warning;
+    node('timer-display').classList.toggle = (name, value) => { if (name === 'time-warning') warning = value; };
+    vm.runInContext(`Date.now = () => 1800000; clockOffset = 5000; timerDurationMs = 120000;
+        attempt.expiresAt = new Date(1870000).toISOString(); selected = 'A'; tick();`, context);
+    assert.equal(node('time-left').textContent, '01:05');
+    assert.ok(Math.abs(Number(node('timer-ring-progress').style.strokeDashoffset) - (100 * 55 / 120)) < 0.001);
+    assert.equal(warning, false);
+    vm.runInContext('Date.now = () => 1805000; tick();', context);
+    assert.equal(node('time-left').textContent, '01:00');
+    assert.equal(Number(node('timer-ring-progress').style.strokeDashoffset), 50);
+    assert.equal(warning, true);
+    assert.equal(read('selected'), 'A');
+    assert.deepEqual(read('queue'), ['q1','q2','q3']);
+    assert.equal(read('attempt.expiresAt'), new Date(1870000).toISOString());
+});
+
+test('resuming preserves original ring duration, including compatibility with older backends', () => {
+    const { read } = browser();
+    const original = `{attemptId:'timer-test',startedAt:'2026-10-05T05:00:00Z',expiresAt:'2026-10-05T05:20:00Z',serverNow:'2026-10-05T05:10:00Z'}`;
+    assert.equal(read(`countdownDuration(${original})`), 1200000);
+    const legacy = `{attemptId:'legacy',expiresAt:'2026-10-05T05:20:00Z',serverNow:'2026-10-05T05:10:00Z'}`;
+    assert.equal(read(`countdownDuration(${legacy})`), 600000);
+    assert.equal(read(`countdownDuration({...${legacy},serverNow:'2026-10-05T05:15:00Z'})`), 600000);
+});
+
 test('student completion shows unchanged marks and time without a speed score', () => {
     const { context, node } = browser();
     vm.runInContext('displayResult({score:8,total:10,percentage:80,elapsedMs:300000})', context);

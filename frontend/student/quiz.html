@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex, follow">
 <title>QuizBoard — Student</title>
 <link rel="icon" href="../logo.png"><link rel="manifest" href="../manifest-quiz.json">
-<meta name="theme-color" content="#1F4E79"><link rel="stylesheet" href="../style.css?v=6.2">
+<meta name="theme-color" content="#1F4E79"><link rel="stylesheet" href="../style.css?v=6.3">
 </head>
 <body>
 <main class="container wide student-portal">
@@ -48,7 +48,16 @@
     </section>
     <section id="quiz-container" style="display:none">
         <div id="violation-banner" class="violation-banner hidden" role="status"></div>
-        <div id="timer-display"><span id="time-left">00:00</span></div>
+        <div class="quiz-countdown">
+            <div id="timer-display">
+                <svg class="timer-ring" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+                    <circle class="timer-ring-track" cx="50" cy="50" r="44"></circle>
+                    <circle id="timer-ring-progress" cx="50" cy="50" r="44" pathLength="100" stroke-dasharray="100 100" stroke-dashoffset="0"></circle>
+                </svg>
+                <span id="time-left" dir="ltr">00:00</span>
+            </div>
+            <span class="timer-label" data-i18n="timeRemaining">Remaining</span>
+        </div>
         <p id="progress-text" aria-live="polite"></p>
         <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
         <p id="save-status" role="status"></p>
@@ -72,5 +81,5 @@
 </main>
 <script src="../config.js?v=5.0"></script>
 <script src="../admin/report-utils.js?v=6.0"></script>
-<script src="quiz.js?v=6.2"></script>
+<script src="quiz.js?v=6.3"></script>
 </body></html>

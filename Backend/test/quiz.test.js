@@ -95,7 +95,10 @@ test('student start and completion return cached Urdu without answer keys or alt
         const view = started.data.questions.find(q=>q._id===String(question._id));
         assert.ok(view.urdu.text.includes('کمپیوٹر')); assert.equal(view.correct,undefined);
         assert.equal(view.urdu.model,undefined); assert.equal(view.urdu.sourceHash,undefined);
-        assert.equal((await request('/quiz/start',token,{})).data.expiresAt,started.data.expiresAt);
+        const resumed = (await request('/quiz/start',token,{})).data;
+        assert.ok(Number.isFinite(new Date(started.data.startedAt).getTime()));
+        assert.equal(resumed.startedAt,started.data.startedAt);
+        assert.equal(resumed.expiresAt,started.data.expiresAt);
         assert.equal((await request('/quiz/save',token,{attemptId:started.data.attemptId,revision:0,answers:[{questionId:question._id,selected:'A'}]})).status,200);
         const result = await request('/quiz/submit',token,{attemptId:started.data.attemptId});
         assert.equal(result.data.score,1); assert.equal(result.data.total,started.data.questions.length);

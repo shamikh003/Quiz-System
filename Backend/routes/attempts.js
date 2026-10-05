@@ -63,7 +63,7 @@ router.post('/quiz/start', async (req, res) => {
     }
     const questions = await Question.find({ _id: { $in: attempt.questions.map(q => q.questionId) } }).select('-correct');
     const map = new Map(questions.map(q => [String(q._id), q]));
-    res.json({ attemptId: attempt._id, expiresAt: attempt.expiresAt, serverNow: new Date(), revision: attempt.revision,
+    res.json({ attemptId: attempt._id, startedAt: attempt.startedAt, expiresAt: attempt.expiresAt, serverNow: new Date(), revision: attempt.revision,
         answers: attempt.answers, tabSwitchCount: attempt.tabSwitchCount, fullscreenExitCount: attempt.fullscreenExitCount,
         questions: attempt.questions.map(q => map.has(String(q.questionId)) ? studentQuestion(map.get(String(q.questionId))) :
             { _id: q.questionId, text: 'This question is no longer available. Please contact your teacher.', options: [] }) });

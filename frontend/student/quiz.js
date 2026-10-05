@@ -1,7 +1,7 @@
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
 const $ = id => document.getElementById(id);
 const labels = {
- marksPercent:['Marks %','نمبر %'], timeTaken:['Time','وقت'],
+ marksPercent:['Marks %','نمبر %'], timeTaken:['Time','وقت'], timeRemaining:['Remaining','وقت باقی'],
  translationMissing:['Urdu translation is not available for this question yet.','اس سوال کا اردو ترجمہ ابھی دستیاب نہیں ہے۔'],
  review:['Your answer','آپ کا جواب'], unanswered:['Not answered','جواب نہیں دیا'],
  login:['Student Login','طالب علم لاگ اِن'], loginHelp:['Use the account and password your teacher gave you.','استاد کا دیا ہوا رول نمبر اور پاس ورڈ استعمال کریں۔'],
@@ -29,7 +29,7 @@ const labels = {
 let language = localStorage.getItem('quizLang') === 'ur' ? 'ur' : 'en';
 let token = sessionStorage.getItem('studentToken');
 let report, lastResult, page = 1, attempt, queue = [], selected = null, answers = new Map();
-let timer, clockOffset = 0, active = false, submitting = false, savePromise = null, conflict = false;
+let timer, clockOffset = 0, timerDurationMs = 1, active = false, submitting = false, savePromise = null, conflict = false;
 let tabSwitchCount = 0, fullscreenExitCount = 0;
 const t = key => labels[key]?.[language === 'ur' ? 1 : 0] || key;
 const gradeLabel = grade => Number(grade) === 0 ? (language === 'ur' ? 'حفظ' : 'Hifz') : `${t('grade')} ${grade}`;
@@ -143,6 +143,7 @@ $('start-btn').onclick = async () => {
  $('start-btn').disabled = true; notify(t('busy'));
  try {
   attempt = await post('/quiz/start'); clockOffset = new Date(attempt.serverNow).getTime() - Date.now();
+  timerDurationMs = countdownDuration(attempt);
   answers = new Map(attempt.answers.map(a => [a.questionId,a.selected])); queue = attempt.questions.map(q => q._id).filter(id => !answers.has(id));
   try { const saved = JSON.parse(sessionStorage.getItem(`queue-${attempt.attemptId}`)); if (Array.isArray(saved)) queue = [...new Set([...saved.filter(id => queue.includes(id)),...queue])]; } catch { /* Ignore invalid local queue. */ }
   tabSwitchCount = attempt.tabSwitchCount; fullscreenExitCount = attempt.fullscreenExitCount;
@@ -200,11 +201,26 @@ async function persistSelection() {
  } finally { savePromise = null; if (active) renderQuestion(); }
 }
 $('next-btn').onclick = async () => { try { await persistSelection(); if (active && !queue.length) await submit(); else if (active) $('question-title').focus(); } catch (error) { notify(error.message); } };
+function countdownDuration(value) {
+ const deadline = new Date(value.expiresAt).getTime(), start = new Date(value.startedAt).getTime();
+ if (Number.isFinite(start) && deadline > start) return deadline - start;
+ // Older backends omit startedAt. Preserve the first observed duration across reloads.
+ const key = `timer-${value.attemptId}`;
+ try {
+  const saved = JSON.parse(sessionStorage.getItem(key));
+  if (saved?.expiresAt === value.expiresAt && Number.isFinite(saved.duration) && saved.duration > 0) return saved.duration;
+ } catch { /* Ignore invalid local display metadata. The server deadline still controls expiry. */ }
+ const duration = Math.max(1, deadline - new Date(value.serverNow).getTime());
+ try { sessionStorage.setItem(key,JSON.stringify({expiresAt:value.expiresAt,duration})); } catch { /* Storage is optional. */ }
+ return duration;
+}
 function tick() {
  if (!active) return;
- const seconds = Math.max(0,Math.ceil((new Date(attempt.expiresAt).getTime() - Date.now() - clockOffset) / 1000));
+ const remainingMs = Math.max(0,new Date(attempt.expiresAt).getTime() - Date.now() - clockOffset);
+ const seconds = Math.ceil(remainingMs / 1000);
  $('time-left').textContent = `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`;
- $('timer-display').classList.toggle('time-warning',seconds <= 30); if (!seconds) { notify(t('timeUp')); submit(); }
+ $('timer-ring-progress').style.strokeDashoffset = String(100 * (1 - Math.min(1,remainingMs / timerDurationMs)));
+ $('timer-display').classList.toggle('time-warning',seconds <= 60); if (!seconds) { notify(t('timeUp')); submit(); }
 }
 $('finish-btn').onclick = async () => { if (!confirm(t('confirm'))) return; try { await persistSelection(); if (active) await submit(); } catch (error) { notify(error.message); } };
 async function submit() {
