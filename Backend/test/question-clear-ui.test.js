@@ -10,7 +10,7 @@ function page(fetch, confirm = () => true) {
     const select = { value: '', addEventListener() {} };
     const element = () => ({ innerHTML: '', appendChild() {}, querySelector: () => ({ addEventListener() {} }) });
     const context = vm.createContext({ clearBtn: button, filterGradeSelect: select, questionListDiv: element(),
-        questionCountBadge: {}, document: { createElement: element }, gradeLabel: grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`,
+        questionCountBadge: {}, document: { createElement: element, getElementById: () => null }, gradeLabel: grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`,
         BACKEND_URL: 'http://local-test', authHeaders: () => ({}), fetch, confirm, alert() {}, escapeHtml: String,
         startEditQuestion() {}, deleteQuestion() {}, localStorage: { removeItem() {} }, showLoggedOutView() {}, encodeURIComponent });
     vm.runInContext(source.slice(source.indexOf('// ---------- Question list (manage tab)'), source.indexOf('function startEditQuestion')), context);

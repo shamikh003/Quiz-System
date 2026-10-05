@@ -15,7 +15,7 @@ Developed by **Muhammad Shamikh**, **Sadia Khan**, and **Abdul Rehman** for comp
 - Word, Excel, and PowerPoint assignments with teacher grading. Graded marks remain in reports after assignment deletion.
 - Personal student reports and a shared leaderboard ranked by marks percentage, then completion time for ties.
 - Grade, section, and roll number filters with matching CSV exports.
-- Responsive design, dark mode, and English/Urdu support in the student portal.
+- Responsive design, dark mode, and English/Urdu support, including saved automatic question and option translations.
 
 ## Technology
 
@@ -38,6 +38,8 @@ Requires Node.js, a MongoDB connection, and a Cloudinary account.
    CLOUDINARY_CLOUD_NAME=<cloud-name>
    CLOUDINARY_API_KEY=<api-key>
    CLOUDINARY_API_SECRET=<api-secret>
+   GEMINI_API_KEY=<google-ai-studio-api-key>
+   GEMINI_TRANSLATION_MODEL=gemini-3.5-flash-lite
    ```
 
 2. Start the backend:
@@ -51,6 +53,14 @@ Requires Node.js, a MongoDB connection, and a Cloudinary account.
 3. Serve the `frontend` folder using VS Code Live Server, then open `index.html`. Local pages automatically connect to the backend on port `5000`. Create student accounts from the Teacher Panel.
 
 Run automated tests from `Backend` with `npm test`.
+
+### Automatic Urdu Translation
+
+Use Node.js 18 or newer. Create an API key in [Google AI Studio](https://aistudio.google.com/api-keys), add `GEMINI_API_KEY` to `Backend/.env` locally and to Render's environment for the hosted backend, then restart/redeploy the backend. Keep the key private; it is never sent to the browser.
+
+New or changed questions translate in the background. For existing questions, choose a grade (or All Grades) in **Manage Questions**, select **Translate to Urdu**, and use **Refresh** to check progress and open **Urdu preview**. Translations are stored once per question in MongoDB. Students switch the question and all options using the existing Urdu button without calling Gemini or changing their answers, score, order, or deadline. Missing translations fall back to English with a short notice.
+
+The queue spaces requests at least 15 seconds apart; pending jobs resume after restarts. If quota or credentials prevent translation, fix the cause and select **Translate to Urdu** again. Gemini limits depend on your account/model. Review generated translations before a class quiz, particularly abbreviations and negative questions. Images themselves are unchanged.
 
 ## Deployment
 

@@ -5,6 +5,7 @@ const { pakistanDay, validateAnswers } = require('../quiz-policy');
 const { finalizeAttempt } = require('../services/attempts');
 const { studentRecords } = require('../sections');
 const { resultMetrics } = require('../result-ranking');
+const { cachedUrdu, studentQuestion } = require('../services/translation');
 const router = express.Router();
 router.use('/quiz', requireStudent);
 async function resultView(result) {
@@ -18,7 +19,8 @@ async function resultView(result) {
         const question = byId.get(String(key.questionId));
         const selected = answers.get(String(key.questionId)) || null;
         return { questionText: question?.text || 'Question removed', selected,
-            options: question?.options || [] };
+            options: question?.options.map(o => ({ id: o.id, text: o.text })) || [],
+            urdu: question ? cachedUrdu(question) : null };
     }) };
 }
 
@@ -63,7 +65,8 @@ router.post('/quiz/start', async (req, res) => {
     const map = new Map(questions.map(q => [String(q._id), q]));
     res.json({ attemptId: attempt._id, expiresAt: attempt.expiresAt, serverNow: new Date(), revision: attempt.revision,
         answers: attempt.answers, tabSwitchCount: attempt.tabSwitchCount, fullscreenExitCount: attempt.fullscreenExitCount,
-        questions: attempt.questions.map(q => map.get(String(q.questionId)) || { _id: q.questionId, text: 'This question is no longer available. Please contact your teacher.', options: [] }) });
+        questions: attempt.questions.map(q => map.has(String(q.questionId)) ? studentQuestion(map.get(String(q.questionId))) :
+            { _id: q.questionId, text: 'This question is no longer available. Please contact your teacher.', options: [] }) });
 });
 
 router.post('/quiz/save', async (req, res) => {

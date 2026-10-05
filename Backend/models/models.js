@@ -28,6 +28,15 @@ const QuestionSchema = new mongoose.Schema({
     correct: { type: String, required: true }, // e.g. 'A', 'B', 'C', 'D'
     imageUrl: { type: String, default: null },
     imagePath: { type: String, default: null },
+    translationSourceHash: String,
+    translationStatus: { type: String, enum: ['pending', 'ready', 'failed', 'unavailable'], default: 'unavailable' },
+    translationError: String,
+    // Shared by every student, rather than copied into each attempt/result.
+    urdu: {
+        type: new mongoose.Schema({ sourceHash: String, text: String,
+            options: [{ _id: false, id: String, text: String }], model: String, translatedAt: Date }, { _id: false }),
+        default: undefined
+    },
     createdAt: { type: Date, default: Date.now }
 });
 

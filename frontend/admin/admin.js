@@ -328,6 +328,23 @@ let questionListRequest = 0;
 let loadedQuestionGrade = null;
 let loadedQuestionCount = 0;
 let clearingQuestions = false;
+const translateUrduBtn = document.getElementById('translate-urdu-btn');
+const translationStatus = document.getElementById('translation-status');
+document.getElementById('refresh-questions-btn')?.addEventListener('click',loadQuestionList);
+translateUrduBtn?.addEventListener('click',async () => {
+    translateUrduBtn.disabled = true; translationStatus.textContent = 'Queuing translations…';
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/questions/translate-urdu`,{
+            method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ grade: filterGradeSelect.value })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not start translation.');
+        translationStatus.textContent = data.queued ? `${data.queued} queued · ${data.ready} ready. Use Refresh to check progress.` : 'Translations are ready.';
+        await loadQuestionList();
+    } catch (error) { translationStatus.textContent = error.message; }
+    finally { translateUrduBtn.disabled = false; }
+});
 function updateClearQuestionsButton() {
     const grade = filterGradeSelect.value;
     clearBtn.disabled = clearingQuestions || grade === '' || loadedQuestionGrade !== grade || loadedQuestionCount === 0;
@@ -369,10 +386,14 @@ async function loadQuestionList() {
             const card = document.createElement('div');
             card.className = 'question-card';
             const optionsText = q.options.map(o => `${escapeHtml(o.id)}: ${escapeHtml(o.text)}${o.id === q.correct ? ' ✅' : ''}`).join(' | ');
+            const translationErrors = {quota_exceeded:'Urdu: quota reached — retry later',invalid_key:'Urdu: check API key',invalid_model:'Urdu: check translation model',invalid_configuration:'Urdu: check API configuration'};
+            const urduPreview = q.urdu ? `<details class="urdu-preview"><summary>Urdu preview</summary><div lang="ur" dir="rtl"><p>${escapeHtml(q.urdu.text)}</p><p>${q.urdu.options.map(o => `${escapeHtml(o.id)}: ${escapeHtml(o.text)}`).join(' | ')}</p></div></details>` :
+                `<p class="translation-status">${q.translationStatus === 'pending' ? 'Urdu: queued' : q.translationStatus === 'failed' ? translationErrors[q.translationError] || 'Urdu: retry translation' : 'Urdu: not translated'}</p>`;
             card.innerHTML = `
                 ${q.imageUrl ? `<img class="question-thumbnail" src="${escapeHtml(q.imageUrl)}" alt="Question illustration">` : ''}
                 <p><strong>${escapeHtml(q.text)}</strong> <span class="badge">${gradeLabel(q.grade)}</span></p>
                 <p class="q-options">${optionsText}</p>
+                ${urduPreview}
                 <div class="q-actions">
                     <button type="button" class="btn-secondary btn-small edit-q-btn">Edit</button>
                     <button type="button" class="btn-danger btn-small delete-q-btn">Delete</button>

@@ -9,7 +9,7 @@
     <link rel="apple-touch-icon" href="../logo.png">
     <link rel="manifest" href="../manifest-admin.json">
     <meta name="theme-color" content="#1F4E79">
-    <link rel="stylesheet" href="../style.css?v=6.0">
+    <link rel="stylesheet" href="../style.css?v=6.1">
 </head>
 <body>
 
@@ -196,6 +196,11 @@
                     <option value="6">Grade 6</option>
                     <option value="7">Grade 7</option><option value="0">Hifz</option>
                 </select>
+                <div class="translation-toolbar">
+                    <button type="button" id="translate-urdu-btn" class="btn-secondary">Translate to Urdu</button>
+                    <button type="button" id="refresh-questions-btn" class="btn-secondary">Refresh</button>
+                    <span id="translation-status" class="translation-status" role="status"></span>
+                </div>
                 <div id="question-list" class="question-list"></div>
                 <button type="button" id="clear-questions-btn" class="btn-danger" disabled>Select a Grade to Clear Questions</button>
             </div>
@@ -250,6 +255,6 @@
 
     <script src="../config.js?v=5.0"></script>
 <script src="report-utils.js?v=6.0"></script>
-<script src="admin.js?v=6.3"></script>
+<script src="admin.js?v=6.4"></script>
 </body>
 </html>

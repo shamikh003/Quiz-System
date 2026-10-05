@@ -3,6 +3,7 @@ const multer = require('multer');
 const { Question, Attempt } = require('../models/models');
 const { requireAdmin } = require('../middleware/auth');
 const { uploadBuffer, deleteFile } = require('../cloudinary');
+const { sourceHash, cachedUrdu, configured, translationQueue } = require('../services/translation');
 
 const router = express.Router();
 
@@ -60,6 +61,22 @@ router.get('/admin/questions', requireAdmin, async (req, res) => {
     res.json(questions);
 });
 
+router.post('/admin/questions/translate-urdu', requireAdmin, async (req, res) => {
+    if (!configured()) return res.status(503).json({ error: 'Add GEMINI_API_KEY to the backend environment and restart it to enable Urdu translation.' });
+    const filter = {};
+    if (req.body.grade !== undefined && req.body.grade !== '') {
+        if (!validGrade(req.body.grade)) return res.status(400).json({ error: 'Choose a valid grade.' });
+        filter.grade = Number(req.body.grade);
+    }
+    const questions = await Question.find(filter);
+    let queued = 0, ready = 0;
+    for (const question of questions) {
+        if (cachedUrdu(question)) { ready++; continue; }
+        if (await translationQueue().enqueue(question, { retry: queued === 0 })) queued++;
+    }
+    res.status(202).json({ queued, ready });
+});
+
 router.post('/admin/questions', requireAdmin, (req, res) => imageUpload(req, res, async uploadError => {
     if (uploadError) return res.status(400).json({ error: uploadError.message || 'Invalid image. Use PNG, JPG, WEBP or GIF up to 5 MB.' });
     try {
@@ -70,7 +87,8 @@ router.post('/admin/questions', requireAdmin, (req, res) => imageUpload(req, res
         if (req.file) image = await uploadBuffer(req.file.buffer, 'quiz-system/question-images', req.file.originalname);
         const newQuestion = await Question.create({ text: body.text.trim(), grade: Number(body.grade), options: body.options, correct: body.correct,
             imageUrl: image.secure_url || null, imagePath: image.public_id || null });
-        res.status(201).json(newQuestion);
+        await translationQueue().enqueue(newQuestion);
+        res.status(201).json(await Question.findById(newQuestion._id));
     } catch (error) { console.error('Question save error:', error); res.status(500).json({ error: 'Could not save question.' }); }
 }));
 
@@ -83,13 +101,20 @@ router.put('/admin/questions/:id', requireAdmin, protectActiveQuestions, (req, r
         const existing = await Question.findById(req.params.id);
         if (!existing) return res.status(404).json({ error: 'Question not found.' });
         const update = { text: body.text.trim(), grade: Number(body.grade), options: body.options, correct: body.correct };
+        const changed = sourceHash(existing) !== sourceHash(update);
+        if (changed) {
+            update.translationSourceHash = sourceHash(update);
+            update.translationStatus = configured() ? 'pending' : 'unavailable';
+        }
         if (req.file) {
             const image = await uploadBuffer(req.file.buffer, 'quiz-system/question-images', req.file.originalname);
             update.imageUrl = image.secure_url; update.imagePath = image.public_id;
             await deleteFile(existing.imagePath);
         }
-        const updated = await Question.findByIdAndUpdate(req.params.id, update, { new: true });
-        res.json(updated);
+        const updated = await Question.findByIdAndUpdate(req.params.id,
+            { $set: update, ...(changed ? { $unset: { urdu: 1, translationError: 1 } } : {}) }, { new: true });
+        await translationQueue().enqueue(updated);
+        res.json(await Question.findById(updated._id));
     } catch (error) { console.error('Question update error:', error); res.status(500).json({ error: 'Could not update question.' }); }
 }));
 

@@ -60,6 +60,9 @@ mongoose.connect(process.env.MONGO_URI)
         await Promise.all(Object.values(require('./models/models')).map(model => model.init()));
         await require('./services/sections').migrateSections();
         app.listen(port, () => console.log(`Backend server is live on http://localhost:${port}`));
+        // Resume saved translation jobs without delaying login or dashboard requests.
+        require('./services/translation').translationQueue().resume()
+            .catch(error => console.error('Translation resume failed:', error.name));
     })
     .catch(err => console.log('MongoDB Connection Error:', err));
 

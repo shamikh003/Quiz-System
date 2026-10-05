@@ -2,6 +2,7 @@ const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrende
 const $ = id => document.getElementById(id);
 const labels = {
  marksPercent:['Marks %','نمبر %'], timeTaken:['Time','وقت'],
+ translationMissing:['Urdu translation is not available for this question yet.','اس سوال کا اردو ترجمہ ابھی دستیاب نہیں ہے۔'],
  review:['Your answer','آپ کا جواب'], unanswered:['Not answered','جواب نہیں دیا'],
  login:['Student Login','طالب علم لاگ اِن'], loginHelp:['Use the account and password your teacher gave you.','استاد کا دیا ہوا رول نمبر اور پاس ورڈ استعمال کریں۔'],
  roll:['Roll number','رول نمبر'], grade:['Grade','کلاس'], choose:['Choose grade','کلاس منتخب کریں'], password:['Password','پاس ورڈ'], logout:['Log out','لاگ آؤٹ'],
@@ -27,7 +28,7 @@ const labels = {
 };
 let language = localStorage.getItem('quizLang') === 'ur' ? 'ur' : 'en';
 let token = sessionStorage.getItem('studentToken');
-let report, page = 1, attempt, queue = [], selected = null, answers = new Map();
+let report, lastResult, page = 1, attempt, queue = [], selected = null, answers = new Map();
 let timer, clockOffset = 0, active = false, submitting = false, savePromise = null, conflict = false;
 let tabSwitchCount = 0, fullscreenExitCount = 0;
 const t = key => labels[key]?.[language === 'ur' ? 1 : 0] || key;
@@ -41,6 +42,7 @@ function applyLanguage() {
  document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = t(node.dataset.i18n); });
  $('lang-toggle').textContent = language === 'ur' ? 'English' : 'اردو';
  if (report) renderReport(); if (active) renderQuestion();
+ if (lastResult && !active && !$('result-container').classList.contains('hidden')) displayResult(lastResult);
 }
 $('lang-toggle').onclick = () => { language = language === 'en' ? 'ur' : 'en'; localStorage.setItem('quizLang', language); applyLanguage(); };
 function applyTheme() {
@@ -151,10 +153,23 @@ $('start-btn').onclick = async () => {
  finally { if (report && !active) $('start-btn').disabled = report.today?.status === 'submitted'; }
 };
 function rememberQueue() { sessionStorage.setItem(`queue-${attempt.attemptId}`,JSON.stringify(queue)); }
+function questionContent(question) {
+ const urdu = question.urdu;
+ const translated = language === 'ur' && typeof urdu?.text === 'string' && urdu.text.trim() &&
+  Array.isArray(urdu.options) && urdu.options.length === question.options.length &&
+  urdu.options.every((o,index) => o.id === question.options[index].id && typeof o.text === 'string' && o.text.trim());
+ return translated ? { text: urdu.text, options: urdu.options, lang: 'ur' } :
+  { text: question.text || question.questionText, options: question.options, lang: 'en' };
+}
 function renderQuestion() {
  if (!queue.length) return;
  const question = attempt.questions.find(q => q._id === queue[0]);
- $('question-title').textContent = `${t('question')} ${attempt.questions.indexOf(question) + 1}: ${question.text}`;
+ const content = questionContent(question);
+ $('question-title').textContent = `${t('question')} ${attempt.questions.indexOf(question) + 1}: ${content.text}`;
+ $('question-title').setAttribute('lang',content.lang);
+ $('question-title').setAttribute('dir',content.lang === 'ur' ? 'rtl' : 'ltr');
+ $('translation-notice').textContent = language === 'ur' && content.lang !== 'ur' ? t('translationMissing') : '';
+ $('translation-notice').classList.toggle('hidden',language !== 'ur' || content.lang === 'ur');
  $('progress-text').textContent = `${answers.size} / ${attempt.questions.length} ${t('answered')} · ${queue.length} ${t('remaining')}`;
  $('progress-fill').style.width = `${answers.size / attempt.questions.length * 100}%`; $('options-container').replaceChildren();
  const oldImage = document.getElementById('question-image-preview');
@@ -163,8 +178,9 @@ function renderQuestion() {
   const image = element('img', undefined, 'question-image-preview'); image.id = 'question-image-preview'; image.src = question.imageUrl; image.alt = 'Question illustration';
   $('options-container').before(image);
  }
- question.options.forEach(option => {
+ content.options.forEach(option => {
   const button = element('button',`${option.id}: ${option.text}`,'option-btn'); button.type = 'button'; button.classList.toggle('selected',selected === option.id); button.setAttribute('aria-pressed',String(selected === option.id)); button.disabled = conflict || !!savePromise;
+  button.setAttribute('lang',content.lang); button.setAttribute('dir',content.lang === 'ur' ? 'rtl' : 'ltr');
   button.onclick = () => { selected = option.id; renderQuestion(); }; $('options-container').append(button);
  });
  $('next-btn').disabled = !selected || conflict || !!savePromise; $('skip-btn').disabled = conflict || !!savePromise; $('finish-btn').disabled = conflict || !!savePromise;
@@ -202,14 +218,16 @@ async function submit() {
  finally { submitting = false; }
 }
 function displayResult(result) {
+ lastResult = result;
  active = false; clearInterval(timer); exitFullscreen(); screen('result-container'); notify('');
  $('score-display').textContent = `${result.score} / ${result.total} (${result.total ? Math.round(result.score / result.total * 100) : 0}%)`;
  $('ranking-display').textContent = `${t('timeTaken')}: ${ReportUtils.duration(result.elapsedMs)}`;
  $('answer-review').replaceChildren();
  for (const [index, answer] of (result.details || []).entries()) {
   const card = element('article',undefined,'result-item');
-  const selectedText = answer.options.find(option => option.id === answer.selected)?.text || answer.selected || t('unanswered');
-  card.append(element('h3',`${index + 1}. ${answer.questionText}`),element('p',`${t('review')}: ${selectedText}`));
+  const content = questionContent(answer);
+  const selectedText = content.options.find(option => option.id === answer.selected)?.text || answer.selected || t('unanswered');
+  card.append(element('h3',`${index + 1}. ${content.text}`),element('p',`${t('review')}: ${selectedText}`));
   $('answer-review').append(card);
  }
  $('retry-btn').classList.add('hidden'); $('back-btn').disabled = false; document.querySelector('[data-i18n="completedRule"]').classList.remove('hidden');

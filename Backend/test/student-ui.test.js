@@ -7,7 +7,7 @@ const path = require('node:path');
 function browser() {
     const nodes = new Map();
     const make = (tagName = '') => ({ tagName, style: {}, dataset: {}, children: [], value: '', textContent: '',
-        classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, remove() {}, focus() {},
+        classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } }, setAttribute() {}, remove() {}, focus() {},
         append(...children) { this.children.push(...children); }, replaceChildren(...children) { this.children = children; } });
     const node = id => { if (!nodes.has(id)) nodes.set(id, make()); return nodes.get(id); };
     const storage = () => { const map = new Map(); return { getItem: key => map.get(key) || null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) }; };
@@ -53,6 +53,40 @@ test('student completion shows unchanged marks and time without a speed score', 
     vm.runInContext('displayResult({score:8,total:10,percentage:80,elapsedMs:300000})', context);
     assert.equal(node('score-display').textContent, '8 / 10 (80%)');
     assert.equal(node('ranking-display').textContent, 'Time: 5:00.000');
+});
+
+test('Urdu switches question and every option without changing selected IDs, queue or deadline', () => {
+    const { context, node, read } = browser();
+    vm.runInContext(`attempt.expiresAt = '2026-10-05T05:00:00Z'; selected = 'A';
+        attempt.questions[0].urdu = {text:'کمپیوٹر کیا ہے؟',options:[{id:'A',text:'ایک مشین'}]};`, context);
+    node('lang-toggle').onclick();
+    assert.ok(node('question-title').textContent.includes('کمپیوٹر کیا ہے؟'));
+    assert.equal(node('options-container').children[0].textContent, 'A: ایک مشین');
+    assert.equal(read('selected'), 'A'); assert.deepEqual(read('queue'), ['q1','q2','q3']);
+    assert.equal(read('attempt.expiresAt'), '2026-10-05T05:00:00Z');
+    node('lang-toggle').onclick();
+    assert.ok(node('question-title').textContent.includes('q1'));
+    assert.equal(node('options-container').children[0].textContent, 'A: Answer');
+});
+
+test('missing or mismatched Urdu options fall back to the full English question', () => {
+    const { context, node } = browser();
+    vm.runInContext(`attempt.questions[0].urdu = {text:'سوال',options:[{id:'B',text:'جواب'}]};`, context);
+    node('lang-toggle').onclick();
+    assert.ok(node('question-title').textContent.includes('q1'));
+    assert.equal(node('options-container').children[0].textContent, 'A: Answer');
+    assert.ok(node('translation-notice').textContent.includes('دستیاب نہیں'));
+});
+
+test('completed answer review switches language without exposing the correct answer', () => {
+    const { context, node } = browser();
+    vm.runInContext(`displayResult({score:1,total:1,details:[{questionText:'Device?',selected:'A',options:[{id:'A',text:'Machine'}],
+        urdu:{text:'آلہ؟',options:[{id:'A',text:'مشین'}]}}]})`,context);
+    node('lang-toggle').onclick();
+    const card = node('answer-review').children[0];
+    assert.ok(card.children[0].textContent.includes('آلہ؟'));
+    assert.ok(card.children[1].textContent.includes('مشین'));
+    assert.equal(card.children.length, 2);
 });
 
 test('archived assignment marks stay visible without download or upload controls', () => {

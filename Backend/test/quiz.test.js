@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const models = require('../models/models');
 const { pakistanDay, gradeAttempt, validateAnswers } = require('../quiz-policy');
+const { sourceHash, cachedUrdu, createTranslationQueue, TranslationError } = require('../services/translation');
 let database, server, base, adminToken, studentToken, otherToken, studentId, attemptId;
 const request = async (path, token, body, method) => {
     const response = await fetch(base + path, { method: method || (body ? 'POST' : 'GET'),
@@ -30,6 +31,80 @@ before(async () => {
     adminToken = jwt.sign({ id: new mongoose.Types.ObjectId(), role: 'admin' }, process.env.JWT_SECRET);
 }, { timeout: 180000 });
 after(async () => { if (server) await new Promise(resolve => server.close(resolve)); await mongoose.disconnect(); if (database) await database.stop(); });
+
+const translationFixture = question => ({ sourceHash: sourceHash(question), text: 'کمپیوٹر کے لیے کون سا آلہ استعمال ہوتا ہے؟',
+    options: question.options.map((option,index) => ({id:option.id,text:['کی بورڈ','مانیٹر','اسپیکر'][index]})),
+    model:'test-fixture',translatedAt:new Date() });
+async function eventually(check) {
+    for (let i = 0; i < 100; i++) { if (await check()) return; await new Promise(resolve => setTimeout(resolve,10)); }
+    assert.fail('Timed out waiting for translation worker');
+}
+
+test('background translation persists once, old questions can be queued, and stale edits/deletes cannot overwrite content', async () => {
+    const make = text => models.Question.create({grade:7,text,correct:'A',options:[{id:'A',text:'Keyboard'},{id:'B',text:'Monitor'},{id:'C',text:'Speaker'}]});
+    const first = await make('Original?'), removed = await make('Removed?');
+    const ids = [first._id,removed._id];
+    let release, calls = 0;
+    const queue = createTranslationQueue({ Question:models.Question, enabled:() => true, delayMs:() => 0,
+        translate:async question => { calls++; if (calls === 1) await new Promise(resolve => { release = resolve; }); return translationFixture(question); } });
+    try {
+        assert.equal(await queue.enqueue(first),true);
+        await eventually(() => !!release);
+        assert.equal((await models.Question.findById(first._id)).translationStatus,'pending');
+        const edited = await models.Question.findByIdAndUpdate(first._id,{$set:{text:'Edited?',translationSourceHash:'changed'},$unset:{urdu:1}},{new:true});
+        await queue.enqueue(edited);
+        await queue.enqueue(removed);
+        await models.Question.deleteOne({_id:removed._id});
+        release();
+        await eventually(async () => !!cachedUrdu(await models.Question.findById(first._id)));
+        const saved = await models.Question.findById(first._id);
+        assert.equal(saved.text,'Edited?'); assert.equal(saved.urdu.sourceHash,sourceHash(saved));
+        assert.equal(await queue.enqueue(saved),false); assert.equal(calls,2);
+        assert.equal(await models.Question.findById(removed._id),null);
+        assert.equal((await request('/admin/questions/translate-urdu',null,{})).status,401);
+        // No configured key: existing English questions remain usable.
+        assert.equal((await request('/admin/questions/translate-urdu',adminToken,{})).status,503);
+    } finally { release?.(); await models.Question.deleteMany({_id:{$in:ids}}); }
+});
+
+test('quota errors pause remaining jobs; teacher retry resumes saved translations', async () => {
+    const questions = await models.Question.insertMany(['First','Second'].map(text => ({grade:7,text,correct:'A',
+        options:[{id:'A',text:'Keyboard'},{id:'B',text:'Monitor'},{id:'C',text:'Speaker'}]})));
+    let release, blocked = true, calls = 0;
+    const queue = createTranslationQueue({Question:models.Question,enabled:() => true,delayMs:() => 0,
+        translate:async question => {calls++; if (blocked) {await new Promise(resolve => {release=resolve;}); throw new TranslationError('quota_exceeded');} return translationFixture(question);} });
+    try {
+        await queue.enqueue(questions[0]); await eventually(() => !!release); await queue.enqueue(questions[1]); release();
+        await eventually(async () => (await models.Question.findById(questions[0]._id)).translationStatus === 'failed');
+        assert.equal(calls,1); assert.equal((await models.Question.findById(questions[1]._id)).translationStatus,'pending');
+        blocked = false;
+        await queue.enqueue(await models.Question.findById(questions[0]._id),{retry:true});
+        await eventually(async () => (await models.Question.countDocuments({_id:{$in:questions.map(q=>q._id)},translationStatus:'ready'})) === 2);
+        assert.equal(calls,3);
+    } finally {release?.(); await models.Question.deleteMany({_id:{$in:questions.map(q=>q._id)}});}
+});
+
+test('student start and completion return cached Urdu without answer keys or altering marks/deadline', async () => {
+    const student = await models.Student.create({name:'Translation test',rollNum:'URDU-7',grade:7,passwordHash:'unused'});
+    const token = jwt.sign({id:student._id,role:'student',version:0},process.env.JWT_SECRET);
+    const question = await models.Question.create({grade:7,text:'Device?',correct:'A',options:[{id:'A',text:'Keyboard'},{id:'B',text:'Monitor'},{id:'C',text:'Speaker'}]});
+    await models.Question.updateOne({_id:question._id},{$set:{urdu:translationFixture(question),translationStatus:'ready'}});
+    try {
+        const started = await request('/quiz/start',token,{});
+        assert.equal(started.status,200);
+        const view = started.data.questions.find(q=>q._id===String(question._id));
+        assert.ok(view.urdu.text.includes('کمپیوٹر')); assert.equal(view.correct,undefined);
+        assert.equal(view.urdu.model,undefined); assert.equal(view.urdu.sourceHash,undefined);
+        assert.equal((await request('/quiz/start',token,{})).data.expiresAt,started.data.expiresAt);
+        assert.equal((await request('/quiz/save',token,{attemptId:started.data.attemptId,revision:0,answers:[{questionId:question._id,selected:'A'}]})).status,200);
+        const result = await request('/quiz/submit',token,{attemptId:started.data.attemptId});
+        assert.equal(result.data.score,1); assert.equal(result.data.total,started.data.questions.length);
+        assert.ok(result.data.details[0].urdu); assert.equal(result.data.details[0].correct,undefined);
+    } finally {
+        await models.Attempt.deleteMany({student:student._id}); await models.Result.deleteMany({student:student._id});
+        await models.Question.deleteOne({_id:question._id}); await models.Student.deleteOne({_id:student._id});
+    }
+});
 
 test('dashboard ranks top five percentages across all grades and sections, not recent results', async () => {
     const rows = [
