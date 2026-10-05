@@ -1004,4 +1004,19 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .student-portal #question-title[dir="ltr"] { text-align: left; }
 .student-portal #options-container { display: grid; gap: 10px; }
 .student-portal #options-container .option-btn { width: 100%; margin: 0; overflow-wrap: anywhere; }
+/* Keep the active quiz compact without shrinking profile and report controls. */
+.student-portal #quiz-container { max-width: 720px; margin-inline: auto; }
+.student-portal #timer-display { width: 64px; height: 64px; margin: 8px auto 16px; border-width: 2px; box-shadow: 0 0 0 4px var(--accent-subtle); }
+.student-portal #time-left { font-size: 21px; direction: ltr; }
+.student-portal #progress-text, .student-portal #save-status { font-size: 13px; line-height: 1.5; margin: 10px 0; }
+.student-portal #save-status { min-height: 20px; }
+.student-portal #question-title { font-family: var(--font-ui); font-size: 17px; line-height: 1.6; margin: 16px 0; overflow-wrap: anywhere; }
+.student-portal #question-title[lang="ur"] { font-family: "Noto Nastaliq Urdu", "Segoe UI", sans-serif; font-size: 18px; line-height: 1.8; }
+.student-portal #options-container { gap: 8px; }
+.student-portal #options-container .option-btn { min-height: 44px; padding: 8px 14px; font-size: 14px; line-height: 1.5; }
+.student-portal #options-container .option-btn[lang="ur"] { font-size: 16px; line-height: 1.7; }
+.student-portal #quiz-container .portal-actions { gap: 10px; margin: 12px 0; }
+.student-portal #quiz-container .portal-actions button, .student-portal #finish-btn { min-height: 44px; padding: 8px 14px; font-size: 14px; line-height: 1.5; }
+.student-portal #quiz-container .portal-actions button { min-width: 0; }
+.student-portal #finish-btn { margin-top: 0; }
 @media (max-width: 600px) { .portal-actions { flex-wrap: wrap; } .portal-actions button { min-width: 120px; } }

@@ -83,7 +83,7 @@ async function translateQuestion(question, { fetchImpl = globalThis.fetch } = {}
 // One worker per server; provider calls never run in a student request.
 // MongoDB holds pending jobs so restarts can resume them.
 function createTranslationQueue({ Question, translate = translateQuestion,
-    enabled = configured, delayMs = () => Math.max(15000, Number(process.env.TRANSLATION_INTERVAL_MS) || 15000),
+    enabled = configured, delayMs = () => Math.max(6000, Number(process.env.TRANSLATION_INTERVAL_MS) || 6000),
     sleep = ms => new Promise(resolve => { const timer = setTimeout(resolve, ms); timer.unref?.(); }) }) {
     const jobs = new Set();
     let running = false, paused = false, lastCall = 0;

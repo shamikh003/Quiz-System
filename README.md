@@ -60,7 +60,7 @@ Use Node.js 18 or newer. Create an API key in [Google AI Studio](https://aistudi
 
 New or changed questions translate in the background. For existing questions, choose a grade (or All Grades) in **Manage Questions**, select **Translate to Urdu**, and use **Refresh** to check progress and open **Urdu preview**. Translations are stored once per question in MongoDB. Students switch the question and all options using the existing Urdu button without calling Gemini or changing their answers, score, order, or deadline. Missing translations fall back to English with a short notice.
 
-The queue spaces requests at least 15 seconds apart; pending jobs resume after restarts. If quota or credentials prevent translation, fix the cause and select **Translate to Urdu** again. Gemini limits depend on your account/model. Review generated translations before a class quiz, particularly abbreviations and negative questions. Images themselves are unchanged.
+The queue spaces requests at least 6 seconds apart (up to 10 requests per minute); pending jobs resume after restarts. Set `TRANSLATION_INTERVAL_MS=6000` in the backend environment, or use a higher value if your account needs a slower rate. If quota or credentials prevent translation, fix the cause and select **Translate to Urdu** again. Gemini limits depend on your account/model. Review generated translations before a class quiz, particularly abbreviations and negative questions. Images themselves are unchanged.
 
 ## Deployment
 
