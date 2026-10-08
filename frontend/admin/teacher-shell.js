@@ -16,12 +16,15 @@
     sidebar.innerHTML = `<div class="sidebar-brand"><div class="sidebar-brand-text">QuizBoard</div></div>
         <nav class="sidebar-nav" aria-label="Teacher navigation">${links.map(([key,label,href]) =>
             `<a href="${href}" class="sidebar-link${document.body.dataset.teacherPage === key ? ' active' : ''}"${document.body.dataset.teacherPage === key ? ' aria-current="page"' : ''}><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24">${paths[key]}</svg></span><span class="sidebar-label">${label}</span></a>`).join('')}</nav>
-        <div class="sidebar-footer"><button type="button" class="theme-toggle">☾ Dark</button>
+        <div class="sidebar-footer"><button type="button" class="theme-toggle" role="switch" aria-checked="false">Dark mode</button>
         <button type="button" class="sidebar-logout" id="teacher-logout">Log Out</button></div>`;
     const applyTheme = () => {
         const dark = localStorage.getItem('quizTheme') === 'dark';
         document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-        sidebar.querySelector('.theme-toggle').textContent = dark ? '☀ Light' : '☾ Dark';
+        const themeButton = sidebar.querySelector('.theme-toggle');
+        themeButton.textContent = 'Dark mode';
+        themeButton.setAttribute('role', 'switch');
+        themeButton.setAttribute('aria-checked', String(dark));
     };
     sidebar.querySelector('.theme-toggle').onclick = () => {
         localStorage.setItem('quizTheme', document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); applyTheme();

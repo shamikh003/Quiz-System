@@ -13,7 +13,9 @@ function applyStoredTheme() {
     const theme = localStorage.getItem('quizTheme') || 'light';
     document.documentElement.setAttribute('data-theme', theme);
     document.querySelectorAll('.theme-toggle').forEach(btn => {
-        btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+        btn.textContent = 'Dark mode';
+        btn.setAttribute('role', 'switch');
+        btn.setAttribute('aria-checked', String(theme === 'dark'));
     });
 }
 function toggleTheme() {

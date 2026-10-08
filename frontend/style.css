@@ -512,6 +512,22 @@ tr:nth-child(even) { background-color: var(--surface-sunken); }
     box-shadow: none;
 }
 .theme-toggle:hover { background: var(--surface-sunken); color: var(--text-primary); box-shadow: none; }
+
+/* One theme control across teacher and student screens, without emoji icons. */
+.theme-toggle::after {
+    content: '';
+    display: inline-block;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 18px;
+    margin-inline-start: 10px;
+    border-radius: 99px;
+    background: radial-gradient(circle at 9px 50%, #FFF 0 6px, transparent 6.5px), #75839A;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12);
+}
+.theme-toggle[aria-checked="true"]::after {
+    background: radial-gradient(circle at 23px 50%, #FFF 0 6px, transparent 6.5px), var(--accent);
+}
  
 .header-actions {
     display: flex;
@@ -1234,6 +1250,7 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .blue-gold .student-wordmark { font-size: 23px; font-weight: 800; color: var(--accent); text-decoration: none; }
 .blue-gold .student-app-header .header-actions { margin: 0; flex-wrap: wrap; gap: 8px; }
 .blue-gold .student-app-header button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin: 0; height: 44px; min-height: 44px; padding: 8px 12px; font-family: var(--font-ui); font-size: 13px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.blue-gold .theme-toggle, .blue-gold .sidebar-footer .theme-toggle, .blue-gold .student-app-header .theme-toggle { display: inline-flex; align-items: center; justify-content: space-between; gap: 0; font-family: var(--font-ui); font-size: 14px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
 .blue-gold .student-portal #dashboard > h1 { font-size: 30px; }
 .blue-gold .student-identity { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
 .blue-gold .student-identity-info { min-width: 0; flex: 1 1 200px; }

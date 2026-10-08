@@ -49,7 +49,10 @@ function applyLanguage() {
 }
 $('lang-toggle').onclick = () => { language = language === 'en' ? 'ur' : 'en'; localStorage.setItem('quizLang', language); applyLanguage(); };
 function applyTheme() {
- const dark = localStorage.getItem('quizTheme') === 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light'; $('theme-toggle').textContent = dark ? '☀ Light' : '☾ Dark';
+ const dark = localStorage.getItem('quizTheme') === 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+ $('theme-toggle').textContent = 'Dark mode';
+ $('theme-toggle').setAttribute('role', 'switch');
+ $('theme-toggle').setAttribute('aria-checked', String(dark));
 }
 $('theme-toggle').onclick = () => { localStorage.setItem('quizTheme', document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); applyTheme(); };
 function screen(name) {
