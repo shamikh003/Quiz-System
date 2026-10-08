@@ -3,23 +3,6 @@ const gradeLabel = grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`;
 // Backend URL
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
 
-// ---------- Theme toggle ----------
-function applyStoredTheme() {
-    const theme = localStorage.getItem('quizTheme') || 'light';
-    document.documentElement.setAttribute('data-theme', theme);
-    document.querySelectorAll('.theme-toggle').forEach(btn => {
-        btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
-    });
-}
-function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') || 'light';
-    const next = current === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('quizTheme', next);
-    applyStoredTheme();
-}
-applyStoredTheme();
-document.querySelectorAll('.theme-toggle').forEach(btn => btn.addEventListener('click', toggleTheme));
-
 function getToken() { return localStorage.getItem('adminToken'); }
 function authHeaders() { return { Authorization: `Bearer ${getToken()}` }; }
 
@@ -84,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 <td>${gradeLabel(result.grade)}</td>
                 <td>${escapeHtml(ReportUtils.section(result))}</td>
                 <td>${result.score} / ${result.total}</td>
-                <td>${ReportUtils.percent(result.percentage)}</td>
+                <td>${ReportUtils.marks(result.percentage)}</td>
                 <td title="${result.timingKnown ? 'Minutes:seconds' : 'Time unavailable'}">${ReportUtils.duration(result.elapsedMs)}</td>
                 <td>${flagCount}</td>
                 <td>${assignmentCell}</td>

@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const { isObjectIdOrHexString } = require('mongoose');
 const { Student, Result, Assignment, Submission, Attempt } = require('../models/models');
 const { requireAdmin, requireStudent } = require('../middleware/auth');
 const { validGrade } = require('../grades');
@@ -58,6 +59,41 @@ router.post('/admin/students', requireAdmin, async (req, res) => {
     }
 });
 
+router.post('/admin/students/:id/profile', requireAdmin, async (req, res) => {
+    const { name, grade } = req.body;
+    if (!isObjectIdOrHexString(req.params.id) || typeof name !== 'string' || !name.trim() || name.trim().length > 100 ||
+        !validGrade(grade) || !Object.hasOwn(req.body, 'section')) {
+        return res.status(400).json({ error: 'Enter a name of 1–100 characters, a valid grade and section (blank for Unassigned).' });
+    }
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ error: 'Student not found.' });
+    const nextGrade = Number(grade), section = sectionName(req.body.section), key = sectionKey(section);
+    if (await Student.exists({ _id: { $ne: student._id }, rollNum: student.rollNum, grade: nextGrade, sectionKey: key })) {
+        return res.status(409).json({ error: 'This roll number already has an account in that grade and section. No changes were made.' });
+    }
+    const gradeChanged = nextGrade !== student.grade;
+    if (gradeChanged && await Attempt.exists({ student: student._id, status: 'active', expiresAt: { $gt: new Date() } })) {
+        return res.status(409).json({ error: 'This student is taking a quiz. Wait until it ends before changing the grade.' });
+    }
+    await linkLegacyRecords(student);
+    if (gradeChanged) {
+        // Seal unfinished quizzes with the original grade before updating the account.
+        const unfinished = await Attempt.find({ student: student._id, $or: [
+            { status: 'active', expiresAt: { $lte: new Date() } }, { status: 'submitted', purgeAt: { $exists: false } }
+        ] });
+        for (const attempt of unfinished) await finalizeAttempt(attempt, student);
+    }
+    student.name = name.trim(); student.grade = nextGrade; student.section = section;
+    try { await student.save(); }
+    catch (error) { if (error.code === 11000) return res.status(409).json({ error: 'This roll number already has an account in that grade and section.' }); throw error; }
+    // Correct names everywhere; earned marks keep their original grade after a move.
+    for (const model of [Result, Submission]) {
+        await model.updateMany({ student: student._id }, { $set: { name: student.name } });
+        if (!gradeChanged) await model.updateMany({ student: student._id, grade: student.grade }, { $set: { section, sectionKey: key } });
+    }
+    res.json(profile(student));
+});
+
 router.post('/admin/students/:id/section', requireAdmin, async (req, res) => {
     if (!Object.hasOwn(req.body, 'section')) return res.status(400).json({ error: 'Enter a section name, or leave it blank for Unassigned.' });
     const student = await Student.findById(req.params.id);
@@ -72,8 +108,8 @@ router.post('/admin/students/:id/section', requireAdmin, async (req, res) => {
     try { await student.save(); }
     catch (error) { if (error.code === 11000) return res.status(409).json({ error: 'That section already has this roll number.' }); throw error; }
     const update = { section, sectionKey: key };
-    await Result.updateMany({ student: student._id }, { $set: update });
-    await Submission.updateMany({ student: student._id }, { $set: update });
+    await Result.updateMany({ student: student._id, grade: student.grade }, { $set: update });
+    await Submission.updateMany({ student: student._id, grade: student.grade }, { $set: update });
     res.json(profile(student));
 });
 
@@ -112,16 +148,17 @@ router.get('/student/report', requireStudent, async (req, res) => {
     }
     const filter = studentRecords(student);
     const page = Math.max(1, Math.min(100000, Number.parseInt(req.query.page, 10) || 1));
-    const [results, count, assignments, submissions, today] = await Promise.all([
+    const submissions = await Submission.find(filter).select('assignment marks percentage status submittedAt gradedAt');
+    const [results, count, assignments, today] = await Promise.all([
         Result.find(filter).select('score total date elapsedMs timeLimitMs').sort({ date: -1 }).skip((page - 1) * 20).limit(20).lean(),
         Result.countDocuments(filter),
-        Assignment.find({ grade: student.grade }).select('title maxMarks fileName createdAt deletedAt').sort({ createdAt: -1 }),
-        Submission.find(filter).select('assignment marks percentage status submittedAt gradedAt'),
+        Assignment.find({ $or: [{ grade: student.grade }, { _id: { $in: submissions.map(s => s.assignment) } }] })
+            .select('title grade maxMarks fileName createdAt deletedAt').sort({ createdAt: -1 }),
         Attempt.findOne({ student: student._id, day: pakistanDay() }).select('status expiresAt')
     ]);
     const submissionMap = new Map(submissions.map(s => [String(s.assignment), s]));
     res.json({ student: profile(student), results: results.map(r => ({ ...r, ...resultMetrics(r) })), page, pages: Math.max(1, Math.ceil(count / 20)), totalResults: count,
         today, assignments: assignments.filter(a => !a.deletedAt || submissionMap.get(String(a._id))?.status === 'graded')
-            .map(a => ({ ...a.toObject(), submission: submissionMap.get(String(a._id)) || null })) });
+            .map(a => ({ ...a.toObject(), historical: a.grade !== student.grade, submission: submissionMap.get(String(a._id)) || null })) });
 });
 module.exports = router;

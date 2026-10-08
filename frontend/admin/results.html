@@ -4,19 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, follow">
-    <title>QuizBoard — Reports</title>
-    <link rel="icon" type="image/png" href="../logo.png">
-    <link rel="apple-touch-icon" href="../logo.png">
+    <title>QuizBoard | Reports</title>
+    <link rel="icon" href="../favicon.ico?v=1">
+    <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png?v=1">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
+    <link rel="apple-touch-icon" sizes="180x180" href="../favicon-180.png?v=1">
     <link rel="manifest" href="../manifest-admin.json">
     <meta name="theme-color" content="#6c5ce7">
-    <link rel="stylesheet" href="../style.css?v=6.3">
+    <link rel="stylesheet" href="../style.css?v=7.4">
 </head>
-<body>
+<body class="app-shell-page blue-gold" data-teacher-page="reports">
+<div class="app-shell"><aside class="sidebar" id="sidebar"></aside><main class="shell-main">
+<button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle teacher navigation" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
 
-    <div class="container wide results-page">
-        <button class="theme-toggle" id="theme-toggle">🌙 Dark</button>
-        <h1>Reports</h1>
-
+    <section class="results-page teacher-content">
+        <div class="results-header">
+            <h1 class="shell-page-title">Reports</h1>
+        </div>
+        <div class="school-panel">
         <div class="report-filters"><div><label for="filter-grade">Grade</label>
         <select id="filter-grade">
             <option value="">All Grades</option>
@@ -60,11 +65,12 @@
         <div class="nav-links">
             <a href="index.html">Back to Admin Panel</a>
         </div>
-    </div>
-
-    <script src="../config.js?v=5.0"></script>
-<script src="report-utils.js?v=6.0"></script>
-<script src="results.js?v=6.0"></script>
+        </div>
+    </section></main></div>
+    <script src="../config.js?v=5.1"></script>
+<script src="teacher-shell.js?v=1.0"></script>
+<script src="report-utils.js?v=7.0"></script>
+<script src="results.js?v=7.0"></script>
 
 </body>
 </html>

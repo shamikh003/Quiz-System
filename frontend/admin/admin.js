@@ -2,6 +2,11 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':
 const gradeLabel = grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`;
 // Backend server ka URL
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
+// Start waking the server while the teacher enters credentials. One request,
+// without polling or delaying the actual login request.
+if (!localStorage.getItem('adminToken')) {
+    fetch(`${BACKEND_URL}/`, { cache: 'no-store', signal: AbortSignal.timeout(90000) }).catch(() => {});
+}
 
 // ---------- Theme toggle (shared logic, works on any page) ----------
 function applyStoredTheme() {
@@ -41,7 +46,6 @@ function showLoggedInView() {
     adminPanel.style.display = 'flex';
     document.body.classList.add('app-shell-page');
     loadSettings();
-    loadQuestionList();
     loadDashboard();
 }
 
@@ -117,9 +121,23 @@ tabAssignments.addEventListener('click', () => activateTab('assignments'));
 
 const mobileMenuBtn = document.getElementById('mobile-menu-btn');
 if (mobileMenuBtn) {
+    const sidebar = document.getElementById('sidebar');
+    const closeMenu = () => {
+        sidebar.classList.remove('open');
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
+    };
     mobileMenuBtn.addEventListener('click', () => {
-        const open = document.getElementById('sidebar').classList.toggle('open');
+        const open = sidebar.classList.toggle('open');
         mobileMenuBtn.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && sidebar.classList.contains('open')) {
+            closeMenu();
+            mobileMenuBtn.focus();
+        }
+    });
+    document.addEventListener('click', event => {
+        if (!sidebar.contains(event.target) && !mobileMenuBtn.contains(event.target)) closeMenu();
     });
 }
 
@@ -128,6 +146,10 @@ const dashboardDateEl = document.getElementById('dashboard-date');
 if (dashboardDateEl) {
     dashboardDateEl.textContent = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
+
+const dashboardGrade = document.getElementById('dashboard-grade');
+let dashboardRequest = 0;
+dashboardGrade?.addEventListener('change', loadDashboard);
 
 async function loadDashboard() {
     const statQuestions = document.getElementById('stat-total-questions');
@@ -138,43 +160,74 @@ async function loadDashboard() {
     const resultCards = document.getElementById('dashboard-result-cards');
     if (!statQuestions) return; // dashboard markup not on this page
 
+    const requestId = ++dashboardRequest;
+    const selectedGrade = dashboardGrade?.value || '';
+    const scope = selectedGrade === '' ? 'all grades' : gradeLabel(selectedGrade);
+    const status = document.getElementById('dashboard-scores-status');
+    document.getElementById('dashboard-scores-title').textContent = selectedGrade === '' ? 'Top 5 Scores' : `Top 5 Scores · ${scope}`;
+    resultCards.setAttribute('aria-label', `Top 5 scores for ${scope}`);
+    status.textContent = `Loading top scores for ${scope}…`;
+    resultsBody.innerHTML = '<tr><td colspan="9" class="shell-empty">Loading…</td></tr>';
+    resultCards.innerHTML = '<p class="shell-empty">Loading…</p>';
+
     try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/dashboard`, { headers: authHeaders() });
+        const query = selectedGrade === '' ? '' : `?grade=${encodeURIComponent(selectedGrade)}`;
+        const response = await fetch(`${BACKEND_URL}/api/admin/dashboard${query}`, { headers: authHeaders() });
         if (!response.ok) throw new Error('Request failed');
         const data = await response.json();
+        // Ignore an older response if the teacher has already picked another grade.
+        if (requestId !== dashboardRequest) return;
+        if (!Array.isArray(data.topResults)) throw new Error('Dashboard update required');
+        let topResults = data.topResults;
+        // An older backend returns the overall top five even with ?grade=.
+        // Ask the grade report for its actual leaders before limiting to five.
+        if (selectedGrade !== '' && data.grade !== Number(selectedGrade)) {
+            const scopedResponse = await fetch(`${BACKEND_URL}/api/results${query}`, { headers: authHeaders() });
+            if (!scopedResponse.ok) throw new Error('Could not load grade scores');
+            topResults = await scopedResponse.json();
+            if (requestId !== dashboardRequest) return;
+            if (!Array.isArray(topResults)) throw new Error('Invalid grade scores');
+        }
+        if (selectedGrade !== '') topResults = topResults.filter(r => Number(r.grade) === Number(selectedGrade));
+        topResults = topResults.slice(0, 5);
 
         statQuestions.textContent = data.totalQuestions;
+        if (loadedQuestionGrade === null) questionCountBadge.textContent = data.totalQuestions;
         statAssignments.textContent = data.totalAssignments;
         statStudents.textContent = data.totalStudents;
         statPending.textContent = data.pendingSubmissions;
 
-        if (!Array.isArray(data.topResults)) throw new Error('Dashboard update required');
-        if (data.topResults.length === 0) {
-            resultsBody.innerHTML = '<tr><td colspan="8" class="shell-empty">No quiz results yet.</td></tr>';
-            resultCards.innerHTML = '<p class="shell-empty" role="status">No quiz results yet.</p>';
+        status.textContent = selectedGrade === '' ? 'Across all grades and sections.' : `${scope} · All sections`;
+        if (topResults.length === 0) {
+            const empty = selectedGrade === '' ? 'No quiz results yet.' : `No quiz results yet for ${scope}.`;
+            resultsBody.innerHTML = `<tr><td colspan="9" class="shell-empty">${escapeHtml(empty)}</td></tr>`;
+            resultCards.innerHTML = `<p class="shell-empty" role="status">${escapeHtml(empty)}</p>`;
             return;
         }
 
-        resultCards.innerHTML = ReportUtils.resultCards(data.topResults, { dashboard: true });
-        resultsBody.innerHTML = data.topResults.map(r => {
+        resultCards.innerHTML = ReportUtils.resultCards(topResults, { dashboard: true });
+        resultsBody.innerHTML = topResults.map((r, index) => {
             const flagCount = (r.tabSwitchCount || 0) + (r.fullscreenExitCount || 0);
             const pillClass = flagCount === 0 ? 'good' : (flagCount <= 2 ? 'warn' : 'bad');
             const pillText = flagCount === 0 ? 'Clean' : `${flagCount} flag${flagCount > 1 ? 's' : ''}`;
             const dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
             return `
                 <tr>
+                    <td class="rank-cell">${ReportUtils.rankBadge(index)}</td>
                     <td>${escapeHtml(r.name)}</td>
                     <td class="mono">${gradeLabel(r.grade)}</td>
                     <td>${escapeHtml(r.section || 'Unassigned')}</td>
                     <td class="mono">${r.score} / ${r.total}</td>
-                    <td class="mono">${ReportUtils.percent(r.percentage)}</td>
+                    <td>${ReportUtils.marks(r.percentage)}</td>
                     <td class="mono" title="${r.timingKnown ? 'Minutes:seconds' : 'Time unavailable'}">${ReportUtils.duration(r.elapsedMs)}</td>
                     <td><span class="pill ${pillClass}">${pillText}</span></td>
                     <td class="mono">${dateStr}</td>
                 </tr>`;
         }).join('');
     } catch (error) {
-        resultsBody.innerHTML = '<tr><td colspan="8" class="shell-empty">Could not load dashboard data.</td></tr>';
+        if (requestId !== dashboardRequest) return;
+        status.textContent = `Could not load top scores for ${scope}. Select a grade to retry.`;
+        resultsBody.innerHTML = '<tr><td colspan="9" class="shell-empty">Could not load dashboard data.</td></tr>';
         resultCards.innerHTML = '<p class="shell-empty" role="status">Could not load dashboard data.</p>';
     }
 }
@@ -719,4 +772,12 @@ try {
     const payload = JSON.parse(atob((getToken() || '').split('.')[1] || ''));
     if (payload.role !== 'admin') localStorage.removeItem('adminToken');
 } catch { localStorage.removeItem('adminToken'); }
-if (getToken()) showLoggedInView(); else showLoggedOutView();
+if (getToken()) {
+    showLoggedInView();
+    const tab = location.hash.slice(1);
+    if (Object.hasOwn(tabButtons, tab) && tab !== 'dashboard') activateTab(tab);
+} else showLoggedOutView();
+window.addEventListener('hashchange', () => {
+    const tab = location.hash.slice(1);
+    if (getToken() && Object.hasOwn(tabButtons, tab)) activateTab(tab);
+});

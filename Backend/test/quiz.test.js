@@ -16,6 +16,55 @@ const request = async (path, token, body, method) => {
         ...(body ? { body: JSON.stringify(body) } : {}) });
     return { status: response.status, data: await response.json() };
 };
+test('profile edits validate identity, retain marks and history, and protect an active quiz', async () => {
+    const student = await models.Student.create({ name: 'Typo', rollNum: 'PROFILE', grade: 4, section: 'A', passwordHash: 'unchanged' });
+    const collision = await models.Student.create({ name: 'Other', rollNum: 'PROFILE', grade: 5, section: 'B', passwordHash: 'other' });
+    const token = jwt.sign({ id: student._id, role: 'student', version: 0 }, process.env.JWT_SECRET);
+    const url = `/admin/students/${student._id}/profile`;
+    const body = { name: 'Correct Name', grade: 4, section: 'C' };
+    const assignment = await models.Assignment.create({ title: 'Old work', grade: 4, maxMarks: 10, fileName: 'old.docx', fileUrl: 'unused', filePath: 'unused' });
+    const newAssignment = await models.Assignment.create({ title: 'New work', grade: 0, maxMarks: 10, fileName: 'new.docx', fileUrl: 'unused', filePath: 'unused' });
+    const legacy = await models.Result.create({ name: 'Typo', rollNum: student.rollNum, grade: 4, section: 'A', score: 8, total: 10 });
+    const submission = await models.Submission.create({ student: student._id, assignment: assignment._id, name: 'Typo', rollNum: student.rollNum, grade: 4, section: 'A', status: 'graded', marks: 9, percentage: 90, fileName: 'answer.docx', fileUrl: 'unused', filePath: 'unused' });
+    try {
+        assert.equal((await request(url, null, body)).status, 401);
+        assert.equal((await request(url, token, body)).status, 403);
+        for (const invalid of [{ ...body, name: '' }, { ...body, name: 'x'.repeat(101) }, { ...body, grade: 8 }, { ...body, section: {} }, { ...body, section: 'x'.repeat(81) }, { name: 'Valid', grade: 4 }]) {
+            assert.equal((await request(url, adminToken, invalid)).status, 400);
+        }
+        assert.equal((await request('/admin/students/bad/profile', adminToken, body)).status, 400);
+        assert.equal((await request(`/admin/students/${new mongoose.Types.ObjectId()}/profile`, adminToken, body)).status, 404);
+        assert.equal((await request(url, adminToken, { ...body, grade: 5, section: 'B' })).status, 409);
+        assert.equal((await models.Student.findById(student._id)).name, 'Typo');
+        assert.equal((await request(url, adminToken, body)).status, 200);
+        const corrected = await models.Result.findById(legacy._id);
+        assert.equal(String(corrected.student), String(student._id)); assert.equal(corrected.name, body.name); assert.equal(corrected.section, 'C'); assert.equal(corrected.score, 8);
+        const attempt = await models.Attempt.create({ student: student._id, day: pakistanDay(), status: 'active', startedAt: new Date(), expiresAt: new Date(Date.now() + 60000), questions: [{ questionId: new mongoose.Types.ObjectId(), correct: 'A', options: ['A', 'B', 'C'] }] });
+        const move = { name: 'Final Name', grade: 0, section: 'Hifz A' };
+        assert.equal((await request(url, adminToken, move)).status, 409);
+        assert.equal((await models.Student.findById(student._id)).grade, 4);
+        await models.Attempt.updateOne({ _id: attempt._id }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
+        assert.equal((await request(url, adminToken, move)).status, 200);
+        const saved = await models.Student.findById(student._id).select('+passwordHash');
+        assert.equal(saved.grade, 0); assert.equal(saved.section, 'Hifz A'); assert.equal(saved.passwordHash, 'unchanged'); assert.equal(saved.tokenVersion, 0);
+        const oldResult = await models.Result.findById(legacy._id), sealed = await models.Result.findOne({ attempt: attempt._id });
+        assert.equal(oldResult.grade, 4); assert.equal(oldResult.section, 'C'); assert.equal(oldResult.name, move.name); assert.equal(sealed.grade, 4);
+        const oldSubmission = await models.Submission.findById(submission._id);
+        assert.equal(oldSubmission.grade, 4); assert.equal(oldSubmission.section, 'C'); assert.equal(oldSubmission.marks, 9); assert.equal(oldSubmission.name, move.name);
+        const report = await request('/student/report', token);
+        assert.equal(report.status, 200); assert.ok(report.data.results.some(r => r.score === 8));
+        assert.equal(report.data.assignments.find(a => a._id === String(assignment._id)).historical, true);
+        assert.equal(report.data.assignments.find(a => a._id === String(assignment._id)).submission.marks, 9);
+        assert.equal(report.data.assignments.find(a => a._id === String(newAssignment._id)).historical, false);
+        assert.equal((await request('/quiz/start', token, {})).status, 409);
+        assert.equal((await models.Student.findById(collision._id)).name, 'Other');
+    } finally {
+        await models.Result.deleteMany({ $or: [{ _id: legacy._id }, { student: student._id }] });
+        await models.Submission.deleteMany({ student: student._id }); await models.Attempt.deleteMany({ student: student._id });
+        await models.Student.deleteMany({ _id: { $in: [student._id, collision._id] } });
+        await models.Assignment.deleteMany({ _id: { $in: [assignment._id, newAssignment._id] } });
+    }
+});
 before(async () => {
     process.env.JWT_SECRET = 'isolated-test-secret-not-used-outside-tests';
     const binary = path.join(__dirname, '../.mongodb-binaries/mongod.exe');
@@ -118,12 +167,14 @@ test('dashboard ranks top five percentages across all grades and sections, not r
         { name: 'Other grade', grade: 7, section: 'A', score: 25, total: 30 },
         { name: 'Recent lower', grade: 6, section: 'C', score: 20, total: 30 },
         { name: 'No total', grade: 4, score: 0, total: 0 }
-    ].map((row, i) => ({ ...row, rollNum: `TOP-${i}`, date: new Date(2025, 0, i + 1) }));
+    ].concat(Array.from({ length: 6 }, (_, i) => ({ name: `Grade 5 rank ${i + 1}`, grade: 5, section: i % 2 ? 'B' : 'A', score: 6 - i, total: 10 })))
+        .map((row, i) => ({ ...row, rollNum: `TOP-${i}`, date: new Date(2025, 0, i + 1) }));
     const inserted = await models.Result.insertMany(rows);
     try {
         assert.equal((await request('/admin/dashboard', null)).status, 401);
         const response = await request('/admin/dashboard', adminToken);
         assert.equal(response.status, 200);
+        assert.equal(response.data.grade, null);
         assert.deepEqual(response.data.topResults.map(r => r.name), ['Perfect A', 'Perfect B', 'Hifz', 'Other section', 'Other grade']);
         assert.equal(response.data.topResults[2].percentage, 95);
         assert.equal(response.data.topResults[3].section, 'B');
@@ -131,6 +182,26 @@ test('dashboard ranks top five percentages across all grades and sections, not r
         const reports = await request('/results', adminToken);
         assert.deepEqual(response.data.topResults.map(r => r._id), reports.data.slice(0, 5).map(r => r._id));
         assert.equal(response.data.topResults[0].rankingPercentage, 100);
+        for (const grade of [4, 5, 6, 7, 0]) {
+            const filtered = await request(`/admin/dashboard?grade=${grade}`, adminToken);
+            assert.equal(filtered.status, 200);
+            assert.equal(filtered.data.grade, grade);
+            assert.ok(filtered.data.topResults.every(row => row.grade === grade));
+            const gradeReports = await request(`/results?grade=${grade}`, adminToken);
+            assert.deepEqual(filtered.data.topResults.map(row => row._id), gradeReports.data.slice(0, 5).map(row => row._id));
+            for (const stat of ['totalQuestions', 'totalAssignments', 'totalStudents', 'pendingSubmissions']) {
+                assert.equal(filtered.data[stat], response.data[stat], 'Grade filtering must not change overall dashboard totals');
+            }
+        }
+        const grade5 = await request('/admin/dashboard?grade=5', adminToken);
+        assert.equal(grade5.data.topResults.length, 5);
+        assert.equal(grade5.data.topResults[0].name, 'Grade 5 rank 1');
+        assert.equal(grade5.data.topResults[4].name, 'Grade 5 rank 5');
+        assert.equal((await request('/admin/dashboard?grade=0', adminToken)).data.topResults[0].name, 'Hifz');
+        assert.deepEqual((await request('/admin/dashboard?grade=', adminToken)).data.topResults.map(row => row._id), response.data.topResults.map(row => row._id));
+        for (const invalid of ['8', 'null', 'Hifz', '4&grade=5', '04']) {
+            assert.equal((await request(`/admin/dashboard?grade=${invalid}`, adminToken)).status, 400);
+        }
     } finally { await models.Result.deleteMany({ _id: { $in: inserted.map(r => r._id) } }); }
 });
 
@@ -239,6 +310,28 @@ test('section migration preserves records and replaces retired indexes', async (
     assert.equal(String((await models.Result.findOne({ rollNum: 'LEGACY' })).student), String(id));
     assert.ok(!(await models.Student.collection.indexes()).some(i => i.name === 'rollNum_1_grade_1'));
     assert.ok(!(await models.Submission.collection.indexes()).some(i => i.name === 'assignment_1_rollNum_1'));
+});
+
+test('startup links only matching legacy identities and preserves linked and orphaned records', async () => {
+    const { migrateSections } = require('../services/sections');
+    const accounts = await models.Student.insertMany(['A', 'B'].map(section => ({ name: `Migration ${section}`, rollNum: 'MIGRATION', grade: 6, section, passwordHash: 'unused' })));
+    const assignment = await models.Assignment.create({ title: 'Migration', grade: 6, maxMarks: 10, fileName: 'task.docx', fileUrl: 'unused', filePath: 'unused' });
+    const legacy = await models.Result.insertMany(['A', 'B', 'Orphan'].map(section => ({ name: 'Legacy name', rollNum: 'MIGRATION', grade: 6, section, score: 5, total: 10 })));
+    const linked = await models.Result.create({ student: accounts[0]._id, name: 'Saved history', rollNum: 'MIGRATION', grade: 4, section: 'Old Section', score: 3, total: 5 });
+    const submission = await models.Submission.create({ assignment: assignment._id, name: 'Legacy', rollNum: 'MIGRATION', grade: 6, section: 'B', fileName: 'answer.docx', fileUrl: 'unused', filePath: 'unused', status: 'graded', marks: 7, percentage: 70 });
+    try {
+        await migrateSections(); await migrateSections();
+        for (let index = 0; index < 2; index++) assert.equal(String((await models.Result.findById(legacy[index]._id)).student), String(accounts[index]._id));
+        assert.equal((await models.Result.findById(legacy[2]._id)).student, undefined);
+        const original = await models.Result.findById(linked._id);
+        assert.equal(original.grade, 4); assert.equal(original.section, 'Old Section'); assert.equal(original.name, 'Saved history');
+        const saved = await models.Submission.findById(submission._id);
+        assert.equal(String(saved.student), String(accounts[1]._id)); assert.equal(saved.marks, 7);
+    } finally {
+        await models.Student.deleteMany({ _id: { $in: accounts.map(s => s._id) } });
+        await models.Result.deleteMany({ _id: { $in: [...legacy.map(r => r._id), linked._id] } });
+        await models.Submission.deleteOne({ _id: submission._id }); await models.Assignment.deleteOne({ _id: assignment._id });
+    }
 });
 
 test('same roll in different sections keeps reports, assignment marks and daily locks separate', async () => {

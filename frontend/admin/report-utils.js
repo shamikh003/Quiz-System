@@ -96,7 +96,15 @@
         link.download = `${prefix}-${suffix}-${new Date().toISOString().slice(0, 10)}.csv`;
         document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
-    const api = { section, filterRows, sections, fillSections, gradeLabel, percent, duration, resultCards, csv, resultCsv, studentCsv, download };
+    function marks(value) {
+        const numeric = Number(value);
+        const width = value != null && Number.isFinite(numeric) ? Math.max(0, Math.min(100, numeric)) : 0;
+        return `<span class="marks-cell"><span class="marks-value">${escapeHtml(percent(value))}</span><span class="marks-track" aria-hidden="true"><span style="width:${width}%"></span></span></span>`;
+    }
+    function rankBadge(index) {
+        return `<span class="score-rank score-rank-${index + 1}">${index + 1}</span>`;
+    }
+    const api = { section, filterRows, sections, fillSections, gradeLabel, percent, duration, resultCards, csv, resultCsv, studentCsv, download, marks, rankBadge };
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.ReportUtils = api;
 })(typeof window === 'undefined' ? globalThis : window);
