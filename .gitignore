@@ -6,3 +6,20 @@ node_modules
 # Local isolated test downloads
 Backend/.npm-cache/
 Backend/.mongodb-binaries/
+
+# Uploaded documents are runtime data, not application source.
+Backend/uploads/
+
+# Local agent skills, previews, reports and generated review assets.
+/.agents/
+/tmp/
+/output/
+/presentation-build-*/
+/dashboard-preview.html
+/dashboard-preview.css
+
+# Local editor and operating-system files.
+/.vscode/
+.DS_Store
+Thumbs.db
+*.log

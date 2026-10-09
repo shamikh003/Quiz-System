@@ -6,21 +6,26 @@
     <title>QuizBoard | Computer Quizzes &amp; Assignments</title>
     <meta name="description" content="QuizBoard is a computer classroom assessment project by Muhammad Shamikh and team, featuring timed quizzes, assignments and student progress reports.">
     <meta name="author" content="Muhammad Shamikh, Sadia Khan, Abdul Rehman">
-    <meta name="theme-color" content="#1F4E79">
+    <meta name="theme-color" content="#171293">
     <link rel="canonical" href="https://quizboard-io.netlify.app/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="QuizBoard">
     <meta property="og:title" content="QuizBoard | Computer Quizzes &amp; Assignments">
     <meta property="og:description" content="A computer classroom assessment project by Muhammad Shamikh and team, with timed quizzes, assignments and student progress reports.">
     <meta property="og:url" content="https://quizboard-io.netlify.app/">
-    <meta property="og:image" content="https://quizboard-io.netlify.app/logo.png">
+    <meta property="og:image" content="https://quizboard-io.netlify.app/favicon-512.png">
     <meta property="og:image:alt" content="QuizBoard logo">
     <meta name="twitter:card" content="summary">
     <link rel="icon" href="./favicon.ico?v=1">
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=1">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="./favicon-180.png?v=1">
-    <link rel="stylesheet" href="./style.css?v=7.5">
+    <script>
+        try {
+            if (localStorage.getItem('quizTheme') === 'dark') document.documentElement.dataset.theme = 'dark';
+        } catch (_) { /* Use the default theme when browser storage is unavailable. */ }
+    </script>
+    <link rel="stylesheet" href="./style.css?v=7.6">
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -31,10 +36,10 @@
     }
     </script>
 </head>
-<body class="home-page">
+<body class="home-page blue-gold">
 
     <main class="container home-card">
-        <img class="home-logo" src="./logo.png" width="56" height="56" alt="">
+        <img class="home-logo" src="./favicon.svg?v=1" width="64" height="64" alt="">
         <p class="home-eyebrow">Built for the computer classroom</p>
         <h1>QuizBoard</h1>
         <nav class="nav-links home-links" aria-label="Choose your portal">

@@ -1,9 +1,9 @@
 // v5: cache only static assets. Private API responses are never cached.
-const CACHE_NAME = 'quizboard-cache-v8.6';
+const CACHE_NAME = 'quizboard-cache-v8.7';
 const APP_SHELL = ['/config.js?v=5.1','/index.html','/admin/index.html','/admin/results.html','/admin/students.html',
     '/admin/teacher-shell.js?v=1.1',
     '/admin/admin.js?v=7.1','/admin/report-utils.js?v=7.0','/admin/results.js?v=7.0','/admin/students.js?v=5.2',
-    '/student/quiz.html','/student/quiz.js?v=7.1','/style.css?v=7.5','/logo.png',
+    '/student/quiz.html','/student/quiz.js?v=7.1','/style.css?v=7.6',
     '/favicon.ico?v=1','/favicon.svg?v=1','/favicon-32.png?v=1','/favicon-180.png?v=1','/favicon-192.png?v=1','/favicon-512.png?v=1',
     '/manifest-admin.json','/manifest-quiz.json']
     .map(path => new URL(path.slice(1), self.registration.scope).href);

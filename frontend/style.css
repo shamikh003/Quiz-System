@@ -1135,6 +1135,9 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
     --table-head: #191497; --mark-fill: #3B82F6;
 }
 .blue-gold .sidebar { border-inline-end: 1px solid var(--border); padding-block: 24px; }
+.blue-gold .home-card::before { height: 5px; background: var(--gold); }
+.blue-gold .home-card h1 { color: var(--accent); }
+.blue-gold .home-logo { width: 64px; height: 64px; }
 .blue-gold .sidebar-brand { padding: 0 24px 24px; }
 .blue-gold .sidebar-brand-text { font-family: var(--font-ui); font-size: 23px; font-weight: 800; color: var(--accent); }
 .blue-gold .sidebar-brand-icon { display: none; }

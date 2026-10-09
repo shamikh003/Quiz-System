@@ -54,6 +54,17 @@ Requires Node.js, a MongoDB connection, and a Cloudinary account.
 
 Run automated tests from `Backend` with `npm test`.
 
+## Project Structure
+
+```text
+frontend/          Website pages, styles, scripts and app icons
+Backend/           Server, database models, APIs and services
+Backend/test/      Automated checks and isolated local preview
+index.html         Shortcut to the frontend when serving the repo root
+```
+
+Uploads, generated reports, temporary previews, dependencies and local credentials are excluded from Git. Uploaded files are managed through Cloudinary; they do not belong in the source repository.
+
 ### Automatic Urdu Translation
 
 Use Node.js 18 or newer. Create an API key in [Google AI Studio](https://aistudio.google.com/api-keys), add `GEMINI_API_KEY` to `Backend/.env` locally and to Render's environment for the hosted backend, then restart/redeploy the backend. Keep the key private; it is never sent to the browser.
@@ -64,4 +75,4 @@ The queue spaces requests at least 6 seconds apart (up to 10 requests per minute
 
 ## Deployment
 
-Host the static frontend on GitHub Pages or Netlify and the backend on Render. Set the backend environment variables on your host and update the hosted API URL in `frontend/config.js`. Keep `.env` out of version control.
+For Cloudflare Pages, select the `master` branch, framework **None**, build command `exit 0`, and output directory `frontend`. Run the backend on Render from the `Backend` directory using `npm install` and `npm start`. Set the backend environment variables on your host; the hosted API URL is configured in `frontend/config.js`. Keep `.env` out of version control.
