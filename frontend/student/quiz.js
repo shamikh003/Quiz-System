@@ -2,6 +2,9 @@ const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrende
 const $ = id => document.getElementById(id);
 const labels = {
  studentPanel:['My Student Panel','میرا اسٹوڈنٹ پینل'],
+ signingIn:['Signing you in…','لاگ اِن ہو رہا ہے…'], loadingScores:['Loading scores…','نتائج لوڈ ہو رہے ہیں…'],
+ loadingAssignments:['Loading assignments…','اسائنمنٹس لوڈ ہو رہی ہیں…'], loadingQuiz:['Loading quiz…','کوئز لوڈ ہو رہا ہے…'],
+ uploading:['Uploading assignment…','اسائنمنٹ جمع ہو رہی ہے…'], submittingQuiz:['Submitting quiz…','کوئز جمع ہو رہا ہے…'],
  marksPercent:['Marks %','نمبر %'], timeTaken:['Time','وقت'], timeRemaining:['Remaining','وقت باقی'],
  translationMissing:['Urdu translation is not available for this question yet.','اس سوال کا اردو ترجمہ ابھی دستیاب نہیں ہے۔'],
  review:['Your answer','آپ کا جواب'], unanswered:['Not answered','جواب نہیں دیا'],
@@ -30,6 +33,7 @@ const labels = {
 };
 let language = localStorage.getItem('quizLang') === 'ur' ? 'ur' : 'en';
 let token = sessionStorage.getItem('studentToken');
+let reportLoading = false;
 let report, lastResult, page = 1, attempt, queue = [], selected = null, answers = new Map();
 let timer, clockOffset = 0, timerDurationMs = 1, active = false, submitting = false, savePromise = null, conflict = false;
 let tabSwitchCount = 0, fullscreenExitCount = 0;
@@ -73,15 +77,29 @@ async function api(path, options = {}) {
 const post = (path, body = {}, options = {}) => api(path, { ...options, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
 const saveTimeout = () => typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(15000) } : {};
 $('login-form').onsubmit = async event => {
- event.preventDefault(); $('login-btn').disabled = true; notify(t('busy'));
+ event.preventDefault(); $('login-btn').disabled = true; notify('');
+ const stopLoading = globalThis.QuizLoader?.show($('student-login-loader'), t('signingIn')) || (() => {});
  try {
   const data = await post('/student/login', { rollNum:$('student-roll').value.trim(), grade:$('student-grade').value, password:$('student-password').value });
   token = data.token; sessionStorage.setItem('studentToken', token); $('student-password').value = ''; page = 1; await loadReport();
- } catch (error) { notify(error.message); } finally { $('login-btn').disabled = false; }
+ } catch (error) { notify(error.message); } finally { stopLoading(); $('login-btn').disabled = false; }
 };
 $('logout-btn').onclick = () => { token = null; report = null; sessionStorage.removeItem('studentToken'); screen('login-container'); notify(''); };
 async function loadReport() {
- try { report = await api(`/student/report?page=${page}`); screen('dashboard'); renderReport(); notify(''); } catch (error) { notify(error.message); }
+ if (reportLoading) return;
+ reportLoading = true;
+ const controls = ['refresh-btn','prev-page','next-page'];
+ controls.forEach(id => { $(id).disabled = true; });
+ const stopScores = globalThis.QuizLoader?.show($('student-report-loader'), t('loadingScores')) || (() => {});
+ const stopAssignments = globalThis.QuizLoader?.show($('student-assignments-loader'), t('loadingAssignments')) || (() => {});
+ const stopLogin = $('login-container').classList.contains('hidden') ? () => {} : globalThis.QuizLoader?.show($('student-login-loader'), t('signingIn')) || (() => {});
+ try { report = await api(`/student/report?page=${page}`); screen('dashboard'); renderReport(); notify(''); }
+ catch (error) { notify(error.message); }
+ finally {
+  reportLoading = false; stopScores(); stopAssignments(); stopLogin();
+  $('refresh-btn').disabled = false;
+  $('prev-page').disabled = !report || report.page <= 1; $('next-page').disabled = !report || report.page >= report.pages;
+ }
 }
 function renderReport() {
  $('student-heading').textContent = report.student.name;
@@ -135,9 +153,11 @@ function renderReport() {
    const upload = element('button',t('upload')); upload.type = 'button';
    upload.onclick = async () => {
     if (!input.files[0] || input.files[0].size > 15 * 1024 * 1024) return notify(t('file'));
-    upload.disabled = true; notify(t('busy'));
+    upload.disabled = true; notify('');
+    const stopLoading = globalThis.QuizLoader?.show($('student-assignments-loader'), t('uploading')) || (() => {});
     try { const data = new FormData(); data.append('file',input.files[0]); await api(`/assignments/${assignment._id}/submit`,{method:'POST',body:data}); await loadReport(); }
     catch (error) { notify(error.message); upload.disabled = false; }
+    finally { stopLoading(); }
    };
    card.append(label,input,upload);
   }
@@ -149,7 +169,8 @@ $('prev-page').onclick = () => { page--; loadReport(); };
 $('next-page').onclick = () => { page++; loadReport(); };
 $('back-btn').onclick = loadReport;
 $('start-btn').onclick = async () => {
- $('start-btn').disabled = true; notify(t('busy'));
+ $('start-btn').disabled = true; notify('');
+ const stopLoading = globalThis.QuizLoader?.show($('quiz-start-loader'), t('loadingQuiz')) || (() => {});
  try {
   attempt = await post('/quiz/start'); clockOffset = new Date(attempt.serverNow).getTime() - Date.now();
   timerDurationMs = countdownDuration(attempt);
@@ -163,7 +184,7 @@ $('start-btn').onclick = async () => {
   renderQuestion(); updateSaveStatus(); clearInterval(timer); timer = setInterval(tick,1000); tick();
   if (pendingCount()) drainSaves().catch(error => notify(error.message));
  } catch (error) { if (error.result) displayResult(error.result); else notify(error.message); }
- finally { if (report && !active) $('start-btn').disabled = report.today?.status === 'submitted'; }
+ finally { stopLoading(); if (report && !active) $('start-btn').disabled = report.today?.status === 'submitted'; }
 };
 function rememberQueue() { try { sessionStorage.setItem(`queue-${attempt.attemptId}`,JSON.stringify(queue)); } catch { /* The current queue remains available in memory. */ } }
 const answerList = map => [...map].map(([questionId, selected]) => ({ questionId, selected }));
@@ -314,12 +335,13 @@ async function submit() {
   if (active) { renderQuestion(); if (new Date(attempt.expiresAt).getTime() > Date.now() + clockOffset) timer = setInterval(tick,1000); }
   notify(error.message); return;
  }
- active = false; exitFullscreen(); screen('result-container'); $('score-display').textContent = t('busy'); $('retry-btn').classList.add('hidden'); $('back-btn').disabled = true;
+ active = false; exitFullscreen(); screen('result-container'); $('score-display').textContent = ''; $('retry-btn').classList.add('hidden'); $('back-btn').disabled = true;
+ const stopLoading = globalThis.QuizLoader?.show($('quiz-submit-loader'), t('submittingQuiz')) || (() => {});
  $('ranking-display').textContent = ''; $('answer-review').replaceChildren();
  document.querySelector('[data-i18n="completedRule"]').classList.add('hidden');
  try { displayResult(await post('/quiz/submit',{attemptId:attempt.attemptId,tabSwitchCount,fullscreenExitCount})); }
  catch (error) { $('score-display').textContent = t('submitError'); notify(error.message); $('retry-btn').classList.remove('hidden'); }
- finally { submitting = false; }
+ finally { stopLoading(); submitting = false; }
 }
 function displayResult(result) {
  lastResult = result;

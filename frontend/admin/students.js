@@ -96,6 +96,7 @@ function render() {
     if (!$('students-list').children.length) $('students-list').append(node('p', 'No students found.'));
 }
 async function load() {
+    const stopLoading = QuizLoader.show($('students-list'), 'Loading students…');
     try {
         students = await request('/admin/students');
         ReportUtils.fillSections($('student-filter-section'), students, $('student-filter-grade').value);
@@ -103,7 +104,8 @@ async function load() {
         for (const name of ReportUtils.sections(students)) { const option = node('option'); option.value = name; $('section-suggestions').append(option); }
         render();
     }
-    catch (error) { $('account-message').textContent = error.message; }
+    catch (error) { $('account-message').textContent = error.message; render(); }
+    finally { stopLoading(); }
 }
 $('student-search').oninput = render;
 $('student-filter-section').onchange = render;

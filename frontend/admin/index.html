@@ -11,13 +11,14 @@
     <link rel="apple-touch-icon" sizes="180x180" href="../favicon-180.png?v=1">
     <link rel="manifest" href="../manifest-admin.json">
     <meta name="theme-color" content="#1F4E79">
-    <link rel="stylesheet" href="../style.css?v=7.6">
+    <link rel="stylesheet" href="../style.css?v=8.0">
 </head>
 <body class="blue-gold">
 
     <div class="container wide" id="teacher-login-container">
         <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false">Dark mode</button>
         <h1>Teacher Login</h1>
+        <div id="teacher-login-loader" class="qb-loader-slot" data-auth-loader hidden></div>
         <form id="login-form-admin">
             <label for="login-username">Username:</label>
             <input type="text" id="login-username" required autocomplete="username">
@@ -39,7 +40,8 @@
 
             <nav class="sidebar-nav" aria-label="Teacher navigation">
                 <button type="button" id="tab-dashboard" class="sidebar-link active"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="sidebar-label">Dashboard</span></button>
-                <button type="button" id="tab-add" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="sidebar-label">Add / Edit Question</span></button>
+                <button type="button" id="tab-add" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="sidebar-label">Add Question</span></button>
+                <button type="button" id="tab-edit" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m16 3 5 5-12 12-6 1 1-6ZM14 5l5 5"/></svg></span><span class="sidebar-label">Edit Question</span></button>
                 <button type="button" id="tab-manage" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span><span class="sidebar-label">Manage Questions</span><span class="badge" id="question-count">0</span></button>
                 <button type="button" id="tab-assignments" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7v10a4 4 0 0 0 8 0V6a3 3 0 0 0-6 0v11a1 1 0 0 0 2 0V7"/></svg></span><span class="sidebar-label">Assignments</span></button>
                 <a href="students.html" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-4-5"/></svg></span><span class="sidebar-label">Students</span></a>
@@ -99,6 +101,7 @@
                         </div>
                     </div>
                     <p id="dashboard-scores-status" class="sr-only" role="status" aria-live="polite">Across all grades and sections.</p>
+                    <div id="dashboard-loader" class="qb-loader-slot" hidden></div>
                     <div class="report-table-wrap result-desktop-table"><table class="v2-table">
                         <thead>
                             <tr>
@@ -114,17 +117,15 @@
                             </tr>
                         </thead>
                         <tbody id="dashboard-results-body">
-                            <tr><td colspan="9" class="shell-empty">Loading…</td></tr>
                         </tbody>
                     </table></div>
                     <div id="dashboard-result-cards" class="mobile-result-list" aria-label="Top 5 scores">
-                        <p class="shell-empty" role="status">Loading…</p>
                     </div>
                 </div>
             </div>
 
             <div id="add-tab-content" class="hidden">
-                <h1>Add / Edit Question</h1>
+                <h1>Add Question</h1>
                 <form id="question-form">
                     <label for="question-text">Write Question:</label>
                     <textarea id="question-text" required></textarea>
@@ -191,12 +192,31 @@
                     <p class="error-text" id="form-error"></p>
 
                     <button type="submit" id="save-question-btn">Save Question</button>
-                    <button type="button" id="cancel-edit-btn" class="btn-secondary hidden">Cancel Edit</button>
+                    <button type="button" id="cancel-edit-btn" class="btn-secondary hidden">Back to Questions</button>
                 </form>
+            </div>
+
+            <div id="edit-tab-content" class="hidden">
+                <h1>Edit Question</h1>
+                <div id="edit-question-browser">
+                    <div class="field question-grade-filter">
+                        <label for="edit-filter-grade">Filter by Grade:</label>
+                        <select id="edit-filter-grade">
+                            <option value="">All Grades</option>
+                            <option value="4">Grade 4</option>
+                            <option value="5">Grade 5</option>
+                            <option value="6">Grade 6</option>
+                            <option value="7">Grade 7</option>
+                            <option value="0">Hifz</option>
+                        </select>
+                    </div>
+                    <div id="edit-question-list" class="question-list"></div>
+                </div>
             </div>
 
             <div id="manage-tab-content" class="hidden">
                 <h1>Manage Questions</h1>
+                <div class="field question-grade-filter">
                 <label for="filter-grade">Filter by Grade:</label>
                 <select id="filter-grade">
                     <option value="">All Grades</option>
@@ -205,6 +225,7 @@
                     <option value="6">Grade 6</option>
                     <option value="7">Grade 7</option><option value="0">Hifz</option>
                 </select>
+                </div>
                 <div class="translation-toolbar">
                     <button type="button" id="translate-urdu-btn" class="btn-secondary">Translate to Urdu</button>
                     <button type="button" id="refresh-questions-btn" class="btn-secondary">Refresh</button>
@@ -263,7 +284,8 @@
     </div>
 
     <script src="../config.js?v=5.1"></script>
+<script src="../loader.js?v=1.1"></script>
 <script src="report-utils.js?v=7.0"></script>
-<script src="admin.js?v=7.1"></script>
+<script src="admin.js?v=7.5"></script>
 </body>
 </html>

@@ -56,7 +56,7 @@ loginFormAdmin.addEventListener('submit', async function (event) {
     event.preventDefault();
     loginError.textContent = '';
     loginSubmitBtn.disabled = true;
-    loginSubmitBtn.innerHTML = 'Logging in... <span class="spinner"></span>';
+    const stopLoading = QuizLoader.show(document.getElementById('teacher-login-loader'), 'Signing you in…');
 
     try {
         const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
@@ -78,6 +78,7 @@ loginFormAdmin.addEventListener('submit', async function (event) {
     } catch (error) {
         loginError.textContent = 'Could not connect to server. It may be waking up — try again in a moment.';
     } finally {
+        stopLoading();
         loginSubmitBtn.disabled = false;
         loginSubmitBtn.innerHTML = 'Log In';
     }
@@ -91,24 +92,31 @@ logoutBtn.addEventListener('click', function () {
 // ---------- Tabs ----------
 const tabDashboard = document.getElementById('tab-dashboard');
 const tabAdd = document.getElementById('tab-add');
+const tabEdit = document.getElementById('tab-edit');
 const tabManage = document.getElementById('tab-manage');
 const tabAssignments = document.getElementById('tab-assignments');
 const dashboardTabContent = document.getElementById('dashboard-tab-content');
 const addTabContent = document.getElementById('add-tab-content');
+const editTabContent = document.getElementById('edit-tab-content');
 const manageTabContent = document.getElementById('manage-tab-content');
 const assignmentsTabContent = document.getElementById('assignments-tab-content');
 
-const tabButtons = { dashboard: tabDashboard, add: tabAdd, manage: tabManage, assignments: tabAssignments };
-const tabContents = { dashboard: dashboardTabContent, add: addTabContent, manage: manageTabContent, assignments: assignmentsTabContent };
+const tabButtons = { dashboard: tabDashboard, add: tabAdd, edit: tabEdit, manage: tabManage, assignments: tabAssignments };
+const tabContents = { dashboard: dashboardTabContent, add: addTabContent, edit: editTabContent, manage: manageTabContent, assignments: assignmentsTabContent };
 
 function activateTab(key) {
+    if ((key === 'add' || key === 'edit') && saveBtn.disabled) return;
+    if (key === 'add' || key === 'edit') switchQuestionForm(key);
     Object.keys(tabButtons).forEach(k => {
         tabButtons[k].classList.toggle('active', k === key);
         tabContents[k].classList.toggle('hidden', k !== key);
     });
     if (key === 'dashboard') loadDashboard();
     if (key === 'manage') loadQuestionList();
+    if (key === 'edit' && !editingQuestionId) loadEditQuestionList();
     if (key === 'assignments') loadAssignments();
+    // Keep the selected section when opening a link or refreshing this page.
+    history.replaceState(null, '', `#${key}`);
 
     // Close the mobile sidebar (if open) after picking a section.
     const sidebarEl = document.getElementById('sidebar');
@@ -118,6 +126,7 @@ function activateTab(key) {
 
 tabDashboard.addEventListener('click', () => activateTab('dashboard'));
 tabAdd.addEventListener('click', () => activateTab('add'));
+tabEdit.addEventListener('click', () => activateTab('edit'));
 tabManage.addEventListener('click', () => activateTab('manage'));
 tabAssignments.addEventListener('click', () => activateTab('assignments'));
 
@@ -169,8 +178,7 @@ async function loadDashboard() {
     document.getElementById('dashboard-scores-title').textContent = selectedGrade === '' ? 'Top 5 Scores' : `Top 5 Scores · ${scope}`;
     resultCards.setAttribute('aria-label', `Top 5 scores for ${scope}`);
     status.textContent = `Loading top scores for ${scope}…`;
-    resultsBody.innerHTML = '<tr><td colspan="9" class="shell-empty">Loading…</td></tr>';
-    resultCards.innerHTML = '<p class="shell-empty">Loading…</p>';
+    const stopLoading = globalThis.QuizLoader?.show(document.getElementById('dashboard-loader'), 'Loading scores…') || (() => {});
 
     try {
         const query = selectedGrade === '' ? '' : `?grade=${encodeURIComponent(selectedGrade)}`;
@@ -231,7 +239,7 @@ async function loadDashboard() {
         status.textContent = `Could not load top scores for ${scope}. Select a grade to retry.`;
         resultsBody.innerHTML = '<tr><td colspan="9" class="shell-empty">Could not load dashboard data.</td></tr>';
         resultCards.innerHTML = '<p class="shell-empty" role="status">Could not load dashboard data.</p>';
-    }
+    } finally { stopLoading(); }
 }
 
 // ---------- DOM Elements ----------
@@ -251,6 +259,38 @@ const questionGradeSelect = document.getElementById('question-grade');
 const filterGradeSelect = document.getElementById('filter-grade');
 
 let editingQuestionId = null; // null = adding new question
+let questionFormMode = 'add';
+const questionDrafts = {};
+
+function switchQuestionForm(mode) {
+    if (mode === questionFormMode) return;
+    questionDrafts[questionFormMode] = {
+        id: editingQuestionId,
+        values: [...questionForm.elements].filter(el => el.id && el.type !== 'file').map(el => [el.id, el.value]),
+        files: document.getElementById('question-image').files,
+        imageNote: document.getElementById('current-question-image').textContent
+    };
+    questionFormMode = mode;
+    resetForm();
+    const draft = questionDrafts[mode];
+    if (draft) {
+        for (const [id, value] of draft.values) document.getElementById(id).value = value;
+        optionCountSelector.dispatchEvent(new Event('change'));
+        editingQuestionId = draft.id;
+        document.getElementById('question-image').files = draft.files;
+        document.getElementById('current-question-image').textContent = draft.imageNote;
+    }
+    (mode === 'edit' ? editTabContent : addTabContent).appendChild(questionForm);
+    updateQuestionEditor();
+}
+
+function updateQuestionEditor() {
+    const editing = questionFormMode === 'edit';
+    questionForm.classList.toggle('hidden', editing && !editingQuestionId);
+    document.getElementById('edit-question-browser').classList.toggle('hidden', Boolean(editingQuestionId));
+    cancelEditBtn.classList.toggle('hidden', !editingQuestionId);
+    saveBtn.textContent = editingQuestionId ? 'Update Question' : 'Save Question';
+}
 
 async function loadSettings() {
     try {
@@ -298,13 +338,15 @@ function resetForm({ keepGrade = false } = {}) {
     formError.textContent = '';
 }
 
-cancelEditBtn.addEventListener('click', () => resetForm());
+cancelEditBtn.addEventListener('click', () => { resetForm(); updateQuestionEditor(); loadEditQuestionList(); });
 
 // Form submit: creates a new question, or updates one if we're editing
 questionForm.addEventListener('submit', async function (event) {
     event.preventDefault();
     formError.textContent = '';
     saveBtn.disabled = true;
+    cancelEditBtn.disabled = true;
+    const submittedQuestionId = editingQuestionId;
     saveBtn.innerHTML = (editingQuestionId ? 'Updating...' : 'Saving...') + ' <span class="spinner"></span>';
 
     const quizTime = quizTimeInput.value;
@@ -358,8 +400,13 @@ questionForm.addEventListener('submit', async function (event) {
         const data = await response.json();
 
         if (response.ok) {
-            alert(editingQuestionId ? 'Question updated!' : 'Question saved to database successfully!');
+            alert(submittedQuestionId ? 'Question updated!' : 'Question saved to database successfully!');
             resetForm({ keepGrade: true });
+            if (submittedQuestionId) {
+                updateQuestionEditor();
+                loadEditQuestionList();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
             quizTimeInput.value = quizTime;
             loadQuestionList();
         } else if (response.status === 401) {
@@ -374,6 +421,7 @@ questionForm.addEventListener('submit', async function (event) {
         formError.textContent = 'Could not connect to server. Please check your connection.';
     } finally {
         saveBtn.disabled = false;
+        cancelEditBtn.disabled = false;
         saveBtn.textContent = editingQuestionId ? 'Update Question' : 'Save Question';
     }
 });
@@ -411,7 +459,7 @@ async function loadQuestionList() {
     const gradeFilter = filterGradeSelect.value;
     loadedQuestionGrade = null;
     updateClearQuestionsButton();
-    questionListDiv.innerHTML = '<p class="empty-state">Loading questions...</p>';
+    const stopLoading = globalThis.QuizLoader?.show(questionListDiv, 'Loading questions…') || (() => {});
     try {
         const url = gradeFilter
             ? `${BACKEND_URL}/api/admin/questions?grade=${gradeFilter}`
@@ -461,7 +509,7 @@ async function loadQuestionList() {
     } catch (error) {
         if (requestId !== questionListRequest) return;
         questionListDiv.innerHTML = '<p class="empty-state">Could not load questions. Server may be offline.</p>';
-    }
+    } finally { stopLoading(); }
 }
 
 if (filterGradeSelect) {
@@ -469,6 +517,8 @@ if (filterGradeSelect) {
 }
 
 function startEditQuestion(q) {
+    if (saveBtn.disabled) return;
+    activateTab('edit');
     editingQuestionId = q._id;
     document.getElementById('question-text').value = q.text;
     questionGradeSelect.value = q.grade;
@@ -488,8 +538,44 @@ function startEditQuestion(q) {
     saveBtn.textContent = 'Update Question';
     cancelEditBtn.classList.remove('hidden');
 
-    activateTab('add');
+    updateQuestionEditor();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+let editListRequest = 0;
+const editGradeSelect = document.getElementById('edit-filter-grade');
+editGradeSelect.addEventListener('change', loadEditQuestionList);
+async function loadEditQuestionList() {
+    const requestId = ++editListRequest;
+    const list = document.getElementById('edit-question-list');
+    const stopLoading = QuizLoader.show(list, 'Loading questions…');
+    try {
+        const grade = editGradeSelect.value;
+        const response = await fetch(`${BACKEND_URL}/api/admin/questions${grade === '' ? '' : `?grade=${encodeURIComponent(grade)}`}`, { headers: authHeaders() });
+        if (requestId !== editListRequest) return;
+        if (response.status === 401) {
+            localStorage.removeItem('adminToken'); showLoggedOutView(); return;
+        }
+        if (!response.ok) throw new Error('Could not load questions.');
+        const questions = await response.json();
+        if (requestId !== editListRequest) return;
+        list.replaceChildren();
+        if (!questions.length) {
+            list.innerHTML = '<p class="empty-state">No questions saved for this grade.</p>';
+            return;
+        }
+        for (const question of questions) {
+            const card = document.createElement('div'); card.className = 'question-card';
+            card.innerHTML = `<p><strong>${escapeHtml(question.text)}</strong> <span class="badge">${gradeLabel(question.grade)}</span></p>
+                <p class="q-options">${question.options.map(option => `${escapeHtml(option.id)}: ${escapeHtml(option.text)}`).join(' | ')}</p>
+                <div class="q-actions"><button type="button" class="btn-secondary btn-small">Edit Question</button></div>`;
+            card.querySelector('button').addEventListener('click', () => startEditQuestion(question));
+            list.appendChild(card);
+        }
+    } catch (error) {
+        if (requestId !== editListRequest) return;
+        list.innerHTML = '<p class="empty-state">Could not load questions. Select a grade to retry.</p>';
+    } finally { stopLoading(); }
 }
 
 async function deleteQuestion(id) {
@@ -604,7 +690,7 @@ assignmentForm.addEventListener('submit', async function (event) {
 });
 
 async function loadAssignments() {
-    assignmentList.innerHTML = '<p class="empty-state">Loading assignments...</p>';
+    const stopLoading = QuizLoader.show(assignmentList, 'Loading assignments…');
     submissionsPanel.classList.add('hidden');
     try {
         const response = await fetch(`${BACKEND_URL}/api/admin/assignments`, { headers: authHeaders() });
@@ -638,7 +724,7 @@ async function loadAssignments() {
         });
     } catch (error) {
         assignmentList.innerHTML = '<p class="empty-state">Could not load assignments. Server may be offline.</p>';
-    }
+    } finally { stopLoading(); }
 }
 
 async function deleteAssignment(id) {
@@ -664,7 +750,7 @@ async function deleteAssignment(id) {
 async function viewSubmissions(assignment) {
     submissionsPanel.classList.remove('hidden');
     submissionsTitle.textContent = `Submissions — ${assignment.title}`;
-    submissionsList.innerHTML = '<p class="empty-state">Loading submissions...</p>';
+    const stopLoading = QuizLoader.show(submissionsList, 'Loading submissions…');
 
     try {
         const response = await fetch(`${BACKEND_URL}/api/admin/assignments/${assignment._id}/submissions`, {
@@ -704,7 +790,7 @@ async function viewSubmissions(assignment) {
         });
     } catch (error) {
         submissionsList.innerHTML = '<p class="empty-state">Could not load submissions.</p>';
-    }
+    } finally { stopLoading(); }
 }
 
 async function downloadSubmission(submission) {

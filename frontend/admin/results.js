@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     async function fetchResults() {
         const url = `${BACKEND_URL}/api/results`;
+        const stopLoading = QuizLoader.show(document.getElementById('reports-loader'), 'Loading reports…');
         try {
             const response = await fetch(url, { headers: authHeaders() });
             if (!response.ok) throw new Error('Please log in as teacher to view reports.');
@@ -35,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.error("Error fetching results:", error);
             results = [];
             resultsNote.textContent = error.message;
-        }
+        } finally { stopLoading(); }
     }
 
     await fetchResults();

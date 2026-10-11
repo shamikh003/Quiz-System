@@ -25,11 +25,20 @@ const models = require('../models/models');
     const assignment = await models.Assignment.create({ title: 'PowerPoint practical', grade: 0, maxMarks: 20, fileName: 'presentation.pptx', fileUrl: 'https://example.invalid/test-only', filePath: 'test-only' });
     await models.Submission.create({ assignment: assignment._id, name: 'Demo Student', rollNum: 'H-01', grade: 0, fileName: 'completed.pptx', fileUrl: 'https://example.invalid/test-only', filePath: 'test-only', marks: 18, percentage: 90, status: 'graded' });
     const app = express(); app.use(require('cors')()); app.use(express.json());
+    // Optional demo-only delay for inspecting loaders. Production never runs this file.
+    const requestedDelay = Number(process.env.PREVIEW_DELAY_MS || 0);
+    const previewDelay = Number.isFinite(requestedDelay) ? Math.max(0, Math.min(10000, requestedDelay)) : 0;
+    app.use('/api', (req, res, next) => {
+        const previewRequest = req.method === 'GET'
+            || (req.method === 'POST' && ['/auth/login', '/student/login'].includes(req.path));
+        if (previewRequest && previewDelay) setTimeout(next, previewDelay);
+        else next();
+    });
     app.use('/api/auth', require('../routes/auth'));
     for (const route of ['students', 'attempts', 'questions', 'results', 'dashboard', 'assignments', 'settings']) app.use('/api', require(`../routes/${route}`));
     app.use(express.static(path.join(__dirname, '../../frontend')));
     app.use((err, req, res, next) => res.status(500).json({ error: err.message }));
-    const server = app.listen(5000, '127.0.0.1', () => console.log('Disposable preview: http://127.0.0.1:5000/student/quiz.html (H-01 / Hifz / demo123). Teacher: demo / demo123.'));
+    const server = app.listen(5000, '127.0.0.1', () => console.log(`Disposable preview: http://127.0.0.1:5000/student/quiz.html (H-01 / Hifz / demo123). Teacher: demo / demo123. Loader delay: ${previewDelay} ms.`));
     const cleanup = async () => { server.close(); await mongoose.disconnect(); await database.stop(); process.exit(0); };
     process.on('SIGINT', cleanup); process.on('SIGTERM', cleanup);
 })().catch(error => { console.error(error.message); process.exit(1); });
