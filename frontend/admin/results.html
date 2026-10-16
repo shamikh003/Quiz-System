@@ -16,8 +16,9 @@
     <link rel="icon" href="../favicon.ico?v=1">
     <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
     <link rel="manifest" href="../manifest-admin.json">
-    <meta name="theme-color" content="#6c5ce7">
+    <meta name="theme-color" content="#171293">
     <link rel="stylesheet" href="../style.css?v=8.0">
+    <link rel="stylesheet" href="student-report.css?v=1.0">
 </head>
 <body class="app-shell-page blue-gold" data-teacher-page="reports">
 <div class="app-shell"><aside class="sidebar" id="sidebar"></aside><main class="shell-main">
@@ -27,7 +28,12 @@
         <div class="results-header">
             <h1 class="shell-page-title">Reports</h1>
         </div>
-        <div class="school-panel">
+        <p class="individual-intro">Quiz results and individual student performance</p>
+        <div class="report-view-tabs" role="tablist" aria-label="Report view">
+            <button type="button" role="tab" id="all-results-tab" aria-controls="all-results-panel" aria-selected="true">All Results</button>
+            <button type="button" role="tab" id="individual-report-tab" aria-controls="individual-report-panel" aria-selected="false" tabindex="-1">Student Report</button>
+        </div>
+        <section id="all-results-panel" role="tabpanel" aria-labelledby="all-results-tab" class="school-panel">
         <div class="report-filters"><div><label for="filter-grade">Grade</label>
         <select id="filter-grade">
             <option value="">All Grades</option>
@@ -73,13 +79,42 @@
         <div class="nav-links">
             <a href="index.html">Back to Admin Panel</a>
         </div>
-        </div>
+        </section>
+        <section id="individual-report-panel" role="tabpanel" aria-labelledby="individual-report-tab" class="individual-report" hidden>
+            <section class="individual-search school-panel" aria-label="Find a student">
+                <div class="individual-search-fields">
+                    <div><label for="individual-name">Student name or roll number</label><input type="search" id="individual-name" placeholder="Type a student name…" maxlength="100" autocomplete="off" aria-describedby="individual-search-help"></div>
+                    <div><label for="individual-grade">Grade</label><select id="individual-grade"><option value="">All Grades</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div>
+                    <div><label for="individual-section">Section</label><select id="individual-section"><option value="">All Sections</option></select></div>
+                </div>
+                <p id="individual-search-help" class="individual-help">Search by name, then select the correct roll number. Existing saved results are included.</p>
+                <p id="individual-search-status" role="status" aria-live="polite"></p>
+                <button type="button" id="individual-search-retry" class="btn-secondary" hidden>Retry search</button>
+                <div id="individual-search-results" class="individual-matches" aria-label="Matching students"></div>
+            </section>
+            <div id="individual-loader" class="qb-loader-slot" hidden></div>
+            <p id="individual-message" role="status" aria-live="polite"></p>
+            <section id="individual-content" hidden aria-label="Selected student's report">
+                <header class="individual-profile school-panel">
+                    <div class="individual-identity"><span class="individual-avatar" id="individual-initials" aria-hidden="true"></span><div><h2 id="individual-student-name"></h2><p id="individual-student-meta"></p><p id="individual-period" class="individual-help"></p></div></div>
+                    <div class="individual-download"><button type="button" id="individual-download-pdf">Download PDF</button><span id="individual-generated" class="individual-help"></span></div>
+                </header>
+                <div id="individual-metrics" class="individual-metrics"></div>
+                <section class="school-panel individual-chart-panel"><div class="individual-section-heading"><h2>Quiz Performance</h2><p id="individual-trend-summary"></p></div><p id="individual-chart-caption" class="individual-help"></p><div id="individual-chart"></div></section>
+                <div class="individual-history-grid">
+                    <section class="school-panel individual-history"><div class="individual-section-heading"><h2>Quiz History</h2><p id="individual-quiz-count"></p></div><div id="individual-quiz-history"></div><div class="individual-pagination"><button type="button" id="individual-quiz-prev" class="btn-secondary">Previous</button><span id="individual-quiz-page"></span><button type="button" id="individual-quiz-next" class="btn-secondary">Next</button></div></section>
+                    <section class="school-panel individual-history"><div class="individual-section-heading"><h2>Assignment History</h2><p id="individual-assignment-count"></p></div><div id="individual-assignment-history"></div><div class="individual-pagination"><button type="button" id="individual-assignment-prev" class="btn-secondary">Previous</button><span id="individual-assignment-page"></span><button type="button" id="individual-assignment-next" class="btn-secondary">Next</button></div></section>
+                </div>
+                <p class="individual-help">Averages use saved percentages, excluding missing marks. The PDF includes all saved history. Missing historic details are shown as —.</p>
+            </section>
+        </section>
     </section></main></div>
     <script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
 <script src="teacher-shell.js?v=1.3"></script>
 <script src="report-utils.js?v=7.0"></script>
-<script src="results.js?v=7.1"></script>
+<script src="results.js?v=7.2"></script>
+<script src="student-report.js?v=1.0"></script>
 
 </body>
 </html>

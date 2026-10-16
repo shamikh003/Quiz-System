@@ -104,6 +104,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     results = [];
                     ReportUtils.fillSections(filterSection, results, filterGradeSelect.value);
                     renderTable();
+                    document.dispatchEvent(new CustomEvent('quiz-results:cleared'));
                     alert('All results deleted from database.');
                 } else if (response.status === 401) {
                     alert('Your session expired. Please log in again from the Admin Panel.');

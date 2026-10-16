@@ -62,7 +62,7 @@ const models = require('../models/models');
         else next();
     });
     app.use('/api/auth', require('../routes/auth'));
-    for (const route of ['students', 'attempts', 'questions', 'imports', 'results', 'dashboard', 'assignments', 'settings']) app.use('/api', require(`../routes/${route}`));
+    for (const route of ['students', 'attempts', 'questions', 'imports', 'results', 'student-reports', 'dashboard', 'assignments', 'settings']) app.use('/api', require(`../routes/${route}`));
     await require('../models/import-batch').init();
     require('../services/bulk-import').start();
     app.use(express.static(path.join(__dirname, '../../frontend')));

@@ -75,6 +75,7 @@ const ResultSchema = new mongoose.Schema({
 ResultSchema.pre('validate', normalizeSection);
 ResultSchema.index({ attempt: 1 }, { unique: true, sparse: true });
 ResultSchema.index({ rollNum: 1, grade: 1, date: -1 });
+ResultSchema.index({ student: 1, date: 1 });
 
 // --- Settings (quiz timer) ---
 const SettingsSchema = new mongoose.Schema({
@@ -116,6 +117,7 @@ const SubmissionSchema = new mongoose.Schema({
 // A student can only submit a given assignment once (one-time submit rule).
 SubmissionSchema.pre('validate', normalizeSection);
 SubmissionSchema.index({ assignment: 1, student: 1 }, { unique: true, partialFilterExpression: { student: { $type: 'objectId' } } });
+SubmissionSchema.index({ student: 1, submittedAt: -1 });
 
 const StudentSchema = new mongoose.Schema({
     ...sectionFields,

@@ -49,4 +49,5 @@ async function readFile() {
     }
     return parseQuestionText(text, defaults.grade);
 }
-readFile().then(value => parentPort.postMessage({ value }), error => parentPort.postMessage({ error: error.message }));
+readFile().then(value => parentPort.postMessage({ value }), error => parentPort.postMessage({ error: error.message }))
+    .finally(() => parentPort.close());

@@ -2,7 +2,7 @@
 
 A classroom assessment platform for timed quizzes, assignment submissions, and student progress tracking.
 
-**Live website:** [QuizBoard by Shamikh and team](https://quizboard-io.netlify.app/)
+**Live website:** [QuizBoard by Shamikh and team](https://quizboard-app.pages.dev/)
 
 Developed by **Muhammad Shamikh**, **Sadia Khan**, and **Abdul Rehman** for computer classroom assessments.
 
@@ -16,6 +16,7 @@ Developed by **Muhammad Shamikh**, **Sadia Khan**, and **Abdul Rehman** for comp
 - Word, Excel, and PowerPoint assignments with teacher grading. Graded marks remain in reports after assignment deletion.
 - Personal student reports and a shared leaderboard ranked by marks percentage, then completion time for ties.
 - Grade, section, and roll number filters with matching CSV exports.
+- Teacher Reports includes a Student Report tab: search by name or roll number, choose the correct grade/section, view all-time quiz and assignment performance, and download an individual PDF with complete saved history.
 - Readable teacher URLs (`/addquestions`, `/editquestions`, `/managequestions`, `/students`, `/reports`) on Cloudflare Pages / Netlify. Refresh and Back work, and old teacher hash links remain compatible. VS Code Live Server retains local hash links because it does not apply hosting rewrites.
 - Bulk question import from typed PDF/Word documents and student registration from Excel, with a review preview, duplicate checks and progress.
 - Responsive design, dark mode, and English/Urdu support, including saved automatic question and option translations.
@@ -69,6 +70,14 @@ Teachers can use **Import PDF / Word** in Add Question or Manage Questions, and 
 - Document readers run in a separate worker with a 45-second deadline and memory/expanded-archive limits. One file is parsed at a time per server, and bulk saves are queued. This does not certify capacity for a particular number of simultaneous school/lab users.
 
 After updating the backend and frontend together, run `npm install` in `Backend` (or `npm ci` on your host) and restart the backend. No new API key or cloud file-storage service is needed for these imports. Automated checks use an isolated database and fake records; they do not connect to the live school database.
+
+### Individual student reports
+
+Open **Reports → Student Report** and search by name or roll number. Select the correct account using its roll number, grade and section. Existing saved quiz results and graded assignments are included, including archived assignment marks. Linked history follows the student across grade/section changes; older unlinked records are matched only by roll number, grade and section. Historical records without a current account remain searchable. Equal names are never combined automatically.
+
+Statistics use available saved percentages. Missing historical timing or marks are shown as unavailable, and empty histories do not receive invented scores. The screen shows ten history records per page; **Download PDF** includes all saved history, with a chart of the latest twenty scored quizzes. Only authenticated teachers can search, view or export reports.
+
+Deploy the frontend to Cloudflare Pages and deploy the same commit on Render with **Manual Deploy → Deploy latest commit**. Render must install the updated `Backend/package-lock.json` dependencies. The new report API requires this backend deployment; no database reset, re-import or new service credentials are needed. The bundled Noto Sans Arabic PDF font is licensed under the SIL Open Font License in `Backend/assets/fonts/OFL.txt`.
 
 ## Project Structure
 

@@ -1,3 +1,4 @@
 # Preserve document bytes, including PDF offsets, on Windows and Linux.
 *.pdf binary
 *.docx binary
+*.ttf binary

@@ -13,19 +13,29 @@ function parseFile(file, kind, defaults) {
     if (parsing) return Promise.reject(Object.assign(new Error('Another file is being read. Please try again in a moment.'), { status: 429 }));
     parsing = true;
     return new Promise((resolve, reject) => {
-        const worker = new Worker(path.join(__dirname, 'import-file-worker.js'), {
-            workerData: { data: file.buffer, extension: path.extname(file.originalname).toLowerCase(), kind, defaults },
-            resourceLimits: { maxOldGenerationSizeMb: 192 }
+        let worker;
+        try {
+            worker = new Worker(path.join(__dirname, 'import-file-worker.js'), {
+                workerData: { data: file.buffer, extension: path.extname(file.originalname).toLowerCase(), kind, defaults },
+                resourceLimits: { maxOldGenerationSizeMb: 192 }
+            });
+        } catch (error) { parsing = false; reject(error); return; }
+        let result, failure, done = false;
+        const deadline = setTimeout(() => {
+            failure = new Error('Reading the file took too long. Split it into smaller files and try again.');
+            void worker.terminate();
+        }, 45000);
+        worker.once('message', message => { result = message; });
+        worker.once('error', () => { failure = new Error('Could not read this file. Use the sample format or split a large file into smaller parts.'); });
+        // Let readers release native PDF resources before allowing another file.
+        // Terminating immediately after postMessage can interrupt their cleanup.
+        worker.once('exit', code => {
+            if (done) return;
+            done = true; clearTimeout(deadline); parsing = false;
+            const error = failure || (code !== 0 || !result ? new Error('The file reader stopped. Please use a smaller file.')
+                : result.error ? new Error(result.error) : null);
+            error ? reject(error) : resolve(result.value);
         });
-        const deadline = setTimeout(() => finish(new Error('Reading the file took too long. Split it into smaller files and try again.')), 45000);
-        let done = false;
-        function finish(error, value) {
-            if (done) return; done = true; clearTimeout(deadline); parsing = false;
-            void worker.terminate(); error ? reject(error) : resolve(value);
-        }
-        worker.once('message', result => finish(result.error ? new Error(result.error) : null, result.value));
-        worker.once('error', () => finish(new Error('Could not read this file. Use the sample format or split a large file into smaller parts.')));
-        worker.once('exit', () => { if (!done) finish(new Error('The file reader stopped. Please use a smaller file.')); });
     });
 }
 function secretKey() { return crypto.createHash('sha256').update('quizboard-import-v1:' + process.env.JWT_SECRET).digest(); }

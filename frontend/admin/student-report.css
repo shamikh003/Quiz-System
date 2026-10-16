@@ -1,0 +1,82 @@
+.individual-intro { margin: -4px 0 20px; color: var(--text-secondary); font-size: 14px; }
+.report-view-tabs { display: flex; width: min(440px, 100%); margin-bottom: 20px; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+.report-view-tabs button { flex: 1; min-width: 0; min-height: 44px; margin: 0; border: 0; border-radius: 0; background: var(--surface); color: var(--accent); box-shadow: none; padding: 10px 14px; font-size: 14px; }
+.report-view-tabs [aria-selected="true"] { background: var(--accent); color: var(--text-on-accent); }
+.report-view-tabs button:hover { transform: none; }
+#all-results-panel[hidden], .individual-report [hidden], .individual-report[hidden] { display: none !important; }
+.individual-report { min-width: 0; }
+.individual-report .school-panel { min-width: 0; margin-bottom: 18px; padding: 22px; }
+.individual-search-fields { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(120px, 1fr) minmax(120px, 1fr); gap: 16px; }
+.individual-search-fields > div { min-width: 0; }
+.individual-search-fields label { margin-bottom: 10px; font-size: 11px; }
+.individual-search-fields input, .individual-search-fields select { width: 100%; min-width: 0; margin: 0; min-height: 46px; font-size: 14px; }
+.individual-help { margin: 8px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.65; }
+#individual-search-status, #individual-message { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+#individual-search-status:empty, #individual-message:empty { display: none; }
+.individual-matches { display: grid; gap: 6px; max-height: 236px; overflow-y: auto; margin-top: 12px; }
+.individual-match { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; margin: 0; padding: 10px 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); box-shadow: none; text-align: left; font-size: 13px; }
+.individual-match:hover, .individual-match.selected { background: var(--accent-subtle); border-color: var(--border-strong); transform: none; }
+.individual-match span { min-width: 0; overflow-wrap: anywhere; }
+.individual-match strong { display: block; margin-bottom: 4px; }
+.individual-match small { color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+.individual-match .individual-match-check { flex: 0 0 24px; color: var(--accent); font-size: 18px; }
+.individual-profile { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-top: 5px solid var(--gold, #fff100); }
+.individual-identity { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.individual-identity > div { min-width: 0; }
+.individual-avatar { display: grid; place-items: center; flex: 0 0 54px; width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: var(--text-on-accent); font-size: 19px; font-weight: 700; }
+.individual-report h2 { margin: 0; font-family: var(--font-ui); font-size: 18px; color: var(--accent); line-height: 1.45; overflow-wrap: anywhere; }
+.individual-profile h2 { font-family: var(--font-heading); font-size: 25px; }
+#individual-student-meta { margin: 5px 0 0; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.individual-download { display: grid; gap: 6px; flex-shrink: 0; text-align: right; }
+.individual-download button { margin: 0; width: auto; min-height: 44px; font-size: 13px; padding: 10px 18px; }
+.individual-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.individual-metric { min-width: 0; padding: 17px; border: 1px solid var(--border); border-top: 4px solid var(--gold, #fff100); border-radius: 10px; background: var(--surface); }
+.individual-metric span { display: block; font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+.individual-metric strong { display: block; margin-top: 8px; font-size: 28px; color: var(--accent); line-height: 1.25; overflow-wrap: anywhere; }
+.individual-metric small { display: block; margin-top: 5px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); }
+.individual-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.individual-section-heading p { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.individual-chart { position: relative; height: 224px; margin: 24px 8px 8px 36px; padding-bottom: 32px; }
+.individual-chart-plot { position: relative; height: 100%; }
+.individual-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.individual-chart-grid { position: absolute; left: 0; right: 0; height: 1px; border-top: 1px dashed var(--border); }
+.individual-chart-grid span { position: absolute; right: calc(100% + 9px); top: -8px; color: var(--text-secondary); font-size: 11px; white-space: nowrap; }
+.individual-chart-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--accent); border: 1px solid var(--surface); }
+.individual-chart-date { position: absolute; bottom: -27px; font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+.individual-chart-date:last-child { right: 0; }
+.individual-history-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.individual-history-grid .school-panel { margin-bottom: 0; }
+.individual-report .individual-table { width: 100%; min-width: 0; margin: 0; table-layout: fixed; border-collapse: collapse; }
+.individual-report .individual-table th, .individual-report .individual-table td { padding: 10px 6px; min-width: 0; font-size: 11px; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; }
+.individual-report .individual-table th { color: var(--text-on-accent); background: var(--accent); font-size: 10px; }
+.individual-report .individual-table th:first-child { width: 24%; }
+.individual-report .individual-assignment-table th:first-child { width: 35%; }
+.individual-report .individual-table small { display: block; color: var(--text-secondary); font-size: 10px; }
+.individual-history-cards { display: none; }
+.individual-history-card { padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.individual-history-card > strong { display: block; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
+.individual-history-card p { margin: 5px 0; font-size: 12px; color: var(--text-secondary); line-height: 1.6; overflow-wrap: anywhere; }
+.individual-history-values { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; }
+.individual-history-values strong { color: var(--accent); }
+.individual-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.individual-report .individual-pagination button, #individual-search-retry { width: auto; min-height: 40px; margin: 0; padding: 8px 12px; font-size: 12px; }
+.individual-pagination span { font-size: 11px; color: var(--text-secondary); text-align: center; }
+.individual-empty { padding: 24px 8px; color: var(--text-secondary); font-size: 13px; line-height: 1.7; }
+@media (max-width: 1250px) { .individual-history-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 700px) {
+    .individual-report .school-panel { padding: 16px; }
+    .individual-search-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+    .individual-search-fields > div:first-child { grid-column: 1 / -1; }
+    .individual-profile { align-items: stretch; flex-direction: column; gap: 16px; }
+    .individual-download { text-align: left; }
+    .individual-download button { width: 100%; }
+    .individual-avatar { flex-basis: 44px; width: 44px; height: 44px; font-size: 16px; }
+    .individual-profile h2 { font-size: 23px; }
+    .individual-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .individual-metric { padding: 14px; }
+    .individual-metric strong { font-size: 25px; }
+    .individual-chart { height: 198px; margin-left: 30px; }
+    .individual-intro { font-size: 12px; }
+    .individual-report .individual-table { display: none; }
+    .individual-history-cards { display: grid; gap: 10px; }
+}

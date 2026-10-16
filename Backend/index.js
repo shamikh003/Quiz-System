@@ -88,6 +88,7 @@ app.use('/api', require('./routes/attempts'));
 app.use('/api', questionRoutes);
 app.use('/api', require('./routes/imports'));
 app.use('/api', resultRoutes);
+app.use('/api', require('./routes/student-reports'));
 app.use('/api', settingsRoutes);
 app.use('/api', assignmentRoutes);
 app.use('/api', dashboardRoutes);
