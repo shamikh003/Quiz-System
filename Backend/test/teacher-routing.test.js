@@ -46,7 +46,7 @@ test('every published clean teacher URL rewrites to its proper page with the cor
         .filter(line => line.trim() && !line.startsWith('#')).map(line => line.trim().split(/\s+/)));
     for (const [slug, file] of Object.entries({ dashboard: 'index.html', addquestions: 'index.html', editquestions: 'index.html',
         managequestions: 'index.html', assignments: 'index.html', students: 'students.html', reports: 'results.html' })) {
-        assert.equal(aliases[`/${slug}`], `/admin/${file}`);
+        assert.equal(aliases[`/${slug}`], file === 'index.html' ? '/admin/' : `/admin/${file.replace(/\.html$/, '')}`);
         const source = fs.readFileSync(path.join(frontend, 'admin', file), 'utf8');
         const bootstrap = source.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
         for (const pathname of [`/${slug}`, `/${slug}/`, `/frontend/admin/${file}`]) {
