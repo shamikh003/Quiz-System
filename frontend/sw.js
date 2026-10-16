@@ -1,8 +1,8 @@
 // v5: cache only static assets. Private API responses are never cached.
-const CACHE_NAME = 'quizboard-cache-v8.15';
+const CACHE_NAME = 'quizboard-cache-v8.16';
 const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.1','/index.html','/admin/index.html','/admin/results.html','/admin/students.html',
-    '/admin/teacher-shell.js?v=1.2',
-    '/admin/admin.js?v=7.6','/admin/report-utils.js?v=7.0','/admin/results.js?v=7.1','/admin/students.js?v=5.4',
+    '/admin/teacher-routing.js?v=1.0','/admin/teacher-shell.js?v=1.3',
+    '/admin/admin.js?v=7.7','/admin/report-utils.js?v=7.0','/admin/results.js?v=7.1','/admin/students.js?v=5.4',
     '/admin/bulk-import.js?v=1.1','/admin/bulk-import.css?v=1.0',
     '/student/quiz.html','/student/quiz.js?v=8.1','/student/quiz-session.css?v=1.1','/style.css?v=8.0',
     '/favicon.ico?v=1','/favicon.svg?v=1',
@@ -19,5 +19,12 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(event.request).then(response => {
         if (response.ok) { const copy = response.clone(); event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy))); }
         return response;
-    }).catch(() => caches.match(event.request)));
+    }).catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached || event.request.mode !== 'navigate') return cached;
+        const route = url.pathname.slice(new URL(self.registration.scope).pathname.length).replace(/\/$/, '');
+        const aliases = { dashboard: 'index.html', addquestions: 'index.html', editquestions: 'index.html',
+            managequestions: 'index.html', assignments: 'index.html', students: 'students.html', reports: 'results.html' };
+        return Object.hasOwn(aliases, route) ? caches.match(new URL(`admin/${aliases[route]}`, self.registration.scope).href) : undefined;
+    }));
 });

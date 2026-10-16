@@ -54,7 +54,9 @@ function showLoggedInView() {
     adminPanel.style.display = 'flex';
     document.body.classList.add('app-shell-page');
     loadSettings();
-    loadDashboard();
+    const section = window.TeacherRoutes?.current() || 'dashboard';
+    if (section !== 'dashboard') loadDashboard();
+    activateTab(section, { replace: true });
 }
 
 
@@ -110,7 +112,7 @@ const assignmentsTabContent = document.getElementById('assignments-tab-content')
 const tabButtons = { dashboard: tabDashboard, add: tabAdd, edit: tabEdit, manage: tabManage, assignments: tabAssignments };
 const tabContents = { dashboard: dashboardTabContent, add: addTabContent, edit: editTabContent, manage: manageTabContent, assignments: assignmentsTabContent };
 
-function activateTab(key) {
+function activateTab(key, { replace = false, updateAddress = true } = {}) {
     if ((key === 'add' || key === 'edit') && saveBtn.disabled) return;
     if (key === 'add' || key === 'edit') switchQuestionForm(key);
     Object.keys(tabButtons).forEach(k => {
@@ -122,7 +124,7 @@ function activateTab(key) {
     if (key === 'edit' && !editingQuestionId) loadEditQuestionList();
     if (key === 'assignments') loadAssignments();
     // Keep the selected section when opening a link or refreshing this page.
-    history.replaceState(null, '', `#${key}`);
+    if (updateAddress) window.TeacherRoutes?.navigate(key, { replace });
 
     // Close the mobile sidebar (if open) after picking a section.
     const sidebarEl = document.getElementById('sidebar');
@@ -868,10 +870,12 @@ try {
 } catch { localStorage.removeItem('adminToken'); }
 if (getToken()) {
     showLoggedInView();
-    const tab = location.hash.slice(1);
-    if (Object.hasOwn(tabButtons, tab) && tab !== 'dashboard') activateTab(tab);
 } else showLoggedOutView();
 window.addEventListener('hashchange', () => {
-    const tab = location.hash.slice(1);
-    if (getToken() && Object.hasOwn(tabButtons, tab)) activateTab(tab);
+    const tab = window.TeacherRoutes?.current();
+    if (getToken() && Object.hasOwn(tabButtons, tab)) activateTab(tab, { replace: true });
+});
+window.addEventListener('popstate', () => {
+    const tab = window.TeacherRoutes?.current();
+    if (getToken() && Object.hasOwn(tabButtons, tab)) activateTab(tab, { updateAddress: false });
 });

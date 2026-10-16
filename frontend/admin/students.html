@@ -2,6 +2,14 @@
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, follow">
 <title>QuizBoard | Students</title>
+<script>
+(() => {
+    const path = location.pathname, at = path.lastIndexOf('/admin/');
+    const root = at >= 0 ? path.slice(0, at + 1) : path.replace(/\/(?:dashboard|addquestions|editquestions|managequestions|assignments|students|reports)\/?$/, '/');
+    const base = document.createElement('base'); base.href = root + 'admin/'; document.head.append(base);
+})();
+</script>
+<script src="teacher-routing.js?v=1.0"></script>
 <link rel="icon" href="../favicon.ico?v=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
 <link rel="stylesheet" href="../style.css?v=8.0"><link rel="stylesheet" href="bulk-import.css?v=1.0"></head>
@@ -32,6 +40,6 @@
 <div id="students-list" role="region" aria-label="Registered students" tabindex="0"></div>
 </section></div></section></main></div><script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
-<script src="teacher-shell.js?v=1.2"></script>
+<script src="teacher-shell.js?v=1.3"></script>
 <script src="report-utils.js?v=7.0"></script>
 <script src="students.js?v=5.4"></script><script src="bulk-import.js?v=1.1"></script></body></html>

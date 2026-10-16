@@ -1,0 +1,15 @@
+# Teacher screen aliases; APIs still require the existing teacher session.
+/dashboard       /admin/index.html     200
+/dashboard/      /admin/index.html     200
+/addquestions    /admin/index.html     200
+/addquestions/   /admin/index.html     200
+/editquestions   /admin/index.html     200
+/editquestions/  /admin/index.html     200
+/managequestions /admin/index.html     200
+/managequestions/ /admin/index.html    200
+/assignments     /admin/index.html     200
+/assignments/    /admin/index.html     200
+/students        /admin/students.html  200
+/students/       /admin/students.html  200
+/reports         /admin/results.html   200
+/reports/        /admin/results.html   200

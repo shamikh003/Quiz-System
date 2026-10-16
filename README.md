@@ -16,6 +16,7 @@ Developed by **Muhammad Shamikh**, **Sadia Khan**, and **Abdul Rehman** for comp
 - Word, Excel, and PowerPoint assignments with teacher grading. Graded marks remain in reports after assignment deletion.
 - Personal student reports and a shared leaderboard ranked by marks percentage, then completion time for ties.
 - Grade, section, and roll number filters with matching CSV exports.
+- Readable teacher URLs (`/addquestions`, `/editquestions`, `/managequestions`, `/students`, `/reports`) on Cloudflare Pages / Netlify. Refresh and Back work, and old teacher hash links remain compatible. VS Code Live Server retains local hash links because it does not apply hosting rewrites.
 - Bulk question import from typed PDF/Word documents and student registration from Excel, with a review preview, duplicate checks and progress.
 - Responsive design, dark mode, and English/Urdu support, including saved automatic question and option translations.
 

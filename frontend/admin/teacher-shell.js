@@ -16,7 +16,7 @@
         ['students','Students','students.html'], ['reports','Reports','results.html']];
     sidebar.innerHTML = `<div class="sidebar-brand"><div class="sidebar-brand-text">QuizBoard</div></div>
         <nav class="sidebar-nav" aria-label="Teacher navigation">${links.map(([key,label,href]) =>
-            `<a href="${href}" class="sidebar-link${document.body.dataset.teacherPage === key ? ' active' : ''}"${document.body.dataset.teacherPage === key ? ' aria-current="page"' : ''}><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24">${paths[key]}</svg></span><span class="sidebar-label">${label}</span></a>`).join('')}</nav>
+            `<a href="${window.TeacherRoutes?.href(key) || href}" class="sidebar-link${document.body.dataset.teacherPage === key ? ' active' : ''}"${document.body.dataset.teacherPage === key ? ' aria-current="page"' : ''}><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24">${paths[key]}</svg></span><span class="sidebar-label">${label}</span></a>`).join('')}</nav>
         <div class="sidebar-footer"><button type="button" class="theme-toggle" role="switch" aria-checked="false">Dark mode</button>
         <button type="button" class="sidebar-logout" id="teacher-logout">Log Out</button></div>`;
     const applyTheme = () => {
@@ -30,7 +30,7 @@
     sidebar.querySelector('.theme-toggle').onclick = () => {
         localStorage.setItem('quizTheme', document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); applyTheme();
     };
-    document.getElementById('teacher-logout').onclick = () => { localStorage.removeItem('adminToken'); location.href = 'index.html'; };
+    document.getElementById('teacher-logout').onclick = () => { localStorage.removeItem('adminToken'); location.href = window.TeacherRoutes?.href('dashboard') || 'index.html'; };
     const toggle = document.getElementById('mobile-menu-btn');
     const close = () => { sidebar.classList.remove('open'); toggle.setAttribute('aria-expanded','false'); };
     toggle.onclick = () => toggle.setAttribute('aria-expanded', String(sidebar.classList.toggle('open')));
