@@ -6,7 +6,7 @@ const { resultMetrics } = require('../result-ranking');
 const problem = (status, message) => Object.assign(new Error(message), { status });
 const identity = row => JSON.stringify([row.rollNum, row.grade, sectionKey(row.section)]);
 const legacyKey = row => 'legacy:' + Buffer.from(identity(row)).toString('base64url');
-const profile = row => ({ key: `student:${row._id}`, name: row.name, rollNum: row.rollNum,
+const profile = row => ({ key: `student:${row._id}`, name: row.name, fatherName: row.fatherName || '', rollNum: row.rollNum,
     grade: row.grade, section: sectionName(row.section), historical: false });
 function legacyFilter(row) {
     const key = sectionKey(row.section);
@@ -28,7 +28,7 @@ async function searchStudents(query = {}) {
     if (q.length > 100 || (query.section || '').length > 80) throw problem(400, 'Use a shorter search.');
     if (query.grade && !validGrade(query.grade)) throw problem(400, 'Choose a valid grade.');
     const [accounts, oldQuizzes, oldAssignments] = await Promise.all([
-        Student.find({}).select('name rollNum grade section').lean(),
+        Student.find({}).select('name fatherName rollNum grade section').lean(),
         historicalIdentities(Result, 'date'), historicalIdentities(Submission, 'submittedAt')
     ]);
     const known = new Set(accounts.map(identity)), legacy = new Map();
@@ -49,7 +49,7 @@ async function resolveStudent(key) {
     if (key.startsWith('student:')) {
         const id = key.slice(8);
         if (!mongoose.isObjectIdOrHexString(id)) throw problem(400, 'Invalid student.');
-        const student = await Student.findById(id).select('name rollNum grade section');
+        const student = await Student.findById(id).select('name fatherName rollNum grade section');
         if (!student) throw problem(404, 'This student is no longer available. Search again.');
         return { student: profile(student), filter: studentRecords(student) };
     }
@@ -59,13 +59,13 @@ async function resolveStudent(key) {
     if (!Array.isArray(values) || values.length !== 3 || typeof values[0] !== 'string' || !values[0] || values[0].length > 40
         || !validGrade(values[1]) || typeof values[2] !== 'string' || values[2].length > 80) throw problem(400, 'Invalid historical student.');
     const row = { rollNum: values[0], grade: Number(values[1]), section: sectionName(values[2]) };
-    const account = await Student.findOne({ rollNum: row.rollNum, grade: row.grade, sectionKey: sectionKey(row.section) }).select('name rollNum grade section');
+    const account = await Student.findOne({ rollNum: row.rollNum, grade: row.grade, sectionKey: sectionKey(row.section) }).select('name fatherName rollNum grade section');
     if (account) return { student: profile(account), filter: studentRecords(account) };
     const filter = legacyFilter(row);
     const record = await Result.findOne(filter).sort({ date: -1, _id: -1 }).select('name section')
         || await Submission.findOne(filter).sort({ submittedAt: -1, _id: -1 }).select('name section');
     if (!record) throw problem(404, 'No saved report was found for this student.');
-    return { student: { ...row, key, name: record.name || 'Historical student', section: sectionName(record.section), historical: true }, filter };
+    return { student: { ...row, key, name: record.name || 'Historical student', fatherName: '', section: sectionName(record.section), historical: true }, filter };
 }
 const average = values => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 const validPercent = value => Number.isFinite(value) && value >= 0 && value <= 100;

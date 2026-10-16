@@ -21,7 +21,7 @@ test('profile edits validate identity, retain marks and history, and protect an 
     const collision = await models.Student.create({ name: 'Other', rollNum: 'PROFILE', grade: 5, section: 'B', passwordHash: 'other' });
     const token = jwt.sign({ id: student._id, role: 'student', version: 0 }, process.env.JWT_SECRET);
     const url = `/admin/students/${student._id}/profile`;
-    const body = { name: 'Correct Name', grade: 4, section: 'C' };
+    const body = { name: 'Correct Name', fatherName: '  Sample Father  ', grade: 4, section: 'C' };
     const assignment = await models.Assignment.create({ title: 'Old work', grade: 4, maxMarks: 10, fileName: 'old.docx', fileUrl: 'unused', filePath: 'unused' });
     const newAssignment = await models.Assignment.create({ title: 'New work', grade: 0, maxMarks: 10, fileName: 'new.docx', fileUrl: 'unused', filePath: 'unused' });
     const legacy = await models.Result.create({ name: 'Typo', rollNum: student.rollNum, grade: 4, section: 'A', score: 8, total: 10 });
@@ -29,7 +29,7 @@ test('profile edits validate identity, retain marks and history, and protect an 
     try {
         assert.equal((await request(url, null, body)).status, 401);
         assert.equal((await request(url, token, body)).status, 403);
-        for (const invalid of [{ ...body, name: '' }, { ...body, name: 'x'.repeat(101) }, { ...body, grade: 8 }, { ...body, section: {} }, { ...body, section: 'x'.repeat(81) }, { name: 'Valid', grade: 4 }]) {
+        for (const invalid of [{ ...body, name: '' }, { ...body, name: 'x'.repeat(101) }, { ...body, fatherName: {} }, { ...body, fatherName: 'x'.repeat(101) }, { ...body, grade: 8 }, { ...body, section: {} }, { ...body, section: 'x'.repeat(81) }, { name: 'Valid', grade: 4 }]) {
             assert.equal((await request(url, adminToken, invalid)).status, 400);
         }
         assert.equal((await request('/admin/students/bad/profile', adminToken, body)).status, 400);
@@ -47,12 +47,14 @@ test('profile edits validate identity, retain marks and history, and protect an 
         assert.equal((await request(url, adminToken, move)).status, 200);
         const saved = await models.Student.findById(student._id).select('+passwordHash');
         assert.equal(saved.grade, 0); assert.equal(saved.section, 'Hifz A'); assert.equal(saved.passwordHash, 'unchanged'); assert.equal(saved.tokenVersion, 0);
+        assert.equal(saved.fatherName, 'Sample Father', 'older profile requests must preserve the saved father name');
         const oldResult = await models.Result.findById(legacy._id), sealed = await models.Result.findOne({ attempt: attempt._id });
         assert.equal(oldResult.grade, 4); assert.equal(oldResult.section, 'C'); assert.equal(oldResult.name, move.name); assert.equal(sealed.grade, 4);
         const oldSubmission = await models.Submission.findById(submission._id);
         assert.equal(oldSubmission.grade, 4); assert.equal(oldSubmission.section, 'C'); assert.equal(oldSubmission.marks, 9); assert.equal(oldSubmission.name, move.name);
         const report = await request('/student/report', token);
         assert.equal(report.status, 200); assert.ok(report.data.results.some(r => r.score === 8));
+        assert.equal(report.data.student.fatherName, 'Sample Father');
         assert.equal(report.data.assignments.find(a => a._id === String(assignment._id)).historical, true);
         assert.equal(report.data.assignments.find(a => a._id === String(assignment._id)).submission.marks, 9);
         assert.equal(report.data.assignments.find(a => a._id === String(newAssignment._id)).historical, false);
@@ -64,6 +66,22 @@ test('profile edits validate identity, retain marks and history, and protect an 
         await models.Student.deleteMany({ _id: { $in: [student._id, collision._id] } });
         await models.Assignment.deleteMany({ _id: { $in: [assignment._id, newAssignment._id] } });
     }
+});
+test('registration and editing validate father names without requiring a reset of older accounts', async () => {
+    const body = { name: 'Father Field Student', fatherName: '  Father Field Parent  ', rollNum: 'FATHER-FIELD', grade: 5, section: 'A', password: 'Sample123' };
+    for (const fatherName of [null, {}, 123, 'x'.repeat(101)]) {
+        assert.equal((await request('/admin/students', adminToken, { ...body, fatherName })).status, 400);
+    }
+    const created = await request('/admin/students', adminToken, body);
+    assert.equal(created.status, 201); assert.equal(created.data.fatherName, 'Father Field Parent');
+    const login = await request('/student/login', null, { rollNum: body.rollNum, grade: body.grade, password: body.password });
+    assert.equal(login.status, 200); assert.equal(login.data.student.fatherName, 'Father Field Parent');
+    const url = `/admin/students/${created.data.id}/profile`;
+    assert.equal((await request(url, adminToken, { name: body.name, grade: 5, section: 'A', fatherName: '' })).status, 200);
+    const profile = (await request('/student/report', login.data.token)).data.student;
+    assert.equal(profile.fatherName, '');
+    assert.ok(!(await request('/admin/students', adminToken)).data.some(student => 'passwordHash' in student));
+    await models.Student.deleteOne({ _id: created.data.id });
 });
 before(async () => {
     process.env.JWT_SECRET = 'isolated-test-secret-not-used-outside-tests';

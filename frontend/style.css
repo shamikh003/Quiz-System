@@ -942,7 +942,7 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .student-account-actions button { width: auto; margin: 0; min-height: 44px; padding: 8px 12px; font-size: 12px; }
 .student-account-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .student-profile-editor { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-.student-profile-fields { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+.student-profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .student-profile-fields .field { min-width: 0; }
 @media (max-width: 600px) { .student-profile-fields { grid-template-columns: 1fr 1fr; } .student-profile-fields .field:first-child { grid-column: 1 / -1; } }
 .student-account-form { min-width: 0; gap: 8px; }
@@ -1271,6 +1271,7 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .blue-gold .student-identity-info { min-width: 0; flex: 1 1 200px; }
 .blue-gold #student-heading { margin: 0 0 8px; font-size: 23px; }
 .blue-gold #student-meta { margin: 0; font-size: 13px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.blue-gold #student-father-name { margin: 0 0 5px; font-size: 13px; color: var(--text-secondary); overflow-wrap: anywhere; }
 .blue-gold .student-entry-controls { flex: 1 1 320px; }
 .blue-gold .portal-start-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .blue-gold .portal-start-actions button { flex: 1 1 140px; margin: 0; font-size: 13px; min-height: 44px; padding: 10px 12px; }

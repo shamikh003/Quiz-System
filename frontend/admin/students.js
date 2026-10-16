@@ -26,6 +26,7 @@ function render() {
         const header = node('div'); header.className = 'student-account-header';
         const identity = node('div'); identity.className = 'student-account-identity';
         identity.append(node('h3', student.name), node('p', `${grade} · ${ReportUtils.section(student)} · Roll ${student.rollNum}`));
+        identity.append(node('p', `Father name: ${student.fatherName || '—'}`));
         header.append(identity); card.append(header);
         const controls = node('div'); controls.className = 'student-account-controls';
         const actions = node('div'); actions.className = 'student-account-actions'; header.append(actions);
@@ -34,12 +35,13 @@ function render() {
         const editor = node('form'); editor.className = 'student-account-form student-profile-editor hidden';
         editor.id = `profile-${student.id}`; editButton.setAttribute('aria-controls', editor.id);
         const nameInput = node('input'); nameInput.id = `name-${student.id}`; nameInput.required = true; nameInput.maxLength = 100;
+        const fatherInput = node('input'); fatherInput.id = `father-name-${student.id}`; fatherInput.maxLength = 100;
         const gradeInput = node('select'); gradeInput.id = `grade-${student.id}`;
         for (const value of [4, 5, 6, 7, 0]) { const option = node('option', value === 0 ? 'Hifz' : `Grade ${value}`); option.value = value; gradeInput.append(option); }
         const sectionInput = node('input'); sectionInput.id = `section-${student.id}`; sectionInput.maxLength = 80;
         sectionInput.placeholder = 'Unassigned'; sectionInput.setAttribute('list', 'section-suggestions');
         const fields = node('div'); fields.className = 'student-profile-fields';
-        for (const [text, input] of [['Name', nameInput], ['Grade', gradeInput], ['Section', sectionInput]]) {
+        for (const [text, input] of [['Name', nameInput], ['Father name', fatherInput], ['Grade', gradeInput], ['Section', sectionInput]]) {
             const field = node('div'); field.className = 'field'; const label = node('label', text); label.htmlFor = input.id; field.append(label, input); fields.append(field);
         }
         const editorActions = node('div'); editorActions.className = 'student-account-actions';
@@ -51,6 +53,7 @@ function render() {
         editButton.onclick = () => {
             if (!editor.classList.contains('hidden')) { closeEditor(); return; }
             nameInput.value = student.name; gradeInput.value = student.grade;
+            fatherInput.value = student.fatherName || '';
             sectionInput.value = student.section === 'Unassigned' ? '' : student.section || '';
             editStatus.textContent = ''; editor.classList.remove('hidden'); editButton.setAttribute('aria-expanded', 'true'); nameInput.focus();
         };
@@ -58,17 +61,17 @@ function render() {
         editor.onsubmit = async event => {
             event.preventDefault(); save.disabled = true; cancel.disabled = true; editButton.disabled = true; editStatus.textContent = '';
             try {
-                const updated = await request(`/admin/students/${student.id}/profile`, { name: nameInput.value, grade: gradeInput.value, section: sectionInput.value });
+                const updated = await request(`/admin/students/${student.id}/profile`, { name: nameInput.value, fatherName: fatherInput.value, grade: gradeInput.value, section: sectionInput.value });
                 if ($('student-filter-grade').value && Number($('student-filter-grade').value) !== updated.grade) $('student-filter-grade').value = String(updated.grade);
                 if ($('student-filter-section').value && ReportUtils.section(updated) !== ReportUtils.section(student)) $('student-filter-section').value = '';
                 if ($('student-search').value && updated.name !== student.name) $('student-search').value = '';
-                $('account-message').textContent = `Profile saved for ${updated.name}. Previous quiz and assignment marks are preserved.`;
+                $('account-message').textContent = 'Profile saved.';
                 await load();
                 document.getElementById(`profile-${student.id}`)?.closest('article')?.querySelector('.student-account-actions button')?.focus();
             } catch (error) { editStatus.textContent = error.message; }
             finally { save.disabled = false; cancel.disabled = false; editButton.disabled = false; }
         };
-        const form = node('form'); form.className = 'student-account-form'; const label = node('label', 'New password (only to reset)');
+        const form = node('form'); form.className = 'student-account-form'; const label = node('label', 'New password');
         const password = node('input'); password.type = 'password'; password.required = true; password.minLength = 6; password.maxLength = 72;
         password.autocomplete = 'new-password'; password.id = `reset-${student.id}`; label.htmlFor = password.id;
         const button = node('button', 'Reset Password'); button.type = 'submit'; button.className = 'btn-secondary';
@@ -114,8 +117,8 @@ $('export-students-btn').onclick = () => { if (visibleStudents.length) ReportUti
 $('account-form').onsubmit = async event => {
     event.preventDefault(); $('create-account').disabled = true;
     try {
-        await request('/admin/students', { name: $('account-name').value, rollNum: $('account-roll').value, grade: $('account-grade').value, section: $('account-section').value, password: $('account-password').value });
-        $('account-message').textContent = 'Account created. Share the roll number, grade, section and password with this student.';
+        await request('/admin/students', { name: $('account-name').value, fatherName: $('account-father-name').value, rollNum: $('account-roll').value, grade: $('account-grade').value, section: $('account-section').value, password: $('account-password').value });
+        $('account-message').textContent = 'Account created.';
         $('account-form').reset(); await load();
     } catch (error) { $('account-message').textContent = error.message; }
     finally { $('create-account').disabled = false; }

@@ -54,9 +54,9 @@
             $('individual-section').replaceChildren(new Option('All Sections', ''), ...result.sections.map(name => new Option(name, name)));
             $('individual-section').value = result.sections.includes(section) ? section : '';
             $('individual-search-results').replaceChildren(...result.students.map(student => match(student)));
-            $('individual-search-status').textContent = !result.total ? 'No matching students. Try another name, roll number or filter.'
-                : result.total > result.students.length ? `${result.students.length} of ${result.total} matches shown. Type more of the name to narrow the list.`
-                : `${result.total} matching student${result.total === 1 ? '' : 's'}. Select a student below.`;
+            $('individual-search-status').textContent = !result.total ? 'No students found.'
+                : result.total > result.students.length ? `${result.students.length} of ${result.total} students`
+                : `${result.total} student${result.total === 1 ? '' : 's'}`;
         } catch (error) {
             if (current !== searchId || error.name === 'AbortError') return;
             $('individual-search-results').replaceChildren(); $('individual-search-status').textContent = error.message;
@@ -65,7 +65,7 @@
     }
     function match(student, selected = false) {
         const button = make('button', null, `individual-match${selected ? ' selected' : ''}`); button.type = 'button';
-        const copy = make('span'); copy.append(make('strong', student.name), make('small', `Roll ${student.rollNum} · ${grade(student.grade)} · Section ${student.section}${student.historical ? ' · Historical record' : ''}`));
+        const copy = make('span'); copy.append(make('strong', student.name), make('small', `Roll ${student.rollNum} · ${grade(student.grade)} · Section ${student.section}`));
         button.append(copy, make('span', selected ? '✓' : '›', 'individual-match-check'));
         button.setAttribute('aria-label', `${student.name}, roll ${student.rollNum}, ${grade(student.grade)}, section ${student.section}`);
         button.onclick = () => selectStudent(student); return button;
@@ -76,7 +76,7 @@
         chosen = student; data = null; quizPage = 1; assignmentPage = 1; const current = ++reportId;
         $('individual-content').hidden = true; $('individual-download-pdf').disabled = true;
         $('individual-message').textContent = ''; $('individual-search-results').replaceChildren(match(student, true));
-        $('individual-search-status').textContent = 'Student selected.';
+        $('individual-search-status').textContent = '';
         stopReportLoader = window.QuizLoader?.show($('individual-loader'), 'Loading student report…') || (() => {});
         try {
             const report = await request(encodeURIComponent(student.key), reportController);
@@ -90,20 +90,19 @@
         const { student, summary } = data;
         $('individual-download-pdf').textContent = 'Download PDF';
         $('individual-student-name').textContent = student.name;
+        $('individual-father-name').textContent = `Father name: ${student.fatherName || '—'}`;
         $('individual-initials').textContent = student.name.trim().split(/\s+/).slice(0, 2).map(word => Array.from(word)[0]).join('').toUpperCase();
         $('individual-student-meta').textContent = `Roll ${student.rollNum} · ${grade(student.grade)} · Section ${student.section}`;
-        $('individual-period').textContent = `Computer · All-time performance${student.historical ? ' · Historical record' : ''}`;
         $('individual-generated').textContent = `As of ${date(data.generatedAt)}`;
-        const metrics = [['Quizzes Taken', summary.quizzesTaken, 'Saved quiz results'], ['Average Quiz Marks', pct(summary.averageQuiz), `${summary.scoredQuizzes} scored quizzes`],
-            ['Best Quiz Score', pct(summary.bestQuiz), 'Highest saved percentage'], ['Assignment Average', pct(summary.assignmentAverage), `${summary.gradedAssignments} graded assignments`]];
-        $('individual-metrics').replaceChildren(...metrics.map(([label, value, note]) => { const card = make('div', null, 'individual-metric'); card.append(make('span', label), make('strong', String(value)), make('small', note)); return card; }));
+        const metrics = [['Quizzes Taken', summary.quizzesTaken], ['Average Quiz Marks', pct(summary.averageQuiz)],
+            ['Best Quiz Score', pct(summary.bestQuiz)], ['Assignment Average', pct(summary.assignmentAverage)]];
+        $('individual-metrics').replaceChildren(...metrics.map(([label, value]) => { const card = make('div', null, 'individual-metric'); card.append(make('span', label), make('strong', String(value))); return card; }));
         renderChart(); renderHistory('quiz'); renderHistory('assignment');
     }
     function renderChart() {
         const rows = data.quizzes.filter(row => row.percentage != null).slice(-20), container = $('individual-chart'); container.replaceChildren();
-        $('individual-trend-summary').textContent = rows.length ? `${data.summary.scoredQuizzes > rows.length ? 'Shown start' : 'First'}: ${pct(rows[0].percentage)} · Latest: ${pct(rows.at(-1).percentage)}` : '';
-        $('individual-chart-caption').textContent = data.summary.scoredQuizzes > rows.length ? `Latest ${rows.length} of ${data.summary.scoredQuizzes} scored quizzes. Summary uses all saved results.` : 'Quiz marks over time';
-        if (!rows.length) { container.append(make('p', 'No scored quizzes are available for this student yet.', 'individual-empty')); return; }
+        $('individual-chart-title').textContent = data.summary.scoredQuizzes > rows.length ? 'Quiz Performance · Latest 20' : 'Quiz Performance';
+        if (!rows.length) { container.append(make('p', 'No quiz results.', 'individual-empty')); return; }
         const chart = make('div', null, 'individual-chart'), plot = make('div', null, 'individual-chart-plot');
         plot.setAttribute('role', 'img'); plot.setAttribute('aria-label', `Quiz marks, oldest to newest: ${rows.map(row => pct(row.percentage)).join(', ')}`);
         for (const value of [100, 50, 0]) { const grid = make('div', null, 'individual-chart-grid'); grid.style.top = `${100 - value}%`; grid.append(make('span', `${value}%`)); plot.append(grid); }
@@ -121,8 +120,8 @@
         const pages = Math.max(1, Math.ceil(rows.length / size)); let page = Math.min(quiz ? quizPage : assignmentPage, pages);
         if (quiz) quizPage = page; else assignmentPage = page;
         const visible = rows.slice((page - 1) * size, page * size), container = $(`individual-${kind}-history`); container.replaceChildren();
-        $(`individual-${kind}-count`).textContent = `${rows.length} saved ${quiz ? 'quiz results' : 'submissions'}`;
-        if (!rows.length) container.append(make('p', quiz ? 'No saved quiz results yet.' : 'No saved assignment submissions yet.', 'individual-empty'));
+        $(`individual-${kind}-count`).textContent = `${rows.length} ${quiz ? (rows.length === 1 ? 'quiz' : 'quizzes') : (rows.length === 1 ? 'assignment' : 'assignments')}`;
+        if (!rows.length) container.append(make('p', quiz ? 'No quiz results.' : 'No assignments.', 'individual-empty'));
         else {
             const table = make('table', null, `individual-table${quiz ? '' : ' individual-assignment-table'}`), head = make('thead'), tr = make('tr'), body = make('tbody');
             (quiz ? ['Date', 'Grade / Section', 'Score', 'Marks %', 'Time'] : ['Assignment', 'Date', 'Marks', 'Marks %', 'Status']).forEach(label => { const th = make('th', label); th.scope = 'col'; tr.append(th); });

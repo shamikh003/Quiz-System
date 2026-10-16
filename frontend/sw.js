@@ -1,11 +1,11 @@
 // v5: cache only static assets. Private API responses are never cached.
-const CACHE_NAME = 'quizboard-cache-v8.17';
+const CACHE_NAME = 'quizboard-cache-v8.18';
 const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.1','/index.html','/admin/index.html','/admin/results.html','/admin/students.html',
     '/admin/teacher-routing.js?v=1.0','/admin/teacher-shell.js?v=1.3',
-    '/admin/admin.js?v=7.7','/admin/report-utils.js?v=7.0','/admin/results.js?v=7.2','/admin/students.js?v=5.4',
-    '/admin/student-report.js?v=1.0','/admin/student-report.css?v=1.0',
-    '/admin/bulk-import.js?v=1.1','/admin/bulk-import.css?v=1.0',
-    '/student/quiz.html','/student/quiz.js?v=8.1','/student/quiz-session.css?v=1.1','/style.css?v=8.0',
+    '/admin/admin.js?v=7.8','/admin/report-utils.js?v=7.1','/admin/results.js?v=7.2','/admin/students.js?v=5.5',
+    '/admin/student-report.js?v=1.1','/admin/student-report.css?v=1.1',
+    '/admin/bulk-import.js?v=1.2','/admin/bulk-import.css?v=1.0',
+    '/student/quiz.html','/student/quiz.js?v=8.2','/student/quiz-session.css?v=1.1','/style.css?v=8.1',
     '/favicon.ico?v=1','/favicon.svg?v=1',
     '/manifest-admin.json','/manifest-quiz.json']
     .map(path => new URL(path.slice(1), self.registration.scope).href);

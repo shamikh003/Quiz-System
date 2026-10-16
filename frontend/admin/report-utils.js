@@ -86,7 +86,7 @@
                 row.date ? new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }) : ''])]);
     }
     function studentCsv(rows) {
-        return csv([['Name', 'Roll Number', 'Grade', 'Section'], ...rows.map(row => [row.name, row.rollNum, gradeLabel(row.grade), section(row)])]);
+        return csv([['Name', 'Father Name', 'Roll Number', 'Grade', 'Section'], ...rows.map(row => [row.name, row.fatherName || '', row.rollNum, gradeLabel(row.grade), section(row)])]);
     }
     function download(text, prefix, filters = {}) {
         const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });

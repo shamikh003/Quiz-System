@@ -13,6 +13,7 @@ Developed by **Muhammad Shamikh**, **Sadia Khan**, and **Abdul Rehman** for comp
 - Student quiz screen with a numbered navigator, Previous/Skip/Next, automatic answer saves, explicit submission review, and a larger image viewer. The desktop layout fits the viewport; images preserve their aspect ratio. Mobile screens use a stacked layout.
 - Server-side scoring and one quiz attempt per student per Pakistan calendar day.
 - Grades 4–7 and Hifz, custom sections, and student account management.
+- Student and father names in registration, editable profiles and Excel imports. Existing accounts can add a father name through Edit Profile; older spreadsheets remain supported.
 - Word, Excel, and PowerPoint assignments with teacher grading. Graded marks remain in reports after assignment deletion.
 - Personal student reports and a shared leaderboard ranked by marks percentage, then completion time for ties.
 - Grade, section, and roll number filters with matching CSV exports.
@@ -73,7 +74,7 @@ After updating the backend and frontend together, run `npm install` in `Backend`
 
 ### Individual student reports
 
-Open **Reports → Student Report** and search by name or roll number. Select the correct account using its roll number, grade and section. Existing saved quiz results and graded assignments are included, including archived assignment marks. Linked history follows the student across grade/section changes; older unlinked records are matched only by roll number, grade and section. Historical records without a current account remain searchable. Equal names are never combined automatically.
+Open **Reports → Student Report** and search by name or roll number. Select the correct account using its roll number, grade and section. Individual reports, PDFs and the student's profile show the father name from the current account; All Results continues to show the student's name only. Missing father names remain blank until entered through Edit Profile. The Excel sample includes **Name** and **Father Name** columns; Father Name is optional for compatibility with older sheets. Existing saved quiz results and graded assignments are included, including archived assignment marks. Linked history follows the student across grade/section changes; older unlinked records are matched only by roll number, grade and section. Historical records without a current account remain searchable. Equal names are never combined automatically.
 
 Statistics use available saved percentages. Missing historical timing or marks are shown as unavailable, and empty histories do not receive invented scores. The screen shows ten history records per page; **Download PDF** includes all saved history, with a chart of the latest twenty scored quizzes. Only authenticated teachers can search, view or export reports.
 

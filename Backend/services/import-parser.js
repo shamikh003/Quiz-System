@@ -83,14 +83,13 @@ function parseQuestionText(text, grade) {
     }
     const unused = [...keys.keys()].filter(n => !counts.has(n));
     if (unused.length) warnings.push(`Answer keys without questions: ${unused.join(', ')}.`);
-    warnings.push('Review extracted wording, options and answer keys before importing. Images, formulas and document formatting are not imported.');
     return { rows, warnings };
 }
 
 function parseStudentRows(lines, defaults = {}) {
     if (!lines.length) throw new Error('The first sheet needs a header and student rows.');
     const aliases = { fullname: 'name', studentname: 'name', roll: 'rollNum', rollnum: 'rollNum', rollno: 'rollNum', rollnumber: 'rollNum',
-        name: 'name', grade: 'grade', class: 'grade', section: 'section', password: 'password' };
+        name: 'name', fathername: 'fatherName', fathersname: 'fatherName', grade: 'grade', class: 'grade', section: 'section', password: 'password' };
     const headers = lines[0].map(value => aliases[String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')] || '');
     for (const required of ['name', 'rollNum', 'password']) if (!headers.includes(required)) throw new Error('Required columns: Name, Roll Number, Password. Include Grade or choose a default grade. Section is optional.');
     if (headers.filter(Boolean).length !== new Set(headers.filter(Boolean)).size) throw new Error('Column names are repeated. Keep one column for each field.');
@@ -102,18 +101,19 @@ function parseStudentRows(lines, defaults = {}) {
         const errors = [];
         // Preserve password spaces and Excel text roll numbers (including leading zeros).
         const password = record.password == null || typeof record.password === 'object' ? '' : String(record.password);
-        const row = { number: i + 1, name: text('name'), rollNum: text('rollNum'),
+        const row = { number: i + 1, name: text('name'), fatherName: text('fatherName'), rollNum: text('rollNum'),
             grade: gradeValue(text('grade') || defaults.grade), password, section: '', errors };
         try { row.section = sectionName(text('section') || defaults.section); } catch (error) { errors.push(error.message); }
         if (!row.name || row.name.length > 100) errors.push('Name must have 1–100 characters.');
+        if (row.fatherName.length > 100) errors.push('Father name must have at most 100 characters.');
         if (!row.rollNum || row.rollNum.length > 40) errors.push('Roll number must have 1–40 characters.');
         if (row.grade === null) errors.push('Provide Grade 4–7 or Hifz in the sheet or choose a default grade.');
         if (password.length < 6 || Buffer.byteLength(password) > 72) errors.push('Password must have at least 6 characters and at most 72 bytes.');
-        if (['name', 'rollNum', 'grade', 'section', 'password'].some(k => typeof record[k] === 'object' && record[k] !== null)) errors.push('Use plain cell values; formulas and linked cells are not accepted.');
+        if (['name', 'fatherName', 'rollNum', 'grade', 'section', 'password'].some(k => typeof record[k] === 'object' && record[k] !== null)) errors.push('Use plain cell values; formulas and linked cells are not accepted.');
         rows.push(row);
         if (rows.length > MAX_STUDENTS) throw new Error(`Import at most ${MAX_STUDENTS.toLocaleString()} students per file.`);
     }
     if (!rows.length) throw new Error('No student rows found in the first sheet.');
-    return { rows, warnings: ['Only the first sheet is read. Format roll numbers and passwords as Text in Excel to preserve leading zeros. Existing accounts are never changed.'] };
+    return { rows, warnings: [] };
 }
 module.exports = { gradeValue, parseQuestionText, parseStudentRows, questionErrors, questionKey, studentKey, MAX_QUESTIONS, MAX_STUDENTS };

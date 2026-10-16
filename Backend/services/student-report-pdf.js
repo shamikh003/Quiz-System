@@ -46,7 +46,7 @@ function reportPdf(report) {
                 y += 26;
             }
             header();
-            if (!rows.length) { text('No saved records available.', left + 7, y + 12, width - 14, 10, false, MUTED); y += 40; }
+            if (!rows.length) { text('No records.', left + 7, y + 12, width - 14, 10, false, MUTED); y += 40; }
             rows.forEach((row, index) => {
                 let height = 30;
                 row.forEach((value, i) => {
@@ -66,9 +66,11 @@ function reportPdf(report) {
         try {
             heading();
             y += text(report.student.name, left, y, width, 20, true, BLUE) + 8;
+            const fatherLabelHeight = text('Father name:', left, y, 68, 11);
+            const fatherHeight = text(report.student.fatherName || '-', left + 70, y, width - 70, 11);
+            y += Math.max(fatherLabelHeight, fatherHeight) + 5;
             y += text(`Roll ${report.student.rollNum} | ${grade(report.student.grade)} | Section ${report.student.section}`, left, y, width, 11) + 5;
-            y += text(`Computer | All-time performance | Generated ${date(report.generatedAt)}`, left, y, width, 9, false, MUTED) + 12;
-            if (report.student.historical) { y += text('Historical record - no current student account', left, y, width, 9, false, MUTED) + 8; }
+            y += text(`Computer | ${date(report.generatedAt)}`, left, y, width, 9, false, MUTED) + 12;
             const metrics = [['Quizzes Taken', report.summary.quizzesTaken], ['Average Quiz Marks', percent(report.summary.averageQuiz)],
                 ['Best Quiz Score', percent(report.summary.bestQuiz)], ['Assignment Average', percent(report.summary.assignmentAverage)]];
             metrics.forEach(([label, value], i) => {
@@ -78,10 +80,8 @@ function reportPdf(report) {
                 text(value, x + 12, top + 29, w - 24, 19, true, BLUE);
             });
             y += 145;
-            text(`${report.summary.gradedAssignments} graded assignment(s). Averages use saved marks percentages; missing marks are excluded.`, left, y, width, 8, false, MUTED);
-            y = doc.y + 18;
             const plotted = report.quizzes.filter(row => row.percentage != null).slice(-20);
-            ensure(160); text('Quiz Performance', left, y, width, 13, true, BLUE); y += 22;
+            ensure(160); text(report.summary.scoredQuizzes > 20 ? 'Quiz Performance - Latest 20' : 'Quiz Performance', left, y, width, 13, true, BLUE); y += 22;
             if (plotted.length) {
                 const chartLeft = left + 28, chartTop = y, chartWidth = width - 40, chartHeight = 86;
                 [0, 50, 100].forEach(value => {
@@ -101,8 +101,7 @@ function reportPdf(report) {
                 text(date(plotted[0].date), chartLeft, chartTop + chartHeight + 8, 120, 8, false, MUTED);
                 text(date(plotted.at(-1).date), chartLeft + chartWidth - 90, chartTop + chartHeight + 8, 100, 8, false, MUTED);
                 y += chartHeight + 38;
-                if (report.summary.scoredQuizzes > 20) { text('Chart shows the latest 20 scored quizzes; statistics and history include all saved records.', left, y, width, 8, false, MUTED); y = doc.y + 12; }
-            } else { text('No scored quizzes available yet.', left, y + 8, width, 10, false, MUTED); y += 40; }
+            } else { text('No quiz results.', left, y + 8, width, 10, false, MUTED); y += 40; }
             const quizColumns = [['Date', 78], ['Grade', 45], ['Section', 118], ['Score', 76], ['Marks %', 90], ['Time', width - 407]].map(([name, width]) => ({ name, width }));
             table('Quiz History', quizColumns, [...report.quizzes].reverse().map(row => [date(row.date), grade(row.grade), row.section,
                 `${row.score ?? '-'} / ${row.total ?? '-'}`, percent(row.percentage), duration(row.elapsedMs)]));
@@ -110,7 +109,6 @@ function reportPdf(report) {
             table('Assignment History', assignmentColumns, report.assignments.map(row => [row.title, date(row.gradedAt || row.submittedAt), grade(row.grade),
                 row.status === 'graded' ? `${row.marks ?? '-'} / ${row.maxMarks ?? '-'}` : '-', percent(row.percentage),
                 row.status === 'graded' ? (row.archived ? 'Graded (archived)' : 'Graded') : 'Awaiting marking']));
-            ensure(32); text('Missing historic timing or marks are shown as "-". Archived graded assignments retain their earned marks.', left, y, width, 8, false, MUTED);
             const range = doc.bufferedPageRange();
             for (let i = range.start; i < range.start + range.count; i++) {
                 doc.switchToPage(i); const bottom = doc.page.margins.bottom; doc.page.margins.bottom = 0;

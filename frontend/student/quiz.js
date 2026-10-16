@@ -15,13 +15,11 @@ const labels = {
  leaveQuiz:['Sign out? Your saved answers remain, but the quiz timer will continue.','لاگ آؤٹ کریں؟ محفوظ جوابات رہیں گے لیکن وقت چلتا رہے گا۔'],
  translationMissing:['Urdu translation is not available for this question yet.','اس سوال کا اردو ترجمہ ابھی دستیاب نہیں ہے۔'],
  review:['Your answer','آپ کا جواب'], unanswered:['Not answered','جواب نہیں دیا'],
- login:['Student Login','طالب علم لاگ اِن'], loginHelp:['Use the account and password your teacher gave you.','استاد کا دیا ہوا رول نمبر اور پاس ورڈ استعمال کریں۔'],
+ login:['Student Login','طالب علم لاگ اِن'], fatherName:['Father name','والد کا نام'],
  roll:['Roll number','رول نمبر'], grade:['Grade','کلاس'], choose:['Choose grade','کلاس منتخب کریں'], password:['Password','پاس ورڈ'], logout:['Log out','لاگ آؤٹ'],
- dailyRule:['One quiz attempt per day. An unfinished quiz resumes with its original deadline.','روزانہ ایک کوئز۔ ادھورا کوئز اپنے اصل وقت کے ساتھ جاری ہوگا۔'],
  start:['Start / Resume Quiz','کوئز شروع / جاری کریں'], refresh:['Refresh report','رپورٹ تازہ کریں'], scores:['My Test Scores','میرے ٹیسٹ کے نمبر'], date:['Date','تاریخ'], score:['Score','نمبر'],
  previous:['Previous','پچھلا'], next:['Next','اگلا'], assignments:['My Assignments','میری اسائنمنٹس'], skip:['Skip','چھوڑیں'],
  saveNext:['Save & Next','محفوظ کریں اور آگے جائیں'], finish:['Submit Quiz','کوئز جمع کریں'], complete:['Quiz Complete','کوئز مکمل'],
- completedRule:['Your result is saved. Another quiz will be available tomorrow.','نتیجہ محفوظ ہو گیا۔ اگلا کوئز کل دستیاب ہوگا۔'],
  retry:['Retry submission','دوبارہ جمع کریں'], back:['Back to my report','میری رپورٹ پر واپس'], emptyScores:['No test results yet.','ابھی کوئی نتیجہ نہیں۔'], emptyAssignments:['No assignments yet.','ابھی کوئی اسائنمنٹ نہیں۔'],
  pending:['Not submitted','جمع نہیں ہوئی'], submitted:['Submitted — waiting for marking','جمع ہو گئی — استاد کی جانچ باقی ہے'], graded:['Graded','نمبر مل گئے'],
  archived:['Archived','محفوظ ریکارڈ'],
@@ -125,6 +123,7 @@ function renderReport() {
  $('quiz-header-student').textContent = `${report.student.name} · ${t('roll')} ${report.student.rollNum || '—'}`;
  $('quiz-header-student').classList.remove('hidden');
  $('student-heading').textContent = report.student.name;
+ $('student-father-name').textContent = `${t('fatherName')}: ${report.student.fatherName || '—'}`;
  $('student-meta').textContent = `${t('roll')} ${report.student.rollNum || '—'} · ${gradeLabel(report.student.grade)} · ${report.student.section || 'Unassigned'}`;
  const done = report.today?.status === 'submitted'; $('start-btn').disabled = done; $('start-btn').textContent = t(done ? 'todayDone' : 'start');
  $('scores-body').replaceChildren(); $('student-score-cards').replaceChildren();
@@ -450,7 +449,6 @@ async function submit() {
  active = false; exitFullscreen(); screen('result-container'); $('score-display').textContent = ''; $('retry-btn').classList.add('hidden'); $('back-btn').disabled = true;
  const stopLoading = globalThis.QuizLoader?.show($('quiz-submit-loader'), t('submittingQuiz')) || (() => {});
  $('ranking-display').textContent = ''; $('answer-review').replaceChildren();
- document.querySelector('[data-i18n="completedRule"]').classList.add('hidden');
  try { displayResult(await post('/quiz/submit',{attemptId:attempt.attemptId,tabSwitchCount,fullscreenExitCount})); }
  catch (error) { $('score-display').textContent = t('submitError'); notify(error.message); $('retry-btn').classList.remove('hidden'); }
  finally { stopLoading(); submitting = false; }
@@ -468,7 +466,7 @@ function displayResult(result) {
   card.append(element('h3',`${index + 1}. ${content.text}`),element('p',`${t('review')}: ${selectedText}`));
   $('answer-review').append(card);
  }
- $('retry-btn').classList.add('hidden'); $('back-btn').disabled = false; document.querySelector('[data-i18n="completedRule"]').classList.remove('hidden');
+ $('retry-btn').classList.add('hidden'); $('back-btn').disabled = false;
  if (attempt) sessionStorage.removeItem(`queue-${attempt.attemptId}`);
  if (attempt) sessionStorage.removeItem(`draft-${attempt.attemptId}`);
  if (attempt) sessionStorage.removeItem(`navigation-${attempt.attemptId}`);

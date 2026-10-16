@@ -7,7 +7,7 @@
 <link rel="icon" href="../favicon.ico?v=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
 <link rel="manifest" href="../manifest-quiz.json">
-<meta name="theme-color" content="#171293"><link rel="stylesheet" href="../style.css?v=8.0">
+<meta name="theme-color" content="#171293"><link rel="stylesheet" href="../style.css?v=8.1">
 <link rel="stylesheet" href="quiz-session.css?v=1.1">
 </head>
 <body class="blue-gold student-app">
@@ -25,7 +25,6 @@
     <section id="login-container">
         <div id="student-login-loader" class="qb-loader-slot" data-auth-loader hidden></div>
         <h1 data-i18n="login">Student Login</h1>
-        <p data-i18n="loginHelp">Use the account and password your teacher gave you.</p>
         <form id="login-form">
             <label for="student-roll" data-i18n="roll">Roll number</label>
             <input id="student-roll" required maxlength="40" autocomplete="username">
@@ -45,14 +44,13 @@
         <h1 data-i18n="studentPanel">My Student Panel</h1>
         <div class="student-identity school-panel">
         <div class="student-identity-info"><h2 id="student-heading"></h2>
-        <p id="student-meta"></p></div>
+        <p id="student-father-name"></p><p id="student-meta"></p></div>
         <div class="student-entry-controls">
         <div id="quiz-start-loader" class="qb-loader-slot" hidden></div>
         <div class="portal-start-actions">
             <button id="start-btn" type="button" data-i18n="start">Start / Resume Quiz</button>
             <button id="refresh-btn" type="button" class="btn-secondary" data-i18n="refresh">Refresh report</button>
         </div>
-        <p class="student-rule" data-i18n="dailyRule">One quiz attempt per day. An unfinished quiz resumes with its original deadline.</p>
         </div></div>
         <section class="school-panel student-scores-panel">
         <h2 class="portal-section-title" data-i18n="scores">My Test Scores</h2>
@@ -118,7 +116,6 @@
         <h2 id="score-display"></h2>
         <p id="ranking-display"></p>
         <div id="answer-review"></div>
-        <p data-i18n="completedRule">Your result is saved. Another quiz will be available tomorrow.</p>
         <button id="retry-btn" class="hidden" type="button" data-i18n="retry">Retry submission</button>
         <button id="back-btn" type="button" data-i18n="back">Back to my report</button>
     </section>
@@ -126,6 +123,6 @@
 <dialog id="question-image-dialog" class="quiz-image-dialog" aria-labelledby="question-image-dialog-title"><div class="quiz-image-dialog-heading"><h2 id="question-image-dialog-title" data-i18n="questionImage">Question image</h2><button id="close-question-image" type="button" class="btn-secondary" data-i18n="closeImage">Close</button></div><img id="question-image-full" alt="Enlarged question illustration"></dialog>
 <script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
-<script src="../admin/report-utils.js?v=7.0"></script>
-<script src="quiz.js?v=8.1"></script>
+<script src="../admin/report-utils.js?v=7.1"></script>
+<script src="quiz.js?v=8.2"></script>
 </body></html>

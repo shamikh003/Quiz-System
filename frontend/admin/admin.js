@@ -451,7 +451,7 @@ translateUrduBtn?.addEventListener('click',async () => {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not start translation.');
-        translationStatus.textContent = data.queued ? `${data.queued} queued · ${data.ready} ready. Use Refresh to check progress.` : 'Translations are ready.';
+        translationStatus.textContent = data.queued ? `${data.queued} queued · ${data.ready} ready` : 'Translations ready.';
         await loadQuestionList();
     } catch (error) { translationStatus.textContent = error.message; }
     finally { translateUrduBtn.disabled = false; }
@@ -541,7 +541,7 @@ function startEditQuestion(q) {
     }
     document.getElementById('correct-answer').value = q.correct;
     document.getElementById('question-image').value = '';
-    document.getElementById('current-question-image').textContent = q.imageUrl ? 'An image is attached. Choose a new image to replace it.' : '';
+    document.getElementById('current-question-image').textContent = q.imageUrl ? 'Image attached' : '';
 
     saveBtn.textContent = 'Update Question';
     cancelEditBtn.classList.remove('hidden');

@@ -51,6 +51,7 @@ test('existing linked and matching legacy data is preserved across grade changes
     await result({ grade: 0, score: 0, total: 10 });
     const response = await request(`/student:${student._id}`), report = await response.json();
     assert.equal(response.status, 200); assert.equal(report.student.name, 'Ahmed Ali');
+    assert.equal(report.student.fatherName, '');
     assert.equal(report.summary.quizzesTaken, 2); assert.equal(report.summary.averageQuiz, 80); assert.equal(report.summary.bestQuiz, 100);
     assert.ok(report.quizzes.some(row => row.grade === 4 && row.section === 'Old Section'));
     assert.ok(report.quizzes.every(row => row.section !== 'B'));
@@ -75,6 +76,7 @@ test('historic students without accounts remain searchable and graded archived a
 });
 test('PDF export includes full paginated history, safe filenames, headers and no invented timing', async () => {
     const student = await account('PDF-001', 5, 'A', 'Report Sample Student');
+    student.fatherName = 'Report Sample Father'; await student.save();
     await models.Result.insertMany(Array.from({ length: 48 }, (_, i) => ({ student: student._id, name: student.name, rollNum: student.rollNum,
         grade: 5, section: 'A', score: i % 26, total: 25, date: new Date(Date.UTC(2026, 7, 1 + i)) })));
     const response = await request(`/student:${student._id}/pdf`); assert.equal(response.status, 200);
@@ -86,7 +88,8 @@ test('PDF export includes full paginated history, safe filenames, headers and no
         const info = await parser.getInfo(), text = (await parser.getText()).text;
         assert.ok(info.total >= 2); assert.ok(text.includes('Report Sample Student')); assert.ok(text.includes('01 Aug 2026'));
         assert.match(text, /17 Sept? 2026/); assert.ok(text.includes('Assignment History'));
-        assert.ok(text.includes('Missing historic timing')); assert.ok(!text.includes('private-unused-test-hash'));
+        assert.ok(text.includes('Report Sample Father')); assert.ok(!text.includes('private-unused-test-hash'));
+        assert.ok(!text.includes('Missing historic')); assert.ok(!text.includes('Averages use'));
     } finally { await parser.destroy(); }
     const target = path.resolve(__dirname, '../../tmp/pdfs/student-report-qa.pdf'); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.writeFileSync(target, buffer);
 });

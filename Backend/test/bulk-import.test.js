@@ -73,6 +73,23 @@ test('Excel parsing preserves text IDs, honors grade/section defaults, rejects f
     assert.ok(invalid.rows[0].errors.some(e => e.includes('formulas')));
     assert.throws(() => parseStudentRows([['Name', 'Name', 'Roll', 'Password'], ['a', 'b', 'c', '123456']]));
 });
+test('Excel sample and father-name aliases retain values, reject formulas and support older sheets', async () => {
+    const response = await fetch(base + '/admin/imports-template/students.xlsx', { headers: { Authorization: `Bearer ${admin}` } });
+    assert.equal(response.status, 200);
+    const book = new Excel.Workbook(); await book.xlsx.load(Buffer.from(await response.arrayBuffer()));
+    const sheet = book.worksheets[0], lines = []; sheet.eachRow({ includeEmpty: true }, row => lines.push(row.values.slice(1)));
+    assert.deepEqual(lines[0], ['Name', 'Father Name', 'Roll Number', 'Grade', 'Section', 'Password']);
+    const parsed = parseStudentRows(lines);
+    assert.equal(parsed.rows[0].fatherName, 'Sample Father One'); assert.equal(parsed.rows[0].rollNum, '00401');
+    assert.ok(parsed.rows.every(row => !row.errors.length));
+    const aliases = parseStudentRows([["Student Name", "Father's Name", 'Roll', 'Password'], ['Student', ' Parent ', '001', 'Sample123']], { grade: 4 });
+    assert.equal(aliases.rows[0].fatherName, 'Parent');
+    for (const value of ['x'.repeat(101), { formula: '1+1', result: 'Parent' }]) {
+        const invalid = parseStudentRows([['Name', 'Father Name', 'Roll', 'Password'], ['Student', value, '001', 'Sample123']], { grade: 4 });
+        assert.ok(invalid.rows[0].errors.length);
+    }
+    assert.equal(parseStudentRows([['Name', 'Roll', 'Password'], ['Student', '001', 'Sample123']], { grade: 4 }).rows[0].fatherName, '');
+});
 test('worker extracts matching Word/PDF questions and rejects renamed/broken files', async () => {
     for (const [buffer, filename] of [[docx, 'sample.docx'], [fs.readFileSync(path.join(__dirname, 'fixtures/import-questions.pdf')), 'sample.pdf']]) {
         const parsed = await imports.parseFile({ buffer, originalname: filename }, 'questions', { grade: 5 });
@@ -115,13 +132,13 @@ test('teacher-only preview/edit/commit imports selected questions, isolates owne
 test('Excel preview hides/encrypts passwords, rejects duplicates and commits new students without changing existing accounts', async () => {
     const existing = await models.Student.create({ name: 'Keep This Name', rollNum: '00401', grade: 4, section: 'A', passwordHash: await bcrypt.hash('Original123', 10) });
     const book = new Excel.Workbook(), sheet = book.addWorksheet('Students');
-    sheet.addRows([['Name', 'Roll Number', 'Grade', 'Section', 'Password'],
-        ['Overwrite Attempt', '00401', '4', ' a ', 'NewPass123'],
-        ['New Student', '00402', '4', 'A', 'SecretNew123'],
-        ['Repeat Student', '00402', '4', 'a', 'SecretNew123'],
-        ['Hifz Student', 'H-001', 'Hifz', '', 'SecretHifz123'],
-        ['Bad Grade', 'BAD', '8', '', 'SecretNew123'],
-        ['Conflicting Login', '00401', '4', 'B', 'Original123']]);
+    sheet.addRows([['Name', 'Roll Number', 'Grade', 'Section', 'Password', 'Father Name'],
+        ['Overwrite Attempt', '00401', '4', ' a ', 'NewPass123', 'Do Not Overwrite'],
+        ['New Student', '00402', '4', 'A', 'SecretNew123', '  New Father  '],
+        ['Repeat Student', '00402', '4', 'a', 'SecretNew123', 'Repeat Father'],
+        ['Hifz Student', 'H-001', 'Hifz', '', 'SecretHifz123', 'Hifz Father'],
+        ['Bad Grade', 'BAD', '8', '', 'SecretNew123', ''],
+        ['Conflicting Login', '00401', '4', 'B', 'Original123', '']]);
     let result = await preview(await book.xlsx.writeBuffer(), 'students.xlsx', 'students', '');
     assert.equal(result.status, 201); let batch = result.data;
     assert.ok(!JSON.stringify(batch).includes('SecretNew123'));
@@ -145,4 +162,6 @@ test('Excel preview hides/encrypts passwords, rejects duplicates and commits new
     recovery.rows[1].outcome = undefined; recovery.markModified('rows'); await recovery.save();
     await imports.drain(); assert.equal((await Batch.findById(batch.id)).status, 'completed');
     assert.equal(await models.Student.countDocuments({ rollNum: '00402' }), 1);
+    assert.equal((await models.Student.findOne({ rollNum: '00402' })).fatherName, 'New Father');
+    assert.equal((await models.Student.findById(existing._id)).fatherName, '');
 });

@@ -122,6 +122,7 @@ SubmissionSchema.index({ student: 1, submittedAt: -1 });
 const StudentSchema = new mongoose.Schema({
     ...sectionFields,
     name: { type: String, required: true, maxlength: 100 },
+    fatherName: { type: String, default: '', trim: true, maxlength: 100 },
     rollNum: { type: String, required: true, maxlength: 40 },
     grade: { type: Number, required: true, enum: VALID_GRADES },
     passwordHash: { type: String, required: true, select: false },

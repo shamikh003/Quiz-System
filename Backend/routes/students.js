@@ -13,7 +13,8 @@ const { linkLegacyRecords } = require('../services/sections');
 const { resultMetrics } = require('../result-ranking');
 const { deleteFile } = require('../cloudinary');
 const router = express.Router();
-const profile = s => ({ id: s._id, name: s.name, rollNum: s.rollNum, grade: s.grade, section: sectionName(s.section) });
+const profile = s => ({ id: s._id, name: s.name, fatherName: s.fatherName || '', rollNum: s.rollNum, grade: s.grade, section: sectionName(s.section) });
+const validFatherName = value => value === undefined || (typeof value === 'string' && value.trim().length <= 100);
 router.use((req, res, next) => {
     try { if (req.body && 'section' in req.body) req.body.section = sectionName(req.body.section); next(); }
     catch (error) { res.status(400).json({ error: error.message }); }
@@ -44,13 +45,14 @@ router.get('/admin/students', requireAdmin, async (req, res) => {
 
 router.post('/admin/students', requireAdmin, async (req, res) => {
     const { name, rollNum, grade, password } = req.body;
+    if (!validFatherName(req.body.fatherName)) return res.status(400).json({ error: 'Father name must be at most 100 characters.' });
     if (typeof name !== 'string' || !name.trim() || name.trim().length > 100 ||
         typeof rollNum !== 'string' || !rollNum.trim() || rollNum.trim().length > 40 ||
         !validGrade(grade) || typeof password !== 'string' || password.length < 6 || Buffer.byteLength(password) > 72) {
         return res.status(400).json({ error: 'Enter name, roll number, grade and a password of 6–72 bytes.' });
     }
     try {
-        const student = await Student.create({ name: name.trim(), rollNum: rollNum.trim(), grade: Number(grade), section: sectionName(req.body.section), passwordHash: await bcrypt.hash(password, 10) });
+        const student = await Student.create({ name: name.trim(), fatherName: req.body.fatherName?.trim() || '', rollNum: rollNum.trim(), grade: Number(grade), section: sectionName(req.body.section), passwordHash: await bcrypt.hash(password, 10) });
         await linkLegacyRecords(student);
         res.status(201).json(profile(student));
     } catch (error) {
@@ -61,6 +63,7 @@ router.post('/admin/students', requireAdmin, async (req, res) => {
 
 router.post('/admin/students/:id/profile', requireAdmin, async (req, res) => {
     const { name, grade } = req.body;
+    if (!validFatherName(req.body.fatherName)) return res.status(400).json({ error: 'Father name must be at most 100 characters.' });
     if (!isObjectIdOrHexString(req.params.id) || typeof name !== 'string' || !name.trim() || name.trim().length > 100 ||
         !validGrade(grade) || !Object.hasOwn(req.body, 'section')) {
         return res.status(400).json({ error: 'Enter a name of 1–100 characters, a valid grade and section (blank for Unassigned).' });
@@ -84,6 +87,7 @@ router.post('/admin/students/:id/profile', requireAdmin, async (req, res) => {
         for (const attempt of unfinished) await finalizeAttempt(attempt, student);
     }
     student.name = name.trim(); student.grade = nextGrade; student.section = section;
+    if (Object.hasOwn(req.body, 'fatherName')) student.fatherName = req.body.fatherName.trim();
     try { await student.save(); }
     catch (error) { if (error.code === 11000) return res.status(409).json({ error: 'This roll number already has an account in that grade and section.' }); throw error; }
     // Correct names everywhere; earned marks keep their original grade after a move.
@@ -119,7 +123,7 @@ router.post('/admin/students/:id/password', requireAdmin, async (req, res) => {
     const student = await Student.findByIdAndUpdate(req.params.id,
         { $set: { passwordHash: await bcrypt.hash(password, 10) }, $inc: { tokenVersion: 1 } });
     if (!student) return res.status(404).json({ error: 'Student not found.' });
-    res.json({ message: 'Password reset. Previous sessions are now signed out.' });
+    res.json({ message: 'Password reset.' });
 });
 
 router.delete('/admin/students/:id', requireAdmin, async (req, res) => {

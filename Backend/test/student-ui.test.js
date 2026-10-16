@@ -21,6 +21,15 @@ function browser() {
     return { context, node, read: expression => JSON.parse(JSON.stringify(vm.runInContext(expression, context))) };
 }
 
+test('student profile shows the father name and handles accounts without one', () => {
+    const { context, node } = browser();
+    vm.runInContext("report={student:{name:'Student',fatherName:'Parent',rollNum:'001',grade:5,section:'A'},results:[],assignments:[],page:1,pages:1};renderReport()", context);
+    assert.equal(node('student-heading').textContent, 'Student');
+    assert.equal(node('student-father-name').textContent, 'Father name: Parent');
+    vm.runInContext("report.student.fatherName='';renderReport()", context);
+    assert.equal(node('student-father-name').textContent, 'Father name: —');
+});
+
 test('skipped questions move to end and return after other questions', async () => {
     const { context, node, read } = browser();
     node('skip-btn').onclick(); assert.deepEqual(read('queue'), ['q2', 'q3', 'q1']);

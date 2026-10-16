@@ -67,12 +67,12 @@ router.post('/admin/imports/:id/commit', async (req, res) => {
 });
 router.get('/admin/imports-template/students.xlsx', requireAdmin, async (req, res) => {
     const Excel = require('exceljs'), book = new Excel.Workbook(), sheet = book.addWorksheet('Students');
-    sheet.addRow(['Name', 'Roll Number', 'Grade', 'Section', 'Password']);
-    sheet.addRow(['Sample Student One', '00401', '4', 'A', 'Sample123']);
-    sheet.addRow(['Sample Hifz Student', 'H-001', 'Hifz', '', 'Sample456']);
+    sheet.addRow(['Name', 'Father Name', 'Roll Number', 'Grade', 'Section', 'Password']);
+    sheet.addRow(['Sample Student One', 'Sample Father One', '00401', '4', 'A', 'Sample123']);
+    sheet.addRow(['Sample Hifz Student', 'Sample Father Two', 'H-001', 'Hifz', '', 'Sample456']);
     sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF191497' } };
-    [28, 20, 15, 20, 20].forEach((width, i) => { sheet.getColumn(i + 1).width = width; sheet.getColumn(i + 1).numFmt = '@'; });
+    [28, 28, 20, 15, 20, 20].forEach((width, i) => { sheet.getColumn(i + 1).width = width; sheet.getColumn(i + 1).numFmt = '@'; });
     res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="QuizBoard-students-template.xlsx"' });
     res.send(Buffer.from(await book.xlsx.writeBuffer()));
 });

@@ -12,7 +12,7 @@
 <script src="teacher-routing.js?v=1.0"></script>
 <link rel="icon" href="../favicon.ico?v=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
-<link rel="stylesheet" href="../style.css?v=8.0"><link rel="stylesheet" href="bulk-import.css?v=1.0"></head>
+<link rel="stylesheet" href="../style.css?v=8.1"><link rel="stylesheet" href="bulk-import.css?v=1.0"></head>
 <body class="app-shell-page blue-gold" data-teacher-page="students"><div class="app-shell">
 <aside class="sidebar" id="sidebar"></aside><main class="shell-main">
 <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle teacher navigation" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
@@ -21,13 +21,14 @@
 <p id="account-message" role="status" aria-live="polite"></p>
 <div class="student-management-grid"><section class="school-panel registration-panel"><h2>Register Student</h2>
 <form id="account-form">
-<div class="field"><label for="account-name">Student name</label><input id="account-name" required maxlength="100"></div>
+<div class="field-row"><div class="field"><label for="account-name">Name</label><input id="account-name" required maxlength="100"></div>
+<div class="field"><label for="account-father-name">Father name</label><input id="account-father-name" maxlength="100"></div></div>
 <div class="field-row"><div class="field"><label for="account-roll">Roll number</label><input id="account-roll" required maxlength="40"></div>
 <div class="field"><label for="account-grade">Grade</label><select id="account-grade" required><option value="">Choose grade</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div></div>
 <div class="field-row"><div class="field"><label for="account-section">Section (optional)</label><input id="account-section" maxlength="80" placeholder="Enter section name" list="section-suggestions">
 <datalist id="section-suggestions"></datalist>
 </div>
-<div class="field"><label for="account-password">Password (at least 6 characters)</label><input id="account-password" type="password" required minlength="6" maxlength="72" autocomplete="new-password"></div></div>
+<div class="field"><label for="account-password">Password</label><input id="account-password" type="password" required minlength="6" maxlength="72" autocomplete="new-password"></div></div>
 <button id="create-account" type="submit">Create Student Account</button></form>
 </section><section class="school-panel registered-panel">
 <h2>Registered Students</h2>
@@ -41,5 +42,5 @@
 </section></div></section></main></div><script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
 <script src="teacher-shell.js?v=1.3"></script>
-<script src="report-utils.js?v=7.0"></script>
-<script src="students.js?v=5.4"></script><script src="bulk-import.js?v=1.1"></script></body></html>
+<script src="report-utils.js?v=7.1"></script>
+<script src="students.js?v=5.5"></script><script src="bulk-import.js?v=1.2"></script></body></html>

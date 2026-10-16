@@ -116,18 +116,18 @@ async function processBatch(batch, lease) {
                 if (!record && batch.kind === 'students') {
                     const candidates = await Student.find({ rollNum: row.rollNum, grade: row.grade }).select('+passwordHash');
                     const duplicate = candidates.some(s => s.sectionKey === require('../sections').sectionKey(row.section));
-                    if (duplicate) { row.outcome = 'skipped'; row.note = 'Already registered; the existing account was kept.'; }
+                    if (duplicate) { row.outcome = 'skipped'; row.note = 'Already registered.'; }
                     else {
                         let ambiguous = false;
                         for (const candidate of candidates) if (await bcrypt.compare(passwordMap[index], candidate.passwordHash)) ambiguous = true;
                         if (ambiguous) {
                             row.outcome = 'failed'; row.note = 'This roll number and password already belong to another section in this grade. Use a different password and upload this row again.';
-                        } else record = await Student.create({ _id, name: row.name, rollNum: row.rollNum, grade: row.grade, section: row.section,
+                        } else record = await Student.create({ _id, name: row.name, fatherName: row.fatherName || '', rollNum: row.rollNum, grade: row.grade, section: row.section,
                             passwordHash: await bcrypt.hash(passwordMap[index], 10) });
                     }
                 } else if (!record) {
                     const identity = questionKey(row);
-                    if (known.has(identity)) { row.outcome = 'skipped'; row.note = 'Already in this grade; the existing question was kept.'; }
+                    if (known.has(identity)) { row.outcome = 'skipped'; row.note = 'Question already exists.'; }
                     else {
                         record = await Question.create({ _id, text: row.text.trim(), grade: row.grade, options: row.options, correct: row.correct,
                             bulkImportKey: crypto.createHash('sha256').update(identity).digest('hex') });
@@ -142,7 +142,7 @@ async function processBatch(batch, lease) {
                 }
             } catch (error) {
                 if (error.code === 11000) { row.outcome = 'skipped'; row.note = batch.kind === 'students'
-                    ? 'An account was registered meanwhile; it was kept unchanged.' : 'This question was imported meanwhile; the existing question was kept.'; }
+                    ? 'Already registered.' : 'Question already exists.'; }
                 else if (error.name === 'ValidationError') { row.outcome = 'failed'; row.note = 'This row could not be saved. Review its values.'; }
                 else throw error;
             }

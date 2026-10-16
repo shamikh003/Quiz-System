@@ -29,7 +29,7 @@
     function create() {
         dialog = el('dialog', undefined, 'qb-import-dialog');
         dialog.innerHTML = `<div class="qb-import-heading"><div><h2 id="bulk-title"></h2></div><button id="bulk-close" type="button" class="btn-secondary" aria-label="Close import">Close</button></div>
-            <p id="bulk-description" class="muted-text"></p><p id="bulk-message" role="status" aria-live="polite"></p>
+            <p id="bulk-message" role="status" aria-live="polite"></p>
             <form id="bulk-upload" class="qb-import-upload">
                 <div class="qb-import-fields"><div class="field"><label for="bulk-grade" id="bulk-grade-label">Grade</label><select id="bulk-grade"><option value="">Choose grade</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div>
                 <div class="field" id="bulk-section-field"><label for="bulk-section">Default section (optional)</label><input id="bulk-section" maxlength="80" placeholder="Unassigned"></div></div>
@@ -41,7 +41,7 @@
                 <div class="qb-import-actions" id="bulk-selection"><button type="button" id="bulk-select" class="btn-secondary">Select all valid rows</button><button type="button" id="bulk-deselect" class="btn-secondary">Deselect all</button><span id="bulk-selected"></span></div>
                 <div id="bulk-progress-wrap" hidden><label for="bulk-progress">Import progress</label><progress id="bulk-progress" value="0" max="1"></progress><p id="bulk-progress-label"></p></div>
                 <div id="bulk-rows" class="qb-import-rows"></div><div class="qb-import-pagination"><button type="button" id="bulk-prev" class="btn-secondary">Previous</button><span id="bulk-page"></span><button type="button" id="bulk-next" class="btn-secondary">Next</button></div>
-                <label class="qb-import-review" id="bulk-review-label"><input type="checkbox" id="bulk-reviewed">I have reviewed the selected rows and answer keys / student details.</label>
+                <label class="qb-import-review" id="bulk-review-label"><input type="checkbox" id="bulk-reviewed">Confirm selected rows</label>
                 <div class="qb-import-actions"><button type="button" id="bulk-commit" disabled>Import selected rows</button><button type="button" id="bulk-new" class="btn-secondary">Choose another file</button></div>
             </section>`;
         dialog.setAttribute('aria-labelledby', 'bulk-title'); document.body.append(dialog);
@@ -61,14 +61,14 @@
         event.preventDefault(); const file = $('bulk-file').files[0]; if (!file) return;
         if (file.size > 10 * 1024 * 1024) { message('Choose a file up to 10 MB.', true); return; }
         const body = new FormData(); body.append('file', file); body.append('grade', $('bulk-grade').value); body.append('section', $('bulk-section').value);
-        const current = generation; lock(true); message('Reading your file. No records have been added yet.');
+        const current = generation; lock(true); message('Reading file…');
         const loader = el('div'); dialog.append(loader); const stop = window.QuizLoader?.show(loader, 'Preparing your import preview…');
         try {
             const result = await request(`/admin/imports/${kind}/preview`, { method: 'POST', body });
             if (current !== generation) return;
             batch = result; localStorage.setItem(savedKey(), batch.id);
             selected = new Set(batch.rows.map((r, i) => !r.errors.length ? i : -1).filter(i => i >= 0));
-            $('bulk-reviewed').checked = false; message('Preview ready. Select the rows you want to add.'); render(); dialog.scrollTop = 0;
+            $('bulk-reviewed').checked = false; message(''); render(); dialog.scrollTop = 0;
         } catch (error) { if (current === generation) message(error.message, true); }
         finally { stop?.(); loader.remove(); if (current === generation) lock(false); }
     }
@@ -86,8 +86,8 @@
         $('bulk-commit').textContent = batch.status === 'failed' ? 'Resume import' : 'Import selected rows';
         $('bulk-new').disabled = working; $('bulk-new').hidden = working;
         if (batch.status === 'failed') { $('bulk-commit').disabled = false; message(batch.error, true); }
-        if (working) message('Import in progress. You can close this dialog; reopen it to check progress.');
-        if (batch.status === 'completed') message('Import complete. Existing records were kept unchanged.');
+        if (working) message('Importing…');
+        if (batch.status === 'completed') message('Import complete.');
         renderRows();
     }
     function labeled(text, input) {
@@ -111,7 +111,7 @@
                 const result = await request(`/admin/imports/${batch.id}/rows/${index}`, { method: 'PATCH', body: JSON.stringify({ text: text.value, options, correct: correct.value, revision: batch.revision }) });
                 if (current !== generation) return; batch = result;
                 if (batch.rows[index].errors.length) selected.delete(index); else selected.add(index);
-                $('bulk-reviewed').checked = false; render(); message('Preview updated. Review the corrected row before importing.');
+                $('bulk-reviewed').checked = false; render(); message('Preview updated.');
             } catch (error) { if (current === generation) message(error.message, true); }
             finally { if (current === generation) lock(false); }
         }; return details;
@@ -135,7 +135,10 @@
                 card.append(el('p', row.text, 'qb-import-question'));
                 const list = el('ul'); row.options.forEach(o => list.append(el('li', `${o.id}. ${o.text}`))); card.append(list);
                 card.append(el('p', `${row.grade === 0 ? 'Hifz' : `Grade ${row.grade}`} · Correct answer: ${row.correct || 'Missing'}`, 'qb-import-key'));
-            } else card.append(el('p', `${row.name} · Roll ${row.rollNum} · ${row.grade === 0 ? 'Hifz' : row.grade === null ? 'Grade missing' : `Grade ${row.grade}`} · ${row.section}`));
+            } else {
+                card.append(el('p', `${row.name} · Roll ${row.rollNum} · ${row.grade === 0 ? 'Hifz' : row.grade === null ? 'Grade missing' : `Grade ${row.grade}`} · ${row.section}`));
+                card.append(el('p', `Father name: ${row.fatherName || '—'}`));
+            }
             if (row.errors.length) { const list = el('ul', undefined, 'error-text'); row.errors.forEach(error => list.append(el('li', error))); card.append(list); }
             if (row.note) card.append(el('p', row.note));
             if (preview && kind === 'questions') card.append(editor(row, index));
@@ -184,13 +187,11 @@
         if (!dialog) create();
         clearTimeout(polling); generation++; kind = type; batch = null; selected = new Set(); page = 0; busy = false;
         $('bulk-title').textContent = type === 'questions' ? 'Import Questions' : 'Import Students';
-        $('bulk-description').textContent = type === 'questions' ? 'Upload a typed PDF or Word document, review its questions and answer key, then add selected questions to a grade.' : 'Upload an Excel sheet to register students together. Passwords stay hidden, and existing accounts are kept unchanged.';
         $('bulk-grade-label').textContent = type === 'questions' ? 'Grade for these questions' : 'Default grade (if not in sheet)';
         $('bulk-grade').required = type === 'questions'; $('bulk-section-field').hidden = type === 'questions';
         $('bulk-file').accept = type === 'questions' ? '.pdf,.docx' : '.xlsx';
         $('bulk-file-label').textContent = type === 'questions' ? 'PDF / Word (.docx), up to 10 MB' : 'Excel (.xlsx), up to 10 MB';
-        $('bulk-format').replaceChildren(el('pre', type === 'questions' ? '1. Which device is used to type?\nA. Keyboard\nB. Monitor\nC. Printer\nD. Speaker\n\n2. Which device prints on paper?\nA. Mouse\nB. Printer\nC. Monitor\n\nAnswer Key\n1. A\n2. B' : 'Name | Roll Number | Grade | Section | Password\nSample Student | 00401 | 4 | A | Sample123\nHifz Student | H-001 | Hifz | | Sample456'));
-        $('bulk-format').append(el('p', type === 'questions' ? 'Use continuous question numbers and 3 or 4 lettered options. Put the answer key at the end, or use Answer: A after each question. Scanned PDFs and old .doc files need conversion first. Maximum 1,000 questions per file.' : 'Name, Roll Number and Password are required. Grades: 4, 5, 6, 7 or Hifz. Grade/section in a row override the defaults. Blank section becomes Unassigned. Password: at least 6 characters, at most 72 bytes. If a roll number repeats in different sections of the same grade, use different passwords so each student can log in. Maximum 5,000 students per file.'));
+        $('bulk-format').replaceChildren(el('pre', type === 'questions' ? '1. Which device is used to type?\nA. Keyboard\nB. Monitor\nC. Printer\nD. Speaker\n\n2. Which device prints on paper?\nA. Mouse\nB. Printer\nC. Monitor\n\nAnswer Key\n1. A\n2. B' : 'Name | Father Name | Roll Number | Grade | Section | Password\nSample Student | Sample Father | 00401 | 4 | A | Sample123\nHifz Student | Sample Father | H-001 | Hifz | | Sample456'));
         const id = localStorage.getItem(savedKey());
         $('bulk-upload').hidden = false; $('bulk-preview').hidden = true; $('bulk-reviewed').checked = false;
         $('bulk-upload').reset(); $('bulk-grade').value = type === 'questions' ? document.getElementById('filter-grade')?.value || '' : document.getElementById('account-grade')?.value || '';
