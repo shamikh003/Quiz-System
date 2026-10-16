@@ -2,6 +2,12 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':
 const gradeLabel = grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`;
 // Backend server ka URL
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
+document.addEventListener('bulk-import:completed', event => {
+    if (event.detail.kind !== 'questions') return;
+    if (!manageTabContent.classList.contains('hidden')) loadQuestionList();
+    if (!editTabContent.classList.contains('hidden')) loadEditQuestionList();
+    loadDashboard();
+});
 // Start waking the server while the teacher enters credentials. One request,
 // without polling or delaying the actual login request.
 if (!localStorage.getItem('adminToken')) {

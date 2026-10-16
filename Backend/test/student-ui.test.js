@@ -7,7 +7,7 @@ const path = require('node:path');
 function browser() {
     const nodes = new Map();
     const make = (tagName = '') => ({ tagName, style: {}, dataset: {}, children: [], value: '', textContent: '',
-        classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } }, setAttribute() {}, remove() {}, focus() {},
+        classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } }, setAttribute() {}, removeAttribute(name) { delete this[name]; }, remove() {}, focus() {},
         append(...children) { this.children.push(...children); }, replaceChildren(...children) { this.children = children; } });
     const node = id => { if (!nodes.has(id)) nodes.set(id, make()); return nodes.get(id); };
     const storage = () => { const map = new Map(); return { getItem: key => map.get(key) || null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) }; };
@@ -71,7 +71,9 @@ test('final submission waits for every queued answer to be acknowledged', async 
         return new Promise(resolve=>release.push(()=>resolve({ok:true,json:async()=>({revision})})));
     };
     for (let index=0;index<2;index++) {vm.runInContext("selected='A'",context);await node('next-btn').onclick();}
-    vm.runInContext("selected='A'",context); const final=node('next-btn').onclick();
+    vm.runInContext("selected='A'",context); await node('next-btn').onclick();
+    assert.equal(submits,0); assert.equal(read('active'),true);
+    const final=node('finish-btn').onclick();
     assert.equal(submits,0); assert.equal(read('submitting'),true);
     release.shift()(); await new Promise(resolve=>setImmediate(resolve));
     assert.equal(saves.length,2); assert.equal(saves[1].answers.length,3); assert.equal(submits,0);
@@ -137,31 +139,84 @@ test('every JavaScript element ID is present in the student page', () => {
     for (const match of source.matchAll(/\$\('([^']+)'\)/g)) assert.ok(html.includes(`id="${match[1]}"`), match[1]);
 });
 
-test('countdown ring follows the original deadline and server clock without altering quiz state', () => {
+test('countdown pill follows the original deadline and server clock without altering quiz state', () => {
     const { context, node, read } = browser();
     let warning;
     node('timer-display').classList.toggle = (name, value) => { if (name === 'time-warning') warning = value; };
     vm.runInContext(`Date.now = () => 1800000; clockOffset = 5000; timerDurationMs = 120000;
         attempt.expiresAt = new Date(1870000).toISOString(); selected = 'A'; tick();`, context);
     assert.equal(node('time-left').textContent, '01:05');
-    assert.ok(Math.abs(Number(node('timer-ring-progress').style.strokeDashoffset) - (100 * 55 / 120)) < 0.001);
     assert.equal(warning, false);
     vm.runInContext('Date.now = () => 1805000; tick();', context);
     assert.equal(node('time-left').textContent, '01:00');
-    assert.equal(Number(node('timer-ring-progress').style.strokeDashoffset), 50);
     assert.equal(warning, true);
     assert.equal(read('selected'), 'A');
     assert.deepEqual(read('queue'), ['q1','q2','q3']);
     assert.equal(read('attempt.expiresAt'), new Date(1870000).toISOString());
 });
 
-test('resuming preserves original ring duration, including compatibility with older backends', () => {
+test('resuming preserves the original duration, including compatibility with older backends', () => {
     const { read } = browser();
     const original = `{attemptId:'timer-test',startedAt:'2026-10-05T05:00:00Z',expiresAt:'2026-10-05T05:20:00Z',serverNow:'2026-10-05T05:10:00Z'}`;
     assert.equal(read(`countdownDuration(${original})`), 1200000);
     const legacy = `{attemptId:'legacy',expiresAt:'2026-10-05T05:20:00Z',serverNow:'2026-10-05T05:10:00Z'}`;
     assert.equal(read(`countdownDuration(${legacy})`), 600000);
     assert.equal(read(`countdownDuration({...${legacy},serverNow:'2026-10-05T05:15:00Z'})`), 600000);
+});
+
+test('navigator and Previous preserve selected answers and allow editing a previously answered question', async () => {
+    const { context, node, read } = browser();
+    vm.runInContext("attempt.questions[0].options.push({id:'B',text:'Another answer'}); renderQuestion();", context);
+    node('options-container').children[0].onclick();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(read("answers.get('q1')"), 'A');
+    node('quiz-question-grid').children[2].onclick();
+    assert.equal(read('currentQuestion()._id'), 'q3');
+    assert.deepEqual(read('queue'), ['q3', 'q2']);
+    node('previous-question-btn').onclick();
+    assert.equal(read('currentQuestion()._id'), 'q2');
+    node('quiz-question-grid').children[0].onclick();
+    assert.equal(read('currentQuestion()._id'), 'q1');
+    node('options-container').children[1].onclick();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(read("answers.get('q1')"), 'B');
+    assert.equal(read("confirmedAnswers.get('q1')"), 'B');
+    assert.equal(read('answers.size'), 1);
+});
+
+test('resume restores skipped markers and the current question without resetting the deadline', () => {
+    const { context, node, read } = browser();
+    const deadline = read('attempt.expiresAt');
+    node('skip-btn').onclick();
+    vm.runInContext("navigateQuestion('q3'); reviewQuestionId=null; restoreNavigation();", context);
+    assert.equal(read('currentQuestion()._id'), 'q3');
+    assert.equal(read("skippedQuestions.has('q1')"), true);
+    assert.equal(read('attempt.expiresAt'), deadline);
+    assert.equal(read('new Set(queue).size'), 3);
+});
+
+test('question images keep their source during answer changes, show a failure message and clear on text-only questions', () => {
+    const { context, node } = browser();
+    let writes = 0;
+    Object.defineProperty(node('question-image-preview'), 'src', { configurable: true, set() { writes++; } });
+    vm.runInContext("attempt.questions[0].imageUrl='/sample-wide.png'; renderQuestion(); selected='A'; renderQuestion();", context);
+    assert.equal(writes, 1);
+    assert.equal(node('question-media').hidden, false);
+    node('question-image-preview').onerror();
+    assert.equal(node('question-image-preview').hidden, true);
+    assert.equal(node('view-question-image').hidden, true);
+    assert.ok(node('question-image-error').textContent.includes('could not be loaded'));
+    vm.runInContext("selected=null; navigateQuestion('q2');", context);
+    assert.equal(node('question-media').hidden, true);
+    assert.equal(node('question-image-preview').dataset.source, '');
+});
+
+test('quiz heading uses only the student grade and Computer, including Hifz', () => {
+    const { context, node } = browser();
+    vm.runInContext("report={student:{grade:5}}; renderQuestion();", context);
+    assert.equal(node('quiz-grade-heading').textContent, 'Grade: 5 · Computer');
+    vm.runInContext('report.student.grade=0; renderQuestion();', context);
+    assert.equal(node('quiz-grade-heading').textContent, 'Grade: Hifz · Computer');
 });
 
 test('student completion shows unchanged marks and time without a speed score', () => {
@@ -177,12 +232,12 @@ test('Urdu switches question and every option without changing selected IDs, que
         attempt.questions[0].urdu = {text:'کمپیوٹر کیا ہے؟',options:[{id:'A',text:'ایک مشین'}]};`, context);
     node('lang-toggle').onclick();
     assert.ok(node('question-title').textContent.includes('کمپیوٹر کیا ہے؟'));
-    assert.equal(node('options-container').children[0].textContent, 'A: ایک مشین');
+    assert.equal(node('options-container').children[0].children[1].textContent, 'ایک مشین');
     assert.equal(read('selected'), 'A'); assert.deepEqual(read('queue'), ['q1','q2','q3']);
     assert.equal(read('attempt.expiresAt'), '2026-10-05T05:00:00Z');
     node('lang-toggle').onclick();
     assert.ok(node('question-title').textContent.includes('q1'));
-    assert.equal(node('options-container').children[0].textContent, 'A: Answer');
+    assert.equal(node('options-container').children[0].children[1].textContent, 'Answer');
 });
 
 test('missing or mismatched Urdu options fall back to the full English question', () => {
@@ -190,7 +245,7 @@ test('missing or mismatched Urdu options fall back to the full English question'
     vm.runInContext(`attempt.questions[0].urdu = {text:'سوال',options:[{id:'B',text:'جواب'}]};`, context);
     node('lang-toggle').onclick();
     assert.ok(node('question-title').textContent.includes('q1'));
-    assert.equal(node('options-container').children[0].textContent, 'A: Answer');
+    assert.equal(node('options-container').children[0].children[1].textContent, 'Answer');
     assert.ok(node('translation-notice').textContent.includes('دستیاب نہیں'));
 });
 

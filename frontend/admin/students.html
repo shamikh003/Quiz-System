@@ -3,15 +3,13 @@
 <meta name="robots" content="noindex, follow">
 <title>QuizBoard | Students</title>
 <link rel="icon" href="../favicon.ico?v=1">
-<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png?v=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
-<link rel="apple-touch-icon" sizes="180x180" href="../favicon-180.png?v=1">
-<link rel="stylesheet" href="../style.css?v=8.0"></head>
+<link rel="stylesheet" href="../style.css?v=8.0"><link rel="stylesheet" href="bulk-import.css?v=1.0"></head>
 <body class="app-shell-page blue-gold" data-teacher-page="students"><div class="app-shell">
 <aside class="sidebar" id="sidebar"></aside><main class="shell-main">
 <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle teacher navigation" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
 <section class="students-page teacher-content">
-<h1 class="shell-page-title">Student Accounts</h1>
+<div class="qb-import-launch"><h1 class="shell-page-title">Student Accounts</h1><button type="button" class="btn-secondary" data-bulk-import="students">Import Excel Students</button></div>
 <p id="account-message" role="status" aria-live="polite"></p>
 <div class="student-management-grid"><section class="school-panel registration-panel"><h2>Register Student</h2>
 <form id="account-form">
@@ -36,4 +34,4 @@
 <script src="../loader.js?v=1.1"></script>
 <script src="teacher-shell.js?v=1.2"></script>
 <script src="report-utils.js?v=7.0"></script>
-<script src="students.js?v=5.3"></script></body></html>
+<script src="students.js?v=5.4"></script><script src="bulk-import.js?v=1.1"></script></body></html>

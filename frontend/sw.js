@@ -1,10 +1,11 @@
 // v5: cache only static assets. Private API responses are never cached.
-const CACHE_NAME = 'quizboard-cache-v8.12';
+const CACHE_NAME = 'quizboard-cache-v8.15';
 const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.1','/index.html','/admin/index.html','/admin/results.html','/admin/students.html',
     '/admin/teacher-shell.js?v=1.2',
-    '/admin/admin.js?v=7.5','/admin/report-utils.js?v=7.0','/admin/results.js?v=7.1','/admin/students.js?v=5.3',
-    '/student/quiz.html','/student/quiz.js?v=7.2','/style.css?v=8.0',
-    '/favicon.ico?v=1','/favicon.svg?v=1','/favicon-32.png?v=1','/favicon-180.png?v=1','/favicon-192.png?v=1','/favicon-512.png?v=1',
+    '/admin/admin.js?v=7.6','/admin/report-utils.js?v=7.0','/admin/results.js?v=7.1','/admin/students.js?v=5.4',
+    '/admin/bulk-import.js?v=1.1','/admin/bulk-import.css?v=1.0',
+    '/student/quiz.html','/student/quiz.js?v=8.1','/student/quiz-session.css?v=1.1','/style.css?v=8.0',
+    '/favicon.ico?v=1','/favicon.svg?v=1',
     '/manifest-admin.json','/manifest-quiz.json']
     .map(path => new URL(path.slice(1), self.registration.scope).href);
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())));

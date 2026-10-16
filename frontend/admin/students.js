@@ -121,3 +121,4 @@ $('account-form').onsubmit = async event => {
     finally { $('create-account').disabled = false; }
 };
 if (!token) { $('account-form').classList.add('hidden'); $('account-message').textContent = 'Please log in from the Teacher Dashboard first.'; } else load();
+document.addEventListener('bulk-import:completed', event => { if (event.detail.kind === 'students') load(); });

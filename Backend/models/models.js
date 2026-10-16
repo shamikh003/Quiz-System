@@ -28,6 +28,7 @@ const QuestionSchema = new mongoose.Schema({
     correct: { type: String, required: true }, // e.g. 'A', 'B', 'C', 'D'
     imageUrl: { type: String, default: null },
     imagePath: { type: String, default: null },
+    bulkImportKey: { type: String },
     translationSourceHash: String,
     translationStatus: { type: String, enum: ['pending', 'ready', 'failed', 'unavailable'], default: 'unavailable' },
     translationError: String,
@@ -39,6 +40,9 @@ const QuestionSchema = new mongoose.Schema({
     },
     createdAt: { type: Date, default: Date.now }
 });
+
+// Only bulk-created questions carry this key; concurrent files cannot add the same question twice.
+QuestionSchema.index({ bulkImportKey: 1 }, { unique: true, sparse: true });
 
 // --- Result ---
 const ResultSchema = new mongoose.Schema({

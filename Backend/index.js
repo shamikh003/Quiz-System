@@ -59,6 +59,8 @@ mongoose.connect(process.env.MONGO_URI)
         // Unique indexes must exist before concurrent quiz starts are accepted.
         await Promise.all(Object.values(require('./models/models')).map(model => model.init()));
         await require('./services/sections').migrateSections();
+        await require('./models/import-batch').init();
+        require('./services/bulk-import').start();
         app.listen(port, () => console.log(`Backend server is live on http://localhost:${port}`));
         // Resume saved translation jobs without delaying login or dashboard requests.
         require('./services/translation').translationQueue().resume()
@@ -84,6 +86,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', require('./routes/students'));
 app.use('/api', require('./routes/attempts'));
 app.use('/api', questionRoutes);
+app.use('/api', require('./routes/imports'));
 app.use('/api', resultRoutes);
 app.use('/api', settingsRoutes);
 app.use('/api', assignmentRoutes);

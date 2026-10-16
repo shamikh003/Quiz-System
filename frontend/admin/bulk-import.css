@@ -1,0 +1,47 @@
+.qb-import-dialog { box-sizing: border-box; width: min(960px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); margin: auto; padding: 28px; overflow-y: auto; border: 1px solid var(--border); border-top: 5px solid var(--gold, #fff100); border-radius: 14px; background: var(--surface); color: var(--text-primary); box-shadow: 0 20px 70px #0004; }
+.qb-import-dialog::backdrop { background: #0b112099; }
+.qb-import-dialog [hidden] { display: none !important; }
+.qb-import-heading, .qb-import-row-heading, .qb-import-actions, .qb-import-pagination, .qb-import-launch { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.qb-import-heading { align-items: flex-start; position: sticky; top: -28px; z-index: 1; padding-block: 12px; background: var(--surface); }
+.qb-import-dialog .qb-import-eyebrow { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--text-secondary); }
+.qb-import-dialog h2 { margin: 0; font-family: var(--font-ui); color: var(--accent); font-size: 26px; }
+.qb-import-dialog p { line-height: 1.6; overflow-wrap: anywhere; }
+.qb-import-dialog form { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; background: transparent; }
+.qb-import-dialog button, .qb-import-launch button { width: auto; min-height: 42px; margin: 0; padding: 9px 16px; font-size: 13px; }
+.qb-import-dialog input:not([type=checkbox]), .qb-import-dialog select, .qb-import-dialog textarea { box-sizing: border-box; width: 100%; min-width: 0; margin: 0; font-size: 14px; }
+.qb-import-dialog label { margin: 0 0 8px; font-size: 13px; }
+.qb-import-dialog .field { display: flex; flex-direction: column; gap: 8px; margin: 0 0 18px; }
+.qb-import-dialog .field label { margin: 0; }
+.qb-import-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.qb-import-actions { justify-content: flex-start; margin: 16px 0; }
+.qb-import-dialog details { margin-top: 16px; }
+.qb-import-dialog summary { color: var(--accent); cursor: pointer; font-size: 13px; font-weight: 600; }
+.qb-import-format { padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-sunken); }
+.qb-import-dialog pre { font-family: inherit; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.qb-import-summary { padding: 14px 16px; border-radius: 8px; background: var(--accent-subtle); color: var(--accent); font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.qb-import-warnings { color: var(--text-secondary); font-size: 12px; }
+.qb-import-dialog #bulk-message:empty { display: none; }
+.qb-import-rows { display: grid; gap: 12px; }
+.qb-import-row { border: 1px solid var(--border); border-radius: 10px; padding: 18px; background: var(--surface); min-width: 0; font-size: 14px; }
+.qb-import-row ul { padding-inline-start: 24px; line-height: 1.8; overflow-wrap: anywhere; }
+.qb-import-row-heading { gap: 8px; }
+.qb-import-row-check, .qb-import-review { display: flex; align-items: center; gap: 10px; }
+.qb-import-dialog input[type=checkbox] { appearance: auto; width: 18px; height: 18px; min-height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--accent); }
+.qb-import-row-check::before, .qb-import-review::before { display: none !important; }
+.qb-import-tag { font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 99px; background: var(--accent-subtle); color: var(--accent); text-transform: capitalize; }
+.qb-import-tag-error { background: var(--surface-sunken); color: var(--text-primary); }
+.qb-import-key { color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.qb-import-dialog .qb-import-edit-form { margin-top: 16px; }
+.qb-import-edit-form textarea { min-height: 80px; }
+.qb-import-pagination { margin: 18px 0; font-size: 13px; }
+.qb-import-dialog progress { width: 100%; height: 12px; accent-color: var(--accent); }
+.qb-import-review { font-weight: 600; line-height: 1.6; padding: 12px 0; }
+.qb-import-launch { margin-bottom: 20px; flex-shrink: 0; }
+.qb-import-launch h1 { margin: 0 !important; }
+@media (max-width: 600px) {
+    .qb-import-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 18px; }
+    .qb-import-fields { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .qb-import-dialog h2 { font-size: 21px; }
+    .qb-import-heading { top: -18px; }
+    .qb-import-row { padding: 14px; }
+}

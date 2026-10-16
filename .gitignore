@@ -20,6 +20,7 @@ Backend/uploads/
 
 # Local editor and operating-system files.
 /.vscode/
+/.vs/
 .DS_Store
 Thumbs.db
 *.log

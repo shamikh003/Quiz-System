@@ -5,7 +5,14 @@ const labels = {
  signingIn:['Signing you in…','لاگ اِن ہو رہا ہے…'], loadingScores:['Loading scores…','نتائج لوڈ ہو رہے ہیں…'],
  loadingAssignments:['Loading assignments…','اسائنمنٹس لوڈ ہو رہی ہیں…'], loadingQuiz:['Loading quiz…','کوئز لوڈ ہو رہا ہے…'],
  uploading:['Uploading assignment…','اسائنمنٹ جمع ہو رہی ہے…'], submittingQuiz:['Submitting quiz…','کوئز جمع ہو رہا ہے…'],
- marksPercent:['Marks %','نمبر %'], timeTaken:['Time','وقت'], timeRemaining:['Remaining','وقت باقی'],
+ marksPercent:['Marks %','نمبر %'], timeTaken:['Time','وقت'], timeRemaining:['Time remaining','وقت باقی'],
+ computer:['Computer','کمپیوٹر'], navigator:['Question navigator','سوالات کی فہرست'],
+ legendAnswered:['Answered','جواب دیا'], legendCurrent:['Current','موجودہ'], legendSkipped:['Skipped','چھوڑا ہوا'], legendUnanswered:['Unanswered','جواب باقی'],
+ skipReturn:['Skip & return','چھوڑیں اور واپس آئیں'], reviewAnswers:['Review answers','جوابات کا جائزہ'],
+ allSaved:['All answers saved','تمام جوابات محفوظ ہیں'], savingAnswers:['Saving answers…','جوابات محفوظ ہو رہے ہیں…'],
+ viewImage:['View larger image','بڑی تصویر دیکھیں'], questionImage:['Question image','سوال کی تصویر'], closeImage:['Close','بند کریں'],
+ imageError:['This image could not be loaded. Please contact your teacher.','تصویر لوڈ نہیں ہو سکی۔ اپنے استاد سے رابطہ کریں۔'],
+ leaveQuiz:['Sign out? Your saved answers remain, but the quiz timer will continue.','لاگ آؤٹ کریں؟ محفوظ جوابات رہیں گے لیکن وقت چلتا رہے گا۔'],
  translationMissing:['Urdu translation is not available for this question yet.','اس سوال کا اردو ترجمہ ابھی دستیاب نہیں ہے۔'],
  review:['Your answer','آپ کا جواب'], unanswered:['Not answered','جواب نہیں دیا'],
  login:['Student Login','طالب علم لاگ اِن'], loginHelp:['Use the account and password your teacher gave you.','استاد کا دیا ہوا رول نمبر اور پاس ورڈ استعمال کریں۔'],
@@ -38,6 +45,7 @@ let report, lastResult, page = 1, attempt, queue = [], selected = null, answers 
 let timer, clockOffset = 0, timerDurationMs = 1, active = false, submitting = false, savePromise = null, conflict = false;
 let tabSwitchCount = 0, fullscreenExitCount = 0;
 let confirmedAnswers = new Map(), inFlightAnswers = null, saveFailed = false;
+let reviewQuestionId = null, skippedQuestions = new Set();
 const t = key => labels[key]?.[language === 'ur' ? 1 : 0] || key;
 const gradeLabel = grade => Number(grade) === 0 ? (language === 'ur' ? 'حفظ' : 'Hifz') : `${t('grade')} ${grade}`;
 const notify = text => { $('message').textContent = text; };
@@ -61,7 +69,9 @@ function applyTheme() {
 $('theme-toggle').onclick = () => { localStorage.setItem('quizTheme', document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); applyTheme(); };
 function screen(name) {
  for (const id of ['login-container','dashboard','quiz-container','result-container']) { $(id).classList.toggle('hidden', id !== name); $(id).style.display = id === name ? 'block' : 'none'; }
- $('logout-btn').classList.toggle('hidden', !token || name === 'quiz-container');
+ document.body?.classList.toggle('quiz-session-active', name === 'quiz-container');
+ $('logout-btn').classList.toggle('hidden', !token);
+ if (name !== 'quiz-container') $('question-image-dialog').close?.();
 }
 async function api(path, options = {}) {
  let response;
@@ -84,7 +94,17 @@ $('login-form').onsubmit = async event => {
   token = data.token; sessionStorage.setItem('studentToken', token); $('student-password').value = ''; page = 1; await loadReport();
  } catch (error) { notify(error.message); } finally { stopLoading(); $('login-btn').disabled = false; }
 };
-$('logout-btn').onclick = () => { token = null; report = null; sessionStorage.removeItem('studentToken'); screen('login-container'); notify(''); };
+$('logout-btn').onclick = async () => {
+ if (active) {
+  if (!confirm(t('leaveQuiz'))) return;
+  persistSelection({ advance: false });
+  try { if (savePromise) await savePromise; if (pendingCount()) await drainSaves(); }
+  catch (error) { notify(error.message); return; }
+  active = false; clearInterval(timer); exitFullscreen();
+ }
+ token = null; report = null; sessionStorage.removeItem('studentToken'); screen('login-container'); notify('');
+ $('quiz-header-student').textContent = ''; $('quiz-header-student').classList.add('hidden');
+};
 async function loadReport() {
  if (reportLoading) return;
  reportLoading = true;
@@ -102,6 +122,8 @@ async function loadReport() {
  }
 }
 function renderReport() {
+ $('quiz-header-student').textContent = `${report.student.name} · ${t('roll')} ${report.student.rollNum || '—'}`;
+ $('quiz-header-student').classList.remove('hidden');
  $('student-heading').textContent = report.student.name;
  $('student-meta').textContent = `${t('roll')} ${report.student.rollNum || '—'} · ${gradeLabel(report.student.grade)} · ${report.student.section || 'Unassigned'}`;
  const done = report.today?.status === 'submitted'; $('start-btn').disabled = done; $('start-btn').textContent = t(done ? 'todayDone' : 'start');
@@ -178,15 +200,35 @@ $('start-btn').onclick = async () => {
   inFlightAnswers = null; saveFailed = false; restoreDraft();
   queue = attempt.questions.map(q => q._id).filter(id => !answers.has(id));
   try { const saved = JSON.parse(sessionStorage.getItem(`queue-${attempt.attemptId}`)); if (Array.isArray(saved)) queue = [...new Set([...saved.filter(id => queue.includes(id)),...queue])]; } catch { /* Ignore invalid local queue. */ }
+  restoreNavigation();
   tabSwitchCount = attempt.tabSwitchCount; fullscreenExitCount = attempt.fullscreenExitCount;
-  active = true; conflict = false; selected = null; screen('quiz-container'); notify(t('fullscreen')); await enterFullscreen();
-  if (!queue.length) return submit();
+  active = true; conflict = false; selected = null; screen('quiz-container'); notify(''); await enterFullscreen();
+  if (!attempt.questions.length) return submit();
   renderQuestion(); updateSaveStatus(); clearInterval(timer); timer = setInterval(tick,1000); tick();
   if (pendingCount()) drainSaves().catch(error => notify(error.message));
  } catch (error) { if (error.result) displayResult(error.result); else notify(error.message); }
  finally { stopLoading(); if (report && !active) $('start-btn').disabled = report.today?.status === 'submitted'; }
 };
 function rememberQueue() { try { sessionStorage.setItem(`queue-${attempt.attemptId}`,JSON.stringify(queue)); } catch { /* The current queue remains available in memory. */ } }
+function currentQuestion() {
+ return attempt?.questions.find(q => q._id === (reviewQuestionId || queue[0])) || attempt?.questions.at(-1);
+}
+function rememberNavigation() {
+ try { sessionStorage.setItem(`navigation-${attempt.attemptId}`, JSON.stringify({ current: currentQuestion()?._id, skipped: [...skippedQuestions] })); } catch { /* Navigation remains available in memory. */ }
+}
+function restoreNavigation() {
+ reviewQuestionId = null; skippedQuestions = new Set();
+ try {
+  const saved = JSON.parse(sessionStorage.getItem(`navigation-${attempt.attemptId}`));
+  if (!saved) return;
+  const valid = id => attempt.questions.some(q => q._id === id);
+  if (Array.isArray(saved.skipped)) skippedQuestions = new Set(saved.skipped.filter(id => valid(id) && !answers.has(id)));
+  if (valid(saved.current)) {
+   if (answers.has(saved.current)) reviewQuestionId = saved.current;
+   else queue = [saved.current, ...queue.filter(id => id !== saved.current)];
+  }
+ } catch { /* Ignore malformed local navigation metadata. */ }
+}
 const answerList = map => [...map].map(([questionId, selected]) => ({ questionId, selected }));
 const sameAnswers = (a, b) => a.size === b.size && [...a].every(([id, value]) => b.get(id) === value);
 const pendingCount = () => [...answers].filter(([id, value]) => confirmedAnswers.get(id) !== value).length;
@@ -211,6 +253,7 @@ function updateSaveStatus() {
  $('save-status').classList.toggle('hidden', !$('save-status').textContent);
  $('retry-save-btn').classList.toggle('hidden', !saveFailed || !pending || conflict);
  $('retry-save-btn').disabled = submitting || !!savePromise;
+ $('save-indicator').textContent = conflict || (saveFailed && pending) ? '' : pending || savePromise ? t('savingAnswers') : `✓ ${t('allSaved')}`;
 }
 function questionContent(question) {
  const urdu = question.urdu;
@@ -221,45 +264,110 @@ function questionContent(question) {
   { text: question.text || question.questionText, options: question.options, lang: 'en' };
 }
 function renderQuestion() {
- if (!queue.length) {
+ const question = currentQuestion();
+ if (!question) {
   $('question-title').textContent = ''; $('translation-notice').classList.add('hidden');
-  document.getElementById('question-image-preview')?.remove();
+  $('question-media').hidden = true;
   $('progress-text').textContent = `${answers.size} / ${attempt.questions.length} ${t('answered')} · 0 ${t('remaining')}`;
   $('progress-fill').style.width = `${answers.size / attempt.questions.length * 100}%`;
   $('options-container').replaceChildren(); $('next-btn').disabled = true; $('skip-btn').disabled = true; $('finish-btn').disabled = conflict || submitting; return;
  }
- const question = attempt.questions.find(q => q._id === queue[0]);
  const content = questionContent(question);
- $('question-title').textContent = `${t('question')} ${attempt.questions.indexOf(question) + 1}: ${content.text}`;
+ const grade = report?.student.grade ?? question.grade;
+ $('quiz-grade-heading').textContent = `${t('grade')}: ${grade === undefined ? '—' : Number(grade) === 0 ? (language === 'ur' ? 'حفظ' : 'Hifz') : grade} · ${t('computer')}`;
+ $('quiz-question-number').textContent = `${t('question')} ${attempt.questions.indexOf(question) + 1} / ${attempt.questions.length}`;
+ $('quiz-question-grade').textContent = grade === undefined ? '' : gradeLabel(grade);
+ $('question-title').textContent = content.text;
  $('question-title').setAttribute('lang',content.lang);
  $('question-title').setAttribute('dir',content.lang === 'ur' ? 'rtl' : 'ltr');
  $('translation-notice').textContent = language === 'ur' && content.lang !== 'ur' ? t('translationMissing') : '';
  $('translation-notice').classList.toggle('hidden',language !== 'ur' || content.lang === 'ur');
- $('progress-text').textContent = `${answers.size} / ${attempt.questions.length} ${t('answered')} · ${queue.length} ${t('remaining')}`;
+ $('progress-text').textContent = `${answers.size} / ${attempt.questions.length} ${t('answered')}`;
  $('progress-fill').style.width = `${answers.size / attempt.questions.length * 100}%`; $('options-container').replaceChildren();
- const oldImage = document.getElementById('question-image-preview');
- if (oldImage) oldImage.remove();
- if (question.imageUrl) {
-  const image = element('img', undefined, 'question-image-preview'); image.id = 'question-image-preview'; image.src = question.imageUrl; image.alt = 'Question illustration';
-  $('options-container').before(image);
- }
+ $('quiz-progress-percent').textContent = `${Math.round(answers.size / attempt.questions.length * 100)}%`;
+ renderQuestionImage(question);
+ const choice = selected || answers.get(question._id);
  content.options.forEach(option => {
-  const button = element('button',`${option.id}: ${option.text}`,'option-btn'); button.type = 'button'; button.classList.toggle('selected',selected === option.id); button.setAttribute('aria-pressed',String(selected === option.id)); button.disabled = conflict || submitting || saveFailed;
+  const button = element('button',undefined,'option-btn'); button.type = 'button'; button.classList.toggle('selected',choice === option.id); button.setAttribute('aria-pressed',String(choice === option.id)); button.disabled = conflict || submitting || saveFailed;
+  const letter = element('span', option.id, 'quiz-option-letter'), copy = element('span', option.text, 'quiz-option-copy'), check = element('span', '✓', 'quiz-option-check');
+  check.setAttribute('aria-hidden','true'); button.append(letter, copy, check);
   button.setAttribute('lang',content.lang); button.setAttribute('dir',content.lang === 'ur' ? 'rtl' : 'ltr');
-  button.onclick = () => { selected = option.id; renderQuestion(); }; $('options-container').append(button);
+  button.onclick = () => {
+   if (!active || conflict || submitting || saveFailed) return;
+   selected = option.id; answers.set(question._id, option.id); skippedQuestions.delete(question._id);
+   rememberDraft(); rememberNavigation(); renderQuestion(); updateSaveStatus();
+   drainSaves().catch(error => notify(error.message));
+  }; $('options-container').append(button);
  });
- $('next-btn').disabled = !selected || conflict || submitting || saveFailed; $('skip-btn').disabled = conflict || submitting || saveFailed; $('finish-btn').disabled = conflict || submitting;
+ $('next-btn').disabled = !choice || conflict || submitting || saveFailed; $('skip-btn').disabled = conflict || submitting || saveFailed; $('finish-btn').disabled = conflict || submitting;
+ $('next-btn').textContent = t(answers.size === attempt.questions.length && !queue.some(id => id !== question._id && !answers.has(id)) ? 'reviewAnswers' : 'saveNext');
+ $('previous-question-btn').disabled = conflict || submitting || saveFailed || attempt.questions.indexOf(question) <= 0;
+ renderNavigator(question);
  if (pendingCount() || conflict) updateSaveStatus();
 }
-$('skip-btn').onclick = () => { queue.push(queue.shift()); selected = null; rememberQueue(); renderQuestion(); updateSaveStatus(); $('question-title').focus(); };
-function persistSelection() {
- if (!selected || !queue.length || conflict || submitting) return;
- const questionId = queue.shift(); answers.set(questionId, selected); selected = null;
- rememberDraft(); rememberQueue(); renderQuestion(); updateSaveStatus();
+function renderNavigator(question) {
+ $('quiz-question-grid').replaceChildren();
+ attempt.questions.forEach((q, index) => {
+  const button = element('button', String(index + 1)); button.type = 'button';
+  const current = q._id === question._id, answered = answers.has(q._id), skipped = skippedQuestions.has(q._id) && !answered;
+  button.classList.toggle('answered', answered); button.classList.toggle('skipped', skipped); button.classList.toggle('current', current);
+  button.setAttribute('aria-label', `${t('question')} ${index + 1}, ${t(current ? 'legendCurrent' : answered ? 'legendAnswered' : skipped ? 'legendSkipped' : 'legendUnanswered')}`);
+  if (current) button.setAttribute('aria-current','step');
+  button.disabled = conflict || submitting || saveFailed; button.onclick = () => navigateQuestion(q._id);
+  $('quiz-question-grid').append(button);
+ });
+}
+function renderQuestionImage(question) {
+ const image = $('question-image-preview');
+ $('quiz-question-body').classList.toggle('has-image', Boolean(question.imageUrl));
+ $('question-media').hidden = !question.imageUrl;
+ if (!question.imageUrl) { image.removeAttribute('src'); image.dataset.source = ''; return; }
+ if (image.dataset.source === question.imageUrl) return;
+ image.dataset.source = question.imageUrl; image.hidden = false;
+ $('question-image-error').hidden = true; $('view-question-image').hidden = false;
+ image.onload = () => { image.hidden = false; };
+ image.onerror = () => { image.hidden = true; $('view-question-image').hidden = true; $('question-image-error').textContent = t('imageError'); $('question-image-error').hidden = false; };
+ image.src = question.imageUrl;
+}
+$('view-question-image').onclick = () => {
+ const question = currentQuestion(); if (!question?.imageUrl) return;
+ $('question-image-full').src = question.imageUrl; $('question-image-dialog').showModal?.();
+};
+$('close-question-image').onclick = () => $('question-image-dialog').close?.();
+$('question-image-dialog').onclose = () => $('question-image-full').removeAttribute('src');
+function navigateQuestion(id) {
+ if (!active || conflict || submitting || saveFailed || !attempt.questions.some(q => q._id === id)) return;
+ if (id === currentQuestion()?._id) return;
+ persistSelection({ advance: false });
+ if (!active) return;
+ if (answers.has(id)) reviewQuestionId = id;
+ else { reviewQuestionId = null; queue = [id, ...queue.filter(q => q !== id)]; }
+ selected = null; $('question-image-dialog').close?.(); rememberQueue(); rememberNavigation(); renderQuestion(); updateSaveStatus(); $('question-title').focus();
+}
+$('previous-question-btn').onclick = () => { const index = attempt.questions.indexOf(currentQuestion()); if (index > 0) navigateQuestion(attempt.questions[index - 1]._id); };
+$('skip-btn').onclick = () => {
+ if (!active || conflict || submitting || saveFailed) return;
+ const question = currentQuestion(); if (!question) return;
+ if (selected || answers.has(question._id)) persistSelection();
+ else {
+  skippedQuestions.add(question._id);
+  queue = [...queue.filter(id => id !== question._id), question._id]; reviewQuestionId = null; selected = null;
+ }
+ if (!queue.length) reviewQuestionId = attempt.questions[(attempt.questions.indexOf(question) + 1) % attempt.questions.length]._id;
+ rememberQueue(); rememberNavigation(); renderQuestion(); updateSaveStatus(); $('question-title').focus();
+};
+function persistSelection({ advance = true } = {}) {
+ const question = currentQuestion(), choice = selected || (question && answers.get(question._id));
+ if (!question || !choice || conflict || submitting) return;
+ answers.set(question._id, choice); skippedQuestions.delete(question._id);
+ queue = queue.filter(id => id !== question._id); selected = null;
+ reviewQuestionId = advance ? null : question._id;
+ rememberDraft(); rememberQueue(); rememberNavigation(); renderQuestion(); updateSaveStatus();
  drainSaves().catch(error => notify(error.message));
 }
 function drainSaves() {
  if (savePromise) return savePromise;
+ if (!active || !pendingCount() || conflict) return Promise.resolve();
  const operation = (async () => {
   while (active && pendingCount() && !conflict) {
    const snapshot = new Map(answers), revision = attempt.revision;
@@ -294,9 +402,14 @@ function drainSaves() {
  operation.finally(() => { if (savePromise === operation) savePromise = null; updateSaveStatus(); if (active) renderQuestion(); }).catch(() => {});
  return operation;
 }
-$('next-btn').onclick = async () => { persistSelection(); if (active && !queue.length) await submit(); else if (active) $('question-title').focus(); };
+$('next-btn').onclick = async () => {
+ persistSelection();
+ if (!active) return;
+ if (!queue.length) { notify(t('reviewAnswers')); $('quiz-question-grid').focus(); }
+ else $('question-title').focus();
+};
 $('retry-save-btn').onclick = async () => {
- try { if (!queue.length || new Date(attempt.expiresAt).getTime() <= Date.now() + clockOffset) await submit(); else { await drainSaves(); notify(''); } }
+ try { if (new Date(attempt.expiresAt).getTime() <= Date.now() + clockOffset) await submit(); else { await drainSaves(); notify(''); } }
  catch (error) { notify(error.message); }
 };
 window.addEventListener('online', () => { if (active && pendingCount() && !conflict && !submitting) drainSaves().catch(error => notify(error.message)); });
@@ -319,7 +432,6 @@ function tick() {
  const remainingMs = Math.max(0,new Date(attempt.expiresAt).getTime() - Date.now() - clockOffset);
  const seconds = Math.ceil(remainingMs / 1000);
  $('time-left').textContent = `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`;
- $('timer-ring-progress').style.strokeDashoffset = String(100 * (1 - Math.min(1,remainingMs / timerDurationMs)));
  $('timer-display').classList.toggle('time-warning',seconds <= 60); if (!seconds) { notify(t('timeUp')); submit(); }
 }
 $('finish-btn').onclick = async () => { if (!confirm(t('confirm'))) return; persistSelection(); if (active) await submit(); };
@@ -359,6 +471,7 @@ function displayResult(result) {
  $('retry-btn').classList.add('hidden'); $('back-btn').disabled = false; document.querySelector('[data-i18n="completedRule"]').classList.remove('hidden');
  if (attempt) sessionStorage.removeItem(`queue-${attempt.attemptId}`);
  if (attempt) sessionStorage.removeItem(`draft-${attempt.attemptId}`);
+ if (attempt) sessionStorage.removeItem(`navigation-${attempt.attemptId}`);
 }
 $('retry-btn').onclick = () => submit();
 async function enterFullscreen() { try { await document.documentElement.requestFullscreen?.(); } catch { /* Unsupported browsers may continue. */ } }

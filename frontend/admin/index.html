@@ -6,12 +6,11 @@
     <meta name="robots" content="noindex, follow">
     <title>Teacher Panel</title>
     <link rel="icon" href="../favicon.ico?v=1">
-    <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png?v=1">
     <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
-    <link rel="apple-touch-icon" sizes="180x180" href="../favicon-180.png?v=1">
     <link rel="manifest" href="../manifest-admin.json">
-    <meta name="theme-color" content="#1F4E79">
+    <meta name="theme-color" content="#171293">
     <link rel="stylesheet" href="../style.css?v=8.0">
+    <link rel="stylesheet" href="bulk-import.css?v=1.0">
 </head>
 <body class="blue-gold">
 
@@ -125,7 +124,7 @@
             </div>
 
             <div id="add-tab-content" class="hidden">
-                <h1>Add Question</h1>
+                <div class="qb-import-launch"><h1>Add Question</h1><button type="button" class="btn-secondary" data-bulk-import="questions">Import PDF / Word</button></div>
                 <form id="question-form">
                     <label for="question-text">Write Question:</label>
                     <textarea id="question-text" required></textarea>
@@ -215,7 +214,7 @@
             </div>
 
             <div id="manage-tab-content" class="hidden">
-                <h1>Manage Questions</h1>
+                <div class="qb-import-launch"><h1>Manage Questions</h1><button type="button" class="btn-secondary" data-bulk-import="questions">Import PDF / Word</button></div>
                 <div class="field question-grade-filter">
                 <label for="filter-grade">Filter by Grade:</label>
                 <select id="filter-grade">
@@ -286,6 +285,7 @@
     <script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
 <script src="report-utils.js?v=7.0"></script>
-<script src="admin.js?v=7.5"></script>
+<script src="admin.js?v=7.6"></script>
+<script src="bulk-import.js?v=1.1"></script>
 </body>
 </html>

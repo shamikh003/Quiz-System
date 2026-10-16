@@ -5,17 +5,17 @@
 <meta name="robots" content="noindex, follow">
 <title>QuizBoard | Student</title>
 <link rel="icon" href="../favicon.ico?v=1">
-<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png?v=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
-<link rel="apple-touch-icon" sizes="180x180" href="../favicon-180.png?v=1">
 <link rel="manifest" href="../manifest-quiz.json">
-<meta name="theme-color" content="#1F4E79"><link rel="stylesheet" href="../style.css?v=8.0">
+<meta name="theme-color" content="#171293"><link rel="stylesheet" href="../style.css?v=8.0">
+<link rel="stylesheet" href="quiz-session.css?v=1.1">
 </head>
 <body class="blue-gold student-app">
 <main class="container wide student-portal">
     <div class="student-app-header">
-    <a class="student-wordmark" href="../index.html">QuizBoard</a>
+    <a class="student-wordmark" href="../index.html"><img src="../favicon.svg" alt="" width="42" height="42">QuizBoard</a>
     <div class="header-actions quiz-header-actions">
+        <span id="quiz-header-student" class="hidden"></span>
         <button id="lang-toggle" class="lang-toggle" type="button">اردو</button>
         <button id="theme-toggle" class="theme-toggle" type="button" role="switch" aria-checked="false">Dark mode</button>
         <button id="logout-btn" class="btn-secondary btn-small hidden" type="button" data-i18n="logout">Log out</button>
@@ -33,7 +33,8 @@
             <select id="student-grade" required>
                 <option value="" data-i18n="choose">Choose grade</option>
                 <option value="4">Grade 4</option><option value="5">Grade 5</option>
-                <option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option>
+                <option value="6">Grade 6</option><option value="7">Grade 7</option>
+                <option value="0">Hifz</option>
             </select>
             <label for="student-password" data-i18n="password">Password</label>
             <input id="student-password" type="password" required maxlength="72" autocomplete="current-password">
@@ -43,7 +44,8 @@
     <section id="dashboard" class="hidden">
         <h1 data-i18n="studentPanel">My Student Panel</h1>
         <div class="student-identity school-panel">
-        <div class="student-identity-info"><h2 id="student-heading"></h2><p id="student-meta"></p></div>
+        <div class="student-identity-info"><h2 id="student-heading"></h2>
+        <p id="student-meta"></p></div>
         <div class="student-entry-controls">
         <div id="quiz-start-loader" class="qb-loader-slot" hidden></div>
         <div class="portal-start-actions">
@@ -67,28 +69,48 @@
     </section>
     <section id="quiz-container" style="display:none">
         <div id="violation-banner" class="violation-banner hidden" role="status"></div>
-        <div class="quiz-countdown">
+        <div class="quiz-exam-layout">
+        <div class="quiz-exam-main">
+        <div class="quiz-exam-heading">
+            <h1 id="quiz-grade-heading">Grade: — · Computer</h1>
+        <div class="quiz-countdown" role="timer" aria-label="Time remaining">
             <div id="timer-display">
-                <svg class="timer-ring" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-                    <circle class="timer-ring-track" cx="50" cy="50" r="44"></circle>
-                    <circle id="timer-ring-progress" cx="50" cy="50" r="44" pathLength="100" stroke-dasharray="100 100" stroke-dashoffset="0"></circle>
-                </svg>
+                <svg class="quiz-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>
+                <div class="quiz-timer-copy"><span class="timer-label" data-i18n="timeRemaining">Time remaining</span>
                 <span id="time-left" dir="ltr">00:00</span>
+                </div>
             </div>
-            <span class="timer-label" data-i18n="timeRemaining">Remaining</span>
         </div>
-        <p id="progress-text" aria-live="polite"></p>
-        <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
-        <p id="save-status" role="status"></p>
-        <button id="retry-save-btn" type="button" class="btn-secondary hidden" data-i18n="retrySave">Retry saving answers</button>
+        </div>
+        <article class="quiz-question-card">
+        <div class="quiz-question-meta"><span id="quiz-question-number"></span><span class="quiz-grade-chip" id="quiz-question-grade"></span></div>
         <h2 id="question-title" tabindex="-1"></h2>
         <p id="translation-notice" class="translation-notice hidden" role="status"></p>
+        <div class="quiz-question-body" id="quiz-question-body">
+        <figure id="question-media" class="quiz-question-media" hidden>
+            <img id="question-image-preview" class="question-image-preview" alt="Question illustration" decoding="async">
+            <figcaption><p id="question-image-error" role="status" hidden></p><button id="view-question-image" type="button" class="btn-secondary" data-i18n="viewImage">View larger image</button></figcaption>
+        </figure>
         <div id="options-container"></div>
-        <div class="portal-actions">
-            <button id="skip-btn" type="button" class="btn-secondary" data-i18n="skip">Skip</button>
-            <button id="next-btn" type="button" data-i18n="saveNext">Save & Next</button>
         </div>
-        <button id="finish-btn" type="button" class="btn-secondary" data-i18n="finish">Submit Quiz</button>
+        <div class="quiz-question-footer">
+            <button id="previous-question-btn" type="button" class="btn-secondary" data-i18n="previous">Previous</button>
+            <div class="portal-actions"><button id="skip-btn" type="button" class="btn-secondary" data-i18n="skipReturn">Skip &amp; return</button>
+            <button id="next-btn" type="button" data-i18n="saveNext">Save & Next</button>
+            </div>
+        </div>
+        <p id="save-indicator" class="quiz-save-indicator" role="status" aria-live="polite"></p>
+        <p id="save-status" role="status"></p>
+        <button id="retry-save-btn" type="button" class="btn-secondary hidden" data-i18n="retrySave">Retry saving answers</button>
+        </article></div>
+        <aside class="quiz-navigator" aria-labelledby="quiz-navigator-title">
+            <h2 id="quiz-navigator-title" data-i18n="navigator">Question navigator</h2>
+            <p id="progress-text" aria-live="polite"></p>
+            <div class="quiz-progress-row"><div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div><span id="quiz-progress-percent">0%</span></div>
+            <div id="quiz-question-grid" class="quiz-question-grid" role="group" aria-label="Choose a question" tabindex="-1"></div>
+            <ul class="quiz-navigator-legend"><li><i class="answered"></i><span data-i18n="legendAnswered">Answered</span></li><li><i class="current"></i><span data-i18n="legendCurrent">Current</span></li><li><i class="skipped"></i><span data-i18n="legendSkipped">Skipped</span></li><li><i></i><span data-i18n="legendUnanswered">Unanswered</span></li></ul>
+            <button id="finish-btn" type="button" data-i18n="finish">Submit Quiz</button>
+        </aside></div>
     </section>
     <section id="result-container" style="display:none">
         <h1 data-i18n="complete">Quiz Complete</h1>
@@ -101,8 +123,9 @@
         <button id="back-btn" type="button" data-i18n="back">Back to my report</button>
     </section>
 </main>
+<dialog id="question-image-dialog" class="quiz-image-dialog" aria-labelledby="question-image-dialog-title"><div class="quiz-image-dialog-heading"><h2 id="question-image-dialog-title" data-i18n="questionImage">Question image</h2><button id="close-question-image" type="button" class="btn-secondary" data-i18n="closeImage">Close</button></div><img id="question-image-full" alt="Enlarged question illustration"></dialog>
 <script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
 <script src="../admin/report-utils.js?v=7.0"></script>
-<script src="quiz.js?v=7.2"></script>
+<script src="quiz.js?v=8.1"></script>
 </body></html>

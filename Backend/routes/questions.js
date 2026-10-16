@@ -112,7 +112,7 @@ router.put('/admin/questions/:id', requireAdmin, protectActiveQuestions, (req, r
             await deleteFile(existing.imagePath);
         }
         const updated = await Question.findByIdAndUpdate(req.params.id,
-            { $set: update, ...(changed ? { $unset: { urdu: 1, translationError: 1 } } : {}) }, { new: true });
+            { $set: update, $unset: { bulkImportKey: 1, ...(changed ? { urdu: 1, translationError: 1 } : {}) } }, { new: true });
         await translationQueue().enqueue(updated);
         res.json(await Question.findById(updated._id));
     } catch (error) { console.error('Question update error:', error); res.status(500).json({ error: 'Could not update question.' }); }

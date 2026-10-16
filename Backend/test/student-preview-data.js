@@ -1,0 +1,28 @@
+// Fictional local-preview questions only. Never seeded by the production server.
+module.exports = [
+ ['What does CPU stand for?', 'Central Processing Unit', 'Computer Personal Unit', 'Central Program Utility', 'Control Processing Unit'],
+ ['Which device is used to type text?', 'Keyboard', 'Monitor', 'Printer', 'Speaker'],
+ ['Which device shows the computer output on a screen?', 'Monitor', 'Mouse', 'Scanner', 'Microphone'],
+ ['Which device prints information on paper?', 'Printer', 'Keyboard', 'Mouse', 'Speaker'],
+ ['Which device lets you point and click?', 'Mouse', 'Printer', 'Speaker', 'Monitor'],
+ ['Which program is used to make presentations?', 'PowerPoint', 'Calculator', 'Notepad', 'Paint'],
+ ['Which application is used for spreadsheets?', 'Excel', 'Paint', 'PowerPoint', 'Notepad'],
+ ['Which program is used to write a document?', 'Word', 'Calculator', 'Paint', 'Camera'],
+ ['Which shortcut copies selected text?', 'Ctrl + C', 'Ctrl + V', 'Ctrl + X', 'Ctrl + P'],
+ ['Which shortcut pastes copied text?', 'Ctrl + V', 'Ctrl + C', 'Ctrl + Z', 'Ctrl + A'],
+ ['Which key is usually used to start a new line?', 'Enter', 'Shift', 'Escape', 'Caps Lock'],
+ ['Which key makes a space between words?', 'Spacebar', 'Tab', 'Delete', 'Escape'],
+ ['Which device records your voice?', 'Microphone', 'Printer', 'Monitor', 'Mouse'],
+ ['Which device plays sound?', 'Speaker', 'Scanner', 'Keyboard', 'Monitor'],
+ ['Which is an input device?', 'Scanner', 'Printer', 'Speaker', 'Projector'],
+ ['Which is an output device?', 'Projector', 'Mouse', 'Keyboard', 'Microphone'],
+ ['Which is an example of computer hardware?', 'Keyboard', 'Web browser', 'Word processor', 'Operating system'],
+ ['Which is an example of software?', 'Web browser', 'Monitor', 'Printer', 'Mouse'],
+ ['What is a good way to protect a password?', 'Keep it private', 'Post it online', 'Share it with everyone', 'Write it on a public screen'],
+ ['Which program is used to visit websites?', 'Web browser', 'Calculator', 'Paint', 'File compressor'],
+ ['Which is used to store files?', 'Storage drive', 'Speaker', 'Microphone', 'Projector'],
+ ['Which shortcut usually saves a document?', 'Ctrl + S', 'Ctrl + P', 'Ctrl + X', 'Ctrl + V'],
+ ['Which shortcut usually prints a document?', 'Ctrl + P', 'Ctrl + C', 'Ctrl + V', 'Ctrl + A'],
+ ['Which key removes the character to the left of the cursor?', 'Backspace', 'Shift', 'Tab', 'Caps Lock'],
+ ['Which should you do before shutting down a computer?', 'Save your work', 'Unplug it immediately', 'Delete every file', 'Disconnect the keyboard']
+];
