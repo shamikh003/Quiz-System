@@ -1,7 +1,7 @@
 const express = require('express');
-const { Question, Result, Assignment, Submission, Student } = require('../models/models');
+const { Question, Assignment, Submission, Student } = require('../models/models');
 const { requireAdmin } = require('../middleware/auth');
-const { rankingStages } = require('../result-ranking');
+const { resultRows } = require('../services/result-reports');
 const { VALID_GRADES } = require('../grades');
 
 const router = express.Router();
@@ -14,20 +14,13 @@ router.get('/admin/dashboard', requireAdmin, async (req, res) => {
         filter.grade = Number(req.query.grade);
     }
     try {
-        const [totalQuestions, totalAssignments, pendingSubmissions, totalStudents, topResults] =
+        const [totalQuestions, totalAssignments, pendingSubmissions, totalStudents, latestResults] =
             await Promise.all([
                 Question.countDocuments(),
                 Assignment.countDocuments({ deletedAt: null }),
                 Submission.countDocuments({ status: 'pending', assignmentDeletedAt: null }),
                 Student.countDocuments(),
-                Result.aggregate([
-                    { $match: filter },
-                    ...rankingStages(),
-                    { $limit: 5 },
-                    { $project: { name: 1, rollNum: 1, grade: 1, section: 1, score: 1, total: 1,
-                        percentage: 1, rankingPercentage: 1, elapsedMs: 1, timingKnown: 1,
-                        tabSwitchCount: 1, fullscreenExitCount: 1, date: 1 } }
-                ])
+                resultRows({ grade: filter.grade == null ? '' : String(filter.grade), attempts: 'latest' }, { includeAssignments: false, limit: 5 })
             ]);
 
         res.json({
@@ -36,8 +29,9 @@ router.get('/admin/dashboard', requireAdmin, async (req, res) => {
             totalAssignments,
             totalStudents,
             pendingSubmissions,
-            topResults,
-            recentResults: topResults // Support a previously cached dashboard during rollout.
+            latestResults,
+            topResults: latestResults,
+            recentResults: latestResults
         });
     } catch (err) {
         console.error('Admin dashboard error:', err);

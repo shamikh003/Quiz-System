@@ -1,7 +1,9 @@
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
 const $ = id => document.getElementById(id);
 const labels = {
- studentPanel:['My Student Panel','میرا اسٹوڈنٹ پینل'],
+ studentPanel:['My Student Panel','میرا اسٹوڈنٹ پینل'], section:['Section','سیکشن'],
+ lookupBusy:['Finding grade and section…','کلاس اور سیکشن تلاش ہو رہے ہیں…'], lookupMissing:['Roll number not found.','رول نمبر موجود نہیں۔'],
+ lookupPassword:['Enter password to identify your account.','اپنے اکاؤنٹ کی شناخت کے لیے پاس ورڈ درج کریں۔'], lookupError:['Could not find grade and section. Try signing in.','کلاس اور سیکشن معلوم نہیں ہو سکے۔ لاگ اِن کریں۔'],
  signingIn:['Signing you in…','لاگ اِن ہو رہا ہے…'], loadingScores:['Loading scores…','نتائج لوڈ ہو رہے ہیں…'],
  loadingAssignments:['Loading assignments…','اسائنمنٹس لوڈ ہو رہی ہیں…'], loadingQuiz:['Loading quiz…','کوئز لوڈ ہو رہا ہے…'],
  uploading:['Uploading assignment…','اسائنمنٹ جمع ہو رہی ہے…'], submittingQuiz:['Submitting quiz…','کوئز جمع ہو رہا ہے…'],
@@ -39,6 +41,7 @@ const labels = {
 let language = localStorage.getItem('quizLang') === 'ur' ? 'ur' : 'en';
 let token = sessionStorage.getItem('studentToken');
 let reportLoading = false;
+let detectedStudent = null, lookupState = '', lookupController, lookupTimer, lookupId = 0;
 let report, lastResult, page = 1, attempt, queue = [], selected = null, answers = new Map();
 let timer, clockOffset = 0, timerDurationMs = 1, active = false, submitting = false, savePromise = null, conflict = false;
 let tabSwitchCount = 0, fullscreenExitCount = 0;
@@ -51,6 +54,7 @@ function element(tag, text, className) {
  const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node;
 }
 function applyLanguage() {
+ renderDetectedStudent();
  document.documentElement.lang = language; document.documentElement.dir = language === 'ur' ? 'rtl' : 'ltr';
  document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = t(node.dataset.i18n); });
  $('lang-toggle').textContent = language === 'ur' ? 'English' : 'اردو';
@@ -84,11 +88,36 @@ async function api(path, options = {}) {
 }
 const post = (path, body = {}, options = {}) => api(path, { ...options, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
 const saveTimeout = () => typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(15000) } : {};
+function renderDetectedStudent() {
+ $('student-grade').value = detectedStudent ? gradeLabel(detectedStudent.grade) : '';
+ $('student-section').value = detectedStudent?.section || '';
+ $('student-lookup-status').textContent = lookupState ? t(lookupState) : '';
+}
+async function findStudent() {
+ const current = ++lookupId, rollNum = $('student-roll').value.trim();
+ lookupController?.abort(); detectedStudent = null; lookupState = rollNum ? 'lookupBusy' : ''; renderDetectedStudent();
+ if (!rollNum) return;
+ lookupController = new AbortController();
+ try {
+  const response = await fetch(`${BACKEND_URL}/api/student/lookup`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({rollNum}), signal:lookupController.signal, cache:'no-store' });
+  if (!response.ok) throw new Error('Lookup failed');
+  const data = await response.json(); if(current !== lookupId) return;
+  detectedStudent = data.found && !data.needsPassword ? data : null;
+  lookupState = !data.found ? 'lookupMissing' : data.needsPassword ? 'lookupPassword' : '';
+ } catch(error) { if(error.name === 'AbortError' || current !== lookupId) return; lookupState = 'lookupError'; }
+ renderDetectedStudent();
+}
+$('student-roll').addEventListener('input', () => {
+ ++lookupId; lookupController?.abort(); clearTimeout(lookupTimer); detectedStudent = null; lookupState = ''; renderDetectedStudent();
+ lookupTimer = setTimeout(findStudent, 350);
+});
+$('student-roll').addEventListener('blur', () => { clearTimeout(lookupTimer); findStudent(); });
 $('login-form').onsubmit = async event => {
  event.preventDefault(); $('login-btn').disabled = true; notify('');
  const stopLoading = globalThis.QuizLoader?.show($('student-login-loader'), t('signingIn')) || (() => {});
  try {
-  const data = await post('/student/login', { rollNum:$('student-roll').value.trim(), grade:$('student-grade').value, password:$('student-password').value });
+  const data = await post('/student/login', { rollNum:$('student-roll').value.trim(), password:$('student-password').value });
+  ++lookupId; clearTimeout(lookupTimer); lookupController?.abort(); detectedStudent = data.student; lookupState = ''; renderDetectedStudent();
   token = data.token; sessionStorage.setItem('studentToken', token); $('student-password').value = ''; page = 1; await loadReport();
  } catch (error) { notify(error.message); } finally { stopLoading(); $('login-btn').disabled = false; }
 };

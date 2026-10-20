@@ -920,7 +920,13 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .dashboard-back-link:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 .dashboard-back-link svg { flex-shrink:0; }
 .page-context,.field-help { color:var(--text-secondary); font-size:12px; }
-.report-filters { display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:16px; margin:20px 0; }
+.report-filters { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin:20px 0; }
+.results-export-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.results-export-actions button { width:auto; margin:0; }
+.result-row-number { flex:0 0 24px; color:var(--text-secondary); text-align:center; font-size:13px; }
+.student-detected-fields input[readonly] { background:var(--surface-2, var(--surface)); color:var(--text-secondary); }
+#student-lookup-status { font-size:13px; color:var(--text-secondary); margin:0 0 16px; }
+#student-lookup-status:empty { display:none; }
 .report-filters > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .report-filters input,.report-filters select { width:100%; margin-bottom:0; }
 .report-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px; }
@@ -977,7 +983,7 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .results-page .results-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .results-page .results-header h1, .results-page .results-header .theme-toggle { margin: 0; }
 .results-page .results-header .theme-toggle { min-height: 44px; }
-.results-page .report-filters { gap: 16px; margin: 16px 0; }
+.results-page .report-filters { grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); gap:16px; margin:16px 0; }
 .results-page .report-filters label { font-size: 11px; }
 .results-page .report-filters input, .results-page .report-filters select { min-height: 44px; padding: 10px 12px; font-size: 14px; }
 .results-page .results-summary-toolbar { gap: 12px; margin-bottom: 12px; }

@@ -1,44 +1,25 @@
 const express = require('express');
-const { Result, Submission, Attempt } = require('../models/models');
+const { Result, Attempt } = require('../models/models');
 const { requireAdmin } = require('../middleware/auth');
-const { sectionName, sectionKey, studentRecords } = require('../sections');
-const { rankingStages } = require('../result-ranking');
+const { resultRows, resultFilters } = require('../services/result-reports');
+const { resultsPdf, resultsWorkbook } = require('../services/results-export');
 
 const router = express.Router();
 
-const { VALID_GRADES } = require('../grades');
-
-// ---- ADMIN: leaderboard / all results ----
-// Optional ?grade=4|5|6|7 filter for viewing one grade's leaderboard at a time.
-// Each result also carries the student's latest graded assignment percentage
-// (matched by student ownership and section), so scores cannot cross sections.
 router.get('/results', requireAdmin, async (req, res) => {
-    const filter = {};
-    if (req.query.grade && VALID_GRADES.includes(Number(req.query.grade))) {
-        filter.grade = Number(req.query.grade);
-    }
-    if (typeof req.query.section === 'string' && req.query.section.trim()) {
-        const key = sectionKey(req.query.section);
-        filter.sectionKey = key === 'unassigned' ? { $in: [null, key] } : key;
-    }
-    if (typeof req.query.rollNum === 'string' && req.query.rollNum.trim()) filter.rollNum = req.query.rollNum.trim();
-    const results = await Result.aggregate([{ $match: filter }, ...rankingStages()]);
+    try { res.set('Cache-Control', 'no-store').json(await resultRows(req.query)); }
+    catch (error) { if (error.status) return res.status(error.status).json({ error: error.message }); throw error; }
+});
 
-    const withAssignments = await Promise.all(results.map(async (r) => {
-        const submission = await Submission.findOne({
-            ...(r.student ? studentRecords({ _id: r.student, rollNum: r.rollNum, grade: r.grade, section: r.section }) : { student: null, rollNum: r.rollNum, grade: r.grade,
-                sectionKey: sectionKey(r.section) === 'unassigned' ? { $in: [null, 'unassigned'] } : sectionKey(r.section) }),
-            status: 'graded'
-        }).sort({ gradedAt: -1 });
-
-        return {
-            ...r,
-            section: sectionName(r.section),
-            assignmentPercentage: submission ? submission.percentage : null
-        };
-    }));
-
-    res.json(withAssignments);
+for (const format of ['pdf', 'xlsx']) router.get(`/results/export.${format}`, requireAdmin, async (req, res) => {
+    try {
+        const filters = resultFilters(req.query), rows = await resultRows(filters);
+        if (!rows.length) return res.status(404).json({ error: 'No results match these filters.' });
+        const buffer = await (format === 'pdf' ? resultsPdf(rows, filters) : resultsWorkbook(rows, filters));
+        const label = filters.grade ? (filters.grade === '0' ? 'Hifz' : `Grade-${filters.grade}`) : 'All-Grades';
+        res.set({ 'Cache-Control': 'no-store', 'Content-Type': format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': `attachment; filename="QuizBoard-${label}-${filters.attempts}-results.${format}"` }).send(buffer);
+    } catch (error) { if (error.status) return res.status(error.status).json({ error: error.message }); throw error; }
 });
 
 // ---- ADMIN: delete all results (protected) ----

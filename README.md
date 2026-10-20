@@ -1,104 +1,84 @@
 # QuizBoard
 
-A classroom assessment platform for timed quizzes, assignment submissions, and student progress tracking.
+Classroom quizzes, assignments and student progress reports.
 
-**Live website:** [QuizBoard by Shamikh and team](https://quizboard-app.pages.dev/)
+Developed by Muhammad Shamikh, Sadia Khan and Abdul Rehman.
 
-Developed by **Muhammad Shamikh**, **Sadia Khan**, and **Abdul Rehman** for computer classroom assessments.
+Website: https://quizboard-app.pages.dev/
 
 ## Features
 
-- Teacher and student accounts with password hashing and role-based access.
-- Timed, image-based quizzes with Skip and Return, saved answers, and resume.
-- Student quiz screen with a numbered navigator, Previous/Skip/Next, automatic answer saves, explicit submission review, and a larger image viewer. The desktop layout fits the viewport; images preserve their aspect ratio. Mobile screens use a stacked layout.
-- Server-side scoring and one quiz attempt per student per Pakistan calendar day.
-- Grades 4–7 and Hifz, custom sections, and student account management.
-- Student and father names in registration, editable profiles and Excel imports. Existing accounts can add a father name through Edit Profile; older spreadsheets remain supported.
-- Word, Excel, and PowerPoint assignments with teacher grading. Graded marks remain in reports after assignment deletion.
-- Personal student reports and a shared leaderboard ranked by marks percentage, then completion time for ties.
-- Grade, section, and roll number filters with matching CSV exports.
-- Teacher Reports includes a Student Report tab: search by name or roll number, choose the correct grade/section, view all-time quiz and assignment performance, and download an individual PDF with complete saved history.
-- Readable teacher URLs (`/addquestions`, `/editquestions`, `/managequestions`, `/students`, `/reports`) on Cloudflare Pages / Netlify. Refresh and Back work, and old teacher hash links remain compatible. VS Code Live Server retains local hash links because it does not apply hosting rewrites.
-- Bulk question import from typed PDF/Word documents and student registration from Excel, with a review preview, duplicate checks and progress.
-- Responsive design, dark mode, and English/Urdu support, including saved automatic question and option translations.
+- Teacher and student accounts, grade and section management.
+- Timed quizzes with images, saved answers, resume and automatic scoring.
+- PDF/Word question imports and Excel student registration.
+- Student and father names in registration and profiles.
+- Assignment uploads, grading and saved assignment history.
+- Searchable student reports, class PDFs and filtered PDF/Excel exports.
+- Roll number and password login with automatic grade and section lookup.
+- English/Urdu support, dark mode and responsive layouts.
 
-## Technology
+## Project structure
 
-- **Frontend:** HTML, CSS, JavaScript
-- **Backend:** Node.js, Express.js, custom REST APIs
-- **Database:** MongoDB Atlas with Mongoose
-- **File storage:** Cloudinary
+```text
+Backend/
+  assets/          Report fonts and licences
+  middleware/      Authentication
+  models/          Database models
+  routes/          API routes
+  services/        Application services
+  uploads/         Local runtime upload folders
+  index.js         Server entry point
+  change-admin.js  Teacher account management
+  .env.example     Configuration template
+frontend/
+  admin/           Teacher panel and import templates
+  student/         Student panel
+  config.js        API connection settings
+  style.css        Shared styles
+index.html         Local frontend shortcut
+```
 
-## Local Setup
+## Local setup
 
-Requires Node.js 22.3 or newer, a MongoDB connection, and a Cloudinary account.
+Requires Node.js 22.3 or newer, MongoDB and Cloudinary.
 
-1. Create `Backend/.env` with your configuration:
+1. Copy `Backend/.env.example` to `Backend/.env` and enter your configuration. Keep `.env` private. Existing installations can keep their current file.
+2. In a terminal:
 
-   ```env
-   MONGO_URI=<mongodb-connection-string>
-   JWT_SECRET=<long-random-secret>
-   ADMIN_USERNAME=<teacher-username>
-   ADMIN_PASSWORD=<strong-teacher-password>
-   CLOUDINARY_CLOUD_NAME=<cloud-name>
-   CLOUDINARY_API_KEY=<api-key>
-   CLOUDINARY_API_SECRET=<api-secret>
-   GEMINI_API_KEY=<google-ai-studio-api-key>
-   GEMINI_TRANSLATION_MODEL=gemini-3.5-flash-lite
-   ```
-
-2. Start the backend:
-
-   ```bash
+   ```powershell
    cd Backend
    npm install
    npm start
    ```
 
-3. Serve the `frontend` folder using VS Code Live Server, then open `index.html`. Local pages automatically connect to the backend on port `5000`. Create student accounts from the Teacher Panel.
+3. Open `frontend/index.html` through VS Code Live Server. Local pages connect to the backend on port 5000.
 
-Run automated tests from `Backend` with `npm test`.
+## Imports
 
-### Bulk imports
+Use **Import PDF / Word** for questions or **Import Excel Students** for accounts. Download the template from the relevant dialog, upload the completed file, review it and import the selected rows.
 
-Teachers can use **Import PDF / Word** in Add Question or Manage Questions, and **Import Excel Students** in Student Accounts. Uploading prepares a preview only; select and review rows before choosing **Import selected rows**. Download the sample files from the dialog.
+Questions accept typed PDF or DOCX files, up to 10 MB and 1,000 questions. Include numbered questions, options A-C or A-D and an answer key. Scanned pages and embedded question images need manual entry.
 
-- Questions: typed `.pdf` or `.docx`, up to 10 MB and 1,000 questions per file. Choose one grade for the file. Use continuous question numbers, options `A.`, `B.`, `C.` and optional `D.`, followed by an **Answer Key** with entries such as `1. A`. Alternatively, put `Answer: A` after each question. Correct extracted text/options/keys in the preview. Repeated or conflicting question/key numbers must be corrected in the source file. Scanned PDFs, legacy `.doc`, embedded images and complex mathematical/layout formatting are not imported; convert them to the sample format first.
-- Students: `.xlsx`, up to 10 MB and 5,000 students per file. The first worksheet needs **Name**, **Roll Number**, **Password**, and either a **Grade** column or a selected default grade. **Section** is optional. Supported grades are 4–7 and Hifz. Row grade/section values override defaults; otherwise blank section becomes Unassigned. Store roll numbers and passwords as Excel Text values to preserve leading zeros. Formula cells are rejected. The existing password rules still apply: at least 6 characters, at most 72 UTF-8 bytes.
-- Existing students are matched by roll number, grade and normalized section; they are never overwritten or given a new password. Duplicate questions in a grade are skipped using normalized text and options. File duplicates and invalid rows appear in the preview and cannot be selected.
-- If the same roll number is reused across sections within one grade, assign different passwords: the current login distinguishes those accounts by password. The import flags repeated logins in a sheet and refuses to add an account whose roll/grade/password already matches another section.
-- Import progress runs in the background. Closing the dialog does not cancel it; reopen from the same browser to resume viewing it. Jobs and checkpoints are stored in MongoDB and recover after a backend restart. Repeated commits/recovered rows reuse the same IDs. A paused job can be resumed within 24 hours. Uncommitted student passwords are encrypted using a key derived from `JWT_SECRET`, never included in previews, hashed using the normal login algorithm at registration, and removed from the import job when it finishes. Do not rotate `JWT_SECRET` while student imports are pending.
-- Document readers run in a separate worker with a 45-second deadline and memory/expanded-archive limits. One file is parsed at a time per server, and bulk saves are queued. This does not certify capacity for a particular number of simultaneous school/lab users.
+Student spreadsheets accept up to 5,000 rows. Use Name, Father Name, Roll Number, Password, Grade and Section. Father Name and Section are optional; a selected grade can supply missing Grade values. Store roll numbers and passwords as Excel text. Passwords require at least six characters and at most 72 UTF-8 bytes. Existing accounts are not overwritten.
 
-After updating the backend and frontend together, run `npm install` in `Backend` (or `npm ci` on your host) and restart the backend. No new API key or cloud file-storage service is needed for these imports. Automated checks use an isolated database and fake records; they do not connect to the live school database.
+## Student reports
 
-### Individual student reports
+**Reports → All Results** shows every saved attempt, newest first. Choose **Latest Attempt** for one result per student within the selected grade and section. PDF and Excel downloads use the same grade, section, roll-number and attempt filters. **Latest Quiz Results** on the dashboard shows the five newest student results; View all results opens the selected grade in Latest Attempt mode.
 
-Open **Reports → Student Report** and search by name or roll number. Select the correct account using its roll number, grade and section. Individual reports, PDFs and the student's profile show the father name from the current account; All Results continues to show the student's name only. Missing father names remain blank until entered through Edit Profile. The Excel sample includes **Name** and **Father Name** columns; Father Name is optional for compatibility with older sheets. Existing saved quiz results and graded assignments are included, including archived assignment marks. Linked history follows the student across grade/section changes; older unlinked records are matched only by roll number, grade and section. Historical records without a current account remain searchable. Equal names are never combined automatically.
+Open **Reports → Student Report**, search by name or roll number and select the correct account. Reports include saved quiz results and graded assignments, including archived assignment marks. **Download PDF** exports the full saved history. Father names appear in student profiles and individual reports; All Results shows student names only.
 
-Statistics use available saved percentages. Missing historical timing or marks are shown as unavailable, and empty histories do not receive invented scores. The screen shows ten history records per page; **Download PDF** includes all saved history, with a chart of the latest twenty scored quizzes. Only authenticated teachers can search, view or export reports.
+For a whole class, select a grade in **Reports → Grade Reports**, optionally choose a section, then use **Download Grade PDF**. All matching students are included in one file, with each student's report starting on a new page. Individual and grade PDFs carry the Dar-e-Arqam School Metroville Campus name and logo.
 
-Deploy the frontend to Cloudflare Pages and deploy the same commit on Render with **Manual Deploy → Deploy latest commit**. Render must install the updated `Backend/package-lock.json` dependencies. The new report API requires this backend deployment; no database reset, re-import or new service credentials are needed. The bundled Noto Sans Arabic PDF font is licensed under the SIL Open Font License in `Backend/assets/fonts/OFL.txt`.
+Students sign in with their roll number and password. Grade and section are read from the saved account. If a roll number is used in more than one account, the password identifies the account; identical roll numbers and passwords across accounts require the teacher to resolve the duplicate credentials. Individual PDFs download using the student's name.
 
-## Project Structure
+## Urdu translation
 
-```text
-frontend/          Website pages, styles, scripts and app icons
-Backend/           Server, database models, APIs and services
-Backend/test/      Automated checks and isolated local preview
-index.html         Shortcut to the frontend when serving the repo root
-```
-
-Uploads, generated reports, temporary previews, dependencies and local credentials are excluded from Git. Uploaded files are managed through Cloudinary; they do not belong in the source repository.
-
-### Automatic Urdu Translation
-
-Use Node.js 22.3 or newer. Create an API key in [Google AI Studio](https://aistudio.google.com/api-keys), add `GEMINI_API_KEY` to `Backend/.env` locally and to Render's environment for the hosted backend, then restart/redeploy the backend. Keep the key private; it is never sent to the browser.
-
-New or changed questions translate in the background. For existing questions, choose a grade (or All Grades) in **Manage Questions**, select **Translate to Urdu**, and use **Refresh** to check progress and open **Urdu preview**. Translations are stored once per question in MongoDB. Students switch the question and all options using the existing Urdu button without calling Gemini or changing their answers, score, order, or deadline. Missing translations fall back to English with a short notice.
-
-The queue spaces requests at least 6 seconds apart (up to 10 requests per minute); pending jobs resume after restarts. Set `TRANSLATION_INTERVAL_MS=6000` in the backend environment, or use a higher value if your account needs a slower rate. If quota or credentials prevent translation, fix the cause and select **Translate to Urdu** again. Gemini limits depend on your account/model. Review generated translations before a class quiz, particularly abbreviations and negative questions. Images themselves are unchanged.
+Set `GEMINI_API_KEY` in the backend environment to enable automatic Urdu translation. **Manage Questions → Translate to Urdu** also processes existing questions. Translations are saved in MongoDB and can be reviewed before use. Keep the API key on the server.
 
 ## Deployment
 
-For Cloudflare Pages, select the `master` branch, framework **None**, build command `exit 0`, and output directory `frontend`. Run the backend on Render from the `Backend` directory using `npm install` and `npm start`. Set the backend environment variables on your host; the hosted API URL is configured in `frontend/config.js`. Keep `.env` out of version control.
+Cloudflare Pages: branch `master`, framework **None**, build command `exit 0`, output directory `frontend`.
+
+Render: root directory `Backend`, install command `npm install`, start command `npm start`. Set environment variables on Render and configure the hosted API in `frontend/config.js`. Deploy matching frontend and backend versions.
+
+MongoDB contains account and assessment records. Cloudinary stores uploaded files. The Noto Sans Arabic report font licence is in `Backend/assets/fonts/OFL.txt`.

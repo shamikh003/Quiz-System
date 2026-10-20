@@ -7,7 +7,7 @@
 <link rel="icon" href="../favicon.ico?v=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
 <link rel="manifest" href="../manifest-quiz.json">
-<meta name="theme-color" content="#171293"><link rel="stylesheet" href="../style.css?v=8.1">
+<meta name="theme-color" content="#171293"><link rel="stylesheet" href="../style.css?v=8.2">
 <link rel="stylesheet" href="quiz-session.css?v=1.1">
 </head>
 <body class="blue-gold student-app">
@@ -28,13 +28,9 @@
         <form id="login-form">
             <label for="student-roll" data-i18n="roll">Roll number</label>
             <input id="student-roll" required maxlength="40" autocomplete="username">
-            <label for="student-grade" data-i18n="grade">Grade</label>
-            <select id="student-grade" required>
-                <option value="" data-i18n="choose">Choose grade</option>
-                <option value="4">Grade 4</option><option value="5">Grade 5</option>
-                <option value="6">Grade 6</option><option value="7">Grade 7</option>
-                <option value="0">Hifz</option>
-            </select>
+            <div class="field-row student-detected-fields"><div class="field"><label for="student-grade" data-i18n="grade">Grade</label><input id="student-grade" readonly placeholder="—"></div>
+            <div class="field"><label for="student-section" data-i18n="section">Section</label><input id="student-section" readonly placeholder="—"></div></div>
+            <p id="student-lookup-status" role="status" aria-live="polite"></p>
             <label for="student-password" data-i18n="password">Password</label>
             <input id="student-password" type="password" required maxlength="72" autocomplete="current-password">
             <button id="login-btn" type="submit" data-i18n="login">Student Login</button>
@@ -123,6 +119,6 @@
 <dialog id="question-image-dialog" class="quiz-image-dialog" aria-labelledby="question-image-dialog-title"><div class="quiz-image-dialog-heading"><h2 id="question-image-dialog-title" data-i18n="questionImage">Question image</h2><button id="close-question-image" type="button" class="btn-secondary" data-i18n="closeImage">Close</button></div><img id="question-image-full" alt="Enlarged question illustration"></dialog>
 <script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
-<script src="../admin/report-utils.js?v=7.1"></script>
-<script src="quiz.js?v=8.2"></script>
+<script src="../admin/report-utils.js?v=7.2"></script>
+<script src="quiz.js?v=8.3"></script>
 </body></html>

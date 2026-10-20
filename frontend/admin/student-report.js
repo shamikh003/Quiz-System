@@ -2,6 +2,7 @@
     const $ = id => document.getElementById(id), size = 10;
     let data = null, chosen = null, quizPage = 1, assignmentPage = 1, searchTimer, searchId = 0, reportId = 0;
     let searchController, reportController, pdfController, started = false;
+    let gradeSearchController, gradePdfController, gradeExportId = 0, gradeStudentCount = 0;
     let stopReportLoader = () => {};
     const make = (tag, text, className) => { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; };
     const pct = value => Number.isFinite(value) ? `${Number(value.toFixed(2))}%` : '—';
@@ -14,12 +15,55 @@
             headers: { Authorization: `Bearer ${token}` }, signal: controller?.signal, cache: 'no-store'
         });
         if (!response.ok) {
-            if (response.status === 404) throw new Error('Student reports are temporarily unavailable, or this student record has changed. Please search again shortly.');
             if (response.status === 401 || response.status === 403) throw new Error('Please log in again from the Teacher Dashboard.');
             let body; try { body = await response.json(); } catch { /* A hosting error may not be JSON. */ }
             throw new Error(body?.error || 'Could not load the student report. Please try again.');
         }
         return pdf ? response.blob() : response.json();
+    }
+    function savePdf(blob, filename) {
+        const url = URL.createObjectURL(blob), link = make('a'); link.href = url; link.download = filename;
+        document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
+    async function loadGradeStudents(resetSection = false) {
+        const current = ++gradeExportId; gradeSearchController?.abort(); gradePdfController?.abort();
+        gradeSearchController = new AbortController(); gradeStudentCount = 0;
+        const selected = $('grade-report-grade').value, button = $('grade-report-download');
+        button.disabled = true; button.textContent = 'Download Grade PDF'; $('grade-report-status').textContent = '';
+        if (resetSection) $('grade-report-section').replaceChildren(new Option('All Sections', ''));
+        $('grade-report-section').disabled = !selected;
+        if (!selected) return;
+        const section = $('grade-report-section').value;
+        $('grade-report-status').textContent = 'Loading students…';
+        try {
+            const result = await request(`students?${new URLSearchParams({ grade: selected, section })}`, gradeSearchController);
+            if (current !== gradeExportId) return;
+            $('grade-report-section').replaceChildren(new Option('All Sections', ''), ...result.sections.map(name => new Option(name, name)));
+            $('grade-report-section').value = result.sections.includes(section) ? section : '';
+            if (section && !result.sections.includes(section)) return loadGradeStudents();
+            gradeStudentCount = result.total; button.disabled = !gradeStudentCount;
+            $('grade-report-status').textContent = `${gradeStudentCount} student${gradeStudentCount === 1 ? '' : 's'}`;
+        } catch (error) {
+            if (current === gradeExportId && error.name !== 'AbortError') $('grade-report-status').textContent = error.message;
+        }
+    }
+    async function downloadGrade() {
+        const selected = $('grade-report-grade').value;
+        if (!selected || !gradeStudentCount) return;
+        const current = gradeExportId, button = $('grade-report-download');
+        gradePdfController?.abort(); gradePdfController = new AbortController(); button.disabled = true; button.textContent = 'Preparing PDF…';
+        $('grade-report-status').textContent = '';
+        try {
+            const params = new URLSearchParams({ grade: selected, section: $('grade-report-section').value });
+            const blob = await request(`grade/pdf?${params}`, gradePdfController, true);
+            if (current !== gradeExportId) return;
+            savePdf(blob, `QuizBoard-${selected === '0' ? 'Hifz' : `Grade-${selected}`}-student-reports.pdf`);
+            $('grade-report-status').textContent = `${gradeStudentCount} student${gradeStudentCount === 1 ? '' : 's'}`;
+        } catch (error) {
+            if (current === gradeExportId && error.name !== 'AbortError') $('grade-report-status').textContent = error.message;
+        } finally {
+            if (current === gradeExportId) { button.textContent = 'Download Grade PDF'; button.disabled = !gradeStudentCount; }
+        }
     }
     function setView(individual) {
         for (const [id, active] of [['all-results-tab', !individual], ['individual-report-tab', individual]]) {
@@ -103,17 +147,20 @@
         const rows = data.quizzes.filter(row => row.percentage != null).slice(-20), container = $('individual-chart'); container.replaceChildren();
         $('individual-chart-title').textContent = data.summary.scoredQuizzes > rows.length ? 'Quiz Performance · Latest 20' : 'Quiz Performance';
         if (!rows.length) { container.append(make('p', 'No quiz results.', 'individual-empty')); return; }
-        const chart = make('div', null, 'individual-chart'), plot = make('div', null, 'individual-chart-plot');
+        const scroller = make('div', null, 'individual-chart-scroll'), chart = make('div', null, 'individual-chart'), plot = make('div', null, 'individual-chart-plot');
+        chart.style.minWidth = `${rows.length * 64 + 44}px`;
         plot.setAttribute('role', 'img'); plot.setAttribute('aria-label', `Quiz marks, oldest to newest: ${rows.map(row => pct(row.percentage)).join(', ')}`);
         for (const value of [100, 50, 0]) { const grid = make('div', null, 'individual-chart-grid'); grid.style.top = `${100 - value}%`; grid.append(make('span', `${value}%`)); plot.append(grid); }
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 1000 100'); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('aria-hidden', 'true');
-        const points = rows.map((row, i) => [rows.length === 1 ? 500 : i / (rows.length - 1) * 1000, 100 - row.percentage]);
-        const fill = document.createElementNS(svg.namespaceURI, 'polygon'); fill.setAttribute('points', `${points[0][0]},100 ${points.map(p => p.join(',')).join(' ')} ${points.at(-1)[0]},100`); fill.setAttribute('fill', 'var(--accent)'); fill.setAttribute('opacity', '.09'); svg.append(fill);
-        const line = document.createElementNS(svg.namespaceURI, 'polyline'); line.setAttribute('points', points.map(p => p.join(',')).join(' ')); line.setAttribute('fill', 'none'); line.setAttribute('stroke', 'var(--accent)'); line.setAttribute('stroke-width', '2'); line.setAttribute('vector-effect', 'non-scaling-stroke'); svg.append(line); plot.append(svg);
-        points.forEach(([x, y], i) => { const dot = make('span', null, 'individual-chart-dot'); dot.style.left = `${x / 10}%`; dot.style.top = `${y}%`; dot.title = `${date(rows[i].date)} · ${pct(rows[i].percentage)}`; plot.append(dot); });
-        plot.append(make('span', date(rows[0].date), 'individual-chart-date'));
-        if (rows.length > 1) plot.append(make('span', date(rows.at(-1).date), 'individual-chart-date'));
-        chart.append(plot); container.append(chart);
+        const bars = make('div', null, 'individual-chart-bars');
+        for (const row of rows) {
+            const column = make('div', null, 'individual-chart-column'), track = make('div', null, 'individual-chart-bar-track'), bar = make('div', null, 'individual-chart-bar');
+            bar.style.height = `${row.percentage}%`; bar.title = `${date(row.date)} · ${pct(row.percentage)} · ${row.score} / ${row.total}`;
+            const label = make('strong', pct(row.percentage), 'individual-chart-bar-label');
+            label.style.bottom = `calc(${row.percentage}% + 8px)`;
+            const caption = make('span', date(row.date), 'individual-chart-date');
+            track.append(bar, label); column.append(track, caption); bars.append(column);
+        }
+        plot.append(bars); chart.append(plot); scroller.append(chart); container.append(scroller);
     }
     function renderHistory(kind) {
         const quiz = kind === 'quiz', rows = quiz ? [...data.quizzes].reverse() : data.assignments;
@@ -151,9 +198,8 @@
         try {
             const blob = await request(`${encodeURIComponent(student.key)}/pdf`, pdfController, true);
             if (current !== reportId) return;
-            const url = URL.createObjectURL(blob), link = make('a'); link.href = url;
-            link.download = `QuizBoard-${student.rollNum.replace(/[^a-zA-Z0-9_-]/g, '_') || 'student'}-report.pdf`;
-            document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+            const name = student.name.normalize('NFKC').replace(/[^\p{L}\p{N}\p{M} _-]/gu, '').trim().replace(/\s+/g, '-').slice(0, 100) || 'Student';
+            savePdf(blob, `${name}-report.pdf`);
         } catch (error) { if (current === reportId && error.name !== 'AbortError') $('individual-message').textContent = error.message; }
         finally { if (current === reportId) { $('individual-download-pdf').textContent = 'Download PDF'; $('individual-download-pdf').disabled = !data; } }
     }
@@ -171,6 +217,9 @@
         renderHistory(kind);
     };
     $('individual-download-pdf').onclick = download;
+    $('grade-report-grade').onchange = () => loadGradeStudents(true);
+    $('grade-report-section').onchange = () => loadGradeStudents();
+    $('grade-report-download').onclick = downloadGrade;
     document.addEventListener('quiz-results:cleared', () => { if (chosen) selectStudent(chosen); });
     setView(new URLSearchParams(location.search).get('view') === 'student');
 })();

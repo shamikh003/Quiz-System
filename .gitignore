@@ -1,26 +1,21 @@
-Backend/node_modules
-Backend/.env
-node_modules
+# Dependencies and local configuration
+node_modules/
 .env
+.env.*
+!.env.example
 
-# Local isolated test downloads
-Backend/.npm-cache/
-Backend/.mongodb-binaries/
-
-# Uploaded documents are runtime data, not application source.
+# Runtime files
 Backend/uploads/
+*.log
 
-# Local agent skills, previews, reports and generated review assets.
-/.agents/
+# Temporary files and local tools
 /tmp/
 /output/
-/presentation-build-*/
-/dashboard-preview.html
-/dashboard-preview.css
-
-# Local editor and operating-system files.
+Backend/.npm-cache/
+Backend/.mongodb-binaries/
+/.agents/
+/.codex/
 /.vscode/
 /.vs/
 .DS_Store
 Thumbs.db
-*.log

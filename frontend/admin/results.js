@@ -1,124 +1,91 @@
-const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const gradeLabel = grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`;
-// Backend URL
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
-
 function getToken() { return localStorage.getItem('adminToken'); }
 function authHeaders() { return { Authorization: `Bearer ${getToken()}` }; }
 
-document.addEventListener('DOMContentLoaded', async function () {
-    const resultsBody = document.getElementById('results-body');
-    const resultCards = document.getElementById('report-result-cards');
-    const clearBtn = document.getElementById('clear-results-btn');
-    const exportBtn = document.getElementById('export-csv-btn');
-    const resultsNote = document.getElementById('results-note');
-    const filterGradeSelect = document.getElementById('filter-grade');
-    const filterSection = document.getElementById('filter-section');
-    const filterRoll = document.getElementById('filter-roll');
-    const filters = () => ({ grade: filterGradeSelect.value, section: filterSection.value, roll: filterRoll.value });
-    let results = [], visibleResults = [];
+document.addEventListener('DOMContentLoaded', async () => {
+    const $ = id => document.getElementById(id);
+    const exports = [$('export-pdf-btn'), $('export-excel-btn')], initial = new URLSearchParams(location.search);
+    const filterGrade = $('filter-grade'), filterSection = $('filter-section'), filterRoll = $('filter-roll'), filterAttempts = $('filter-attempts');
+    if ([...filterGrade.options].some(option => option.value === initial.get('grade'))) filterGrade.value = initial.get('grade');
+    filterAttempts.value = initial.get('attempts') === 'latest' ? 'latest' : 'all';
+    filterRoll.value = (initial.get('rollNum') || '').slice(0, 100);
+    const filters = () => ({ grade: filterGrade.value, section: filterSection.value, rollNum: filterRoll.value.trim(), attempts: filterAttempts.value });
+    let rows = [], sourceRows = [], applied = filters(), requestId = 0, controller, exportController, rollTimer;
+    const disableExports = disabled => exports.forEach(button => { button.disabled = disabled; });
+    if (getToken()) $('clear-results-btn').classList.remove('hidden');
 
-    // Only show the "Clear All Results" button to a logged-in teacher.
-    if (getToken()) {
-        clearBtn.classList.remove('hidden');
-    } else {
-        resultsNote.textContent = 'Log in on the Admin Panel to manage results.';
+    function render() {
+        $('results-count').textContent = `${rows.length} ${rows.length === 1 ? 'result' : 'results'} · ${applied.attempts === 'latest' ? 'Latest Attempt' : 'All Attempts'}`;
+        disableExports(!rows.length);
+        if (!rows.length) {
+            $('results-body').innerHTML = '<tr><td colspan="10" class="shell-empty">No results match these filters.</td></tr>';
+            $('report-result-cards').innerHTML = '<p class="shell-empty" role="status">No results match these filters.</p>'; return;
+        }
+        $('report-result-cards').innerHTML = ReportUtils.resultCards(rows);
+        $('results-body').innerHTML = rows.map(row => `<tr>
+            <td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.rollNum)}</td><td>${gradeLabel(row.grade)}</td><td>${escapeHtml(ReportUtils.section(row))}</td>
+            <td>${row.score} / ${row.total}</td><td>${ReportUtils.marks(row.percentage)}</td><td>${ReportUtils.duration(row.elapsedMs)}</td>
+            <td>${(row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0)}</td><td>${row.assignmentPercentage == null ? '—' : `${row.assignmentPercentage}%`}</td>
+            <td>${row.date ? escapeHtml(new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })) : '—'}</td></tr>`).join('');
     }
-
-    async function fetchResults() {
-        const url = `${BACKEND_URL}/api/results`;
-        const stopLoading = QuizLoader.show(document.getElementById('reports-loader'), 'Loading reports…');
+    async function fetchResults(first = false) {
+        const current = ++requestId; controller?.abort(); exportController?.abort();
+        controller = new AbortController(); disableExports(true); $('results-note').textContent = '';
+        const chosen = first ? { grade: '', section: '', rollNum: '', attempts: 'all' } : filters();
+        const stopLoading = QuizLoader.show($('reports-loader'), 'Loading reports…');
         try {
-            const response = await fetch(url, { headers: authHeaders() });
-            if (!response.ok) throw new Error('Please log in as teacher to view reports.');
-            results = await response.json();
+            const response = await fetch(`${BACKEND_URL}/api/results?${new URLSearchParams(chosen)}`, { headers: authHeaders(), signal: controller.signal, cache: 'no-store' });
+            if (!response.ok) throw new Error('Could not load reports. Please log in as teacher.');
+            const data = await response.json();
+            if (current !== requestId) return;
+            if (!Array.isArray(data)) throw new Error('Could not load reports.');
+            if (first) {
+                sourceRows = data; ReportUtils.fillSections(filterSection, sourceRows, filterGrade.value);
+                if ([...filterSection.options].some(option => option.value === initial.get('section'))) filterSection.value = initial.get('section');
+            } else {
+                const url = new URL(location.href);
+                for (const [key, value] of Object.entries(chosen)) value && !(key === 'attempts' && value === 'all') ? url.searchParams.set(key, value) : url.searchParams.delete(key);
+                history.replaceState(null, '', url.pathname + url.search + url.hash);
+            }
+            rows = data; applied = chosen; render();
         } catch (error) {
-            console.error("Error fetching results:", error);
-            results = [];
-            resultsNote.textContent = error.message;
+            if (error.name === 'AbortError' || current !== requestId) return;
+            rows = []; render(); $('results-note').textContent = error.message;
         } finally { stopLoading(); }
     }
-
-    await fetchResults();
-    ReportUtils.fillSections(filterSection, results, filterGradeSelect.value);
-
-    function renderTable() {
-        visibleResults = ReportUtils.filterRows(results, filters());
-        document.getElementById('results-count').textContent = `${visibleResults.length} of ${results.length} results shown`;
-        exportBtn.disabled = !visibleResults.length;
-        resultsBody.innerHTML = '';
-
-        if (visibleResults.length === 0) {
-            resultsBody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No results match these filters.</td></tr>';
-            resultCards.innerHTML = '<p class="shell-empty" role="status">No results match these filters.</p>';
-            return;
-        }
-
-        resultCards.innerHTML = ReportUtils.resultCards(visibleResults);
-        visibleResults.forEach((result) => {
-            const row = document.createElement('tr');
-            const flagCount = (result.tabSwitchCount || 0) + (result.fullscreenExitCount || 0);
-            const assignmentCell = (result.assignmentPercentage !== null && result.assignmentPercentage !== undefined)
-                ? `${result.assignmentPercentage}%`
-                : '—';
-            const formattedDate = result.date ? new Date(result.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }) : '—';
-            row.innerHTML = `
-                <td>${escapeHtml(result.name)}</td>
-                <td>${escapeHtml(result.rollNum)}</td>
-                <td>${gradeLabel(result.grade)}</td>
-                <td>${escapeHtml(ReportUtils.section(result))}</td>
-                <td>${result.score} / ${result.total}</td>
-                <td>${ReportUtils.marks(result.percentage)}</td>
-                <td title="${result.timingKnown ? 'Minutes:seconds' : 'Time unavailable'}">${ReportUtils.duration(result.elapsedMs)}</td>
-                <td>${flagCount}</td>
-                <td>${assignmentCell}</td>
-                <td>${formattedDate}</td>
-            `;
-            resultsBody.appendChild(row);
-        });
-    }
-
-    renderTable();
-
-    filterGradeSelect.addEventListener('change', () => {
-        ReportUtils.fillSections(filterSection, results, filterGradeSelect.value);
-        renderTable();
+    filterGrade.addEventListener('change', () => { clearTimeout(rollTimer); ReportUtils.fillSections(filterSection, sourceRows, filterGrade.value); fetchResults(); });
+    filterSection.addEventListener('change', () => { clearTimeout(rollTimer); fetchResults(); });
+    filterAttempts.addEventListener('change', () => { clearTimeout(rollTimer); fetchResults(); });
+    filterRoll.addEventListener('input', () => { ++requestId; disableExports(true); controller?.abort(); exportController?.abort(); clearTimeout(rollTimer); rollTimer = setTimeout(() => fetchResults(), 250); });
+    exports.forEach((button, index) => button.addEventListener('click', async () => {
+        const format = index === 0 ? 'pdf' : 'xlsx', snapshot = applied, current = requestId;
+        exportController?.abort(); exportController = new AbortController(); disableExports(true);
+        const label = button.textContent; button.textContent = 'Preparing…'; $('results-note').textContent = '';
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/results/export.${format}?${new URLSearchParams(snapshot)}`, { headers: authHeaders(), signal: exportController.signal, cache: 'no-store' });
+            if (!response.ok) { let body; try { body = await response.json(); } catch {} throw new Error(body?.error || 'Could not download results.'); }
+            const blob = await response.blob();
+            if (current !== requestId) return;
+            const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url;
+            link.download = `QuizBoard-${snapshot.grade ? gradeLabel(snapshot.grade).replace(/ /g, '-') : 'All-Grades'}-${snapshot.attempts}-results.${format}`;
+            document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } catch (error) { if (error.name !== 'AbortError') $('results-note').textContent = error.message; }
+        finally { button.textContent = label; if (current === requestId) disableExports(!rows.length); }
+    }));
+    $('clear-results-btn').addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to delete ALL results from the database?')) return;
+        const button = $('clear-results-btn'); button.disabled = true;
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/results`, { method: 'DELETE', headers: authHeaders() });
+            if (!response.ok) throw new Error('Could not delete results.');
+            ++requestId; controller?.abort(); exportController?.abort(); clearTimeout(rollTimer);
+            sourceRows = []; rows = []; ReportUtils.fillSections(filterSection, [], filterGrade.value); render();
+            document.dispatchEvent(new CustomEvent('quiz-results:cleared'));
+        } catch (error) { $('results-note').textContent = error.message; }
+        finally { button.disabled = false; }
     });
-    filterSection.addEventListener('change', renderTable);
-    filterRoll.addEventListener('input', renderTable);
-    exportBtn.addEventListener('click', () => {
-        if (visibleResults.length) ReportUtils.download(ReportUtils.resultCsv(visibleResults), 'quiz-results', filters());
-    });
-
-    clearBtn.addEventListener('click', async function () {
-        if (confirm('Are you sure you want to delete ALL results from the database?')) {
-            clearBtn.disabled = true;
-            clearBtn.innerHTML = 'Deleting... <span class="spinner"></span>';
-
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/results`, {
-                    method: 'DELETE',
-                    headers: authHeaders()
-                });
-                if (response.ok) {
-                    results = [];
-                    ReportUtils.fillSections(filterSection, results, filterGradeSelect.value);
-                    renderTable();
-                    document.dispatchEvent(new CustomEvent('quiz-results:cleared'));
-                    alert('All results deleted from database.');
-                } else if (response.status === 401) {
-                    alert('Your session expired. Please log in again from the Admin Panel.');
-                    localStorage.removeItem('adminToken');
-                    clearBtn.classList.add('hidden');
-                } else {
-                    alert('Error deleting results.');
-                }
-            } catch (error) {
-                alert('Could not connect to server.');
-            } finally {
-                clearBtn.disabled = false;
-                clearBtn.innerHTML = 'Clear All Results';
-            }
-        }
-    });
+    await fetchResults(true);
+    if (['grade', 'section', 'rollNum', 'attempts'].some(key => initial.has(key))) await fetchResults();
 });

@@ -8,7 +8,7 @@ function resultMetrics(result) {
         elapsedMs, timeLimitMs: timingKnown ? result.timeLimitMs : null };
 }
 
-// Both teacher views use this exact ordering, before filtering/limiting the output.
+// Score ordering is available to callers; result reports apply chronological ordering.
 function rankingStages() {
     return [
         { $match: { total: { $gt: 0 }, score: { $gte: 0 }, $expr: { $lte: ['$score', '$total'] } } },

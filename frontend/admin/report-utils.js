@@ -46,7 +46,7 @@
             const assignment = row.assignmentPercentage == null ? '—' : `${row.assignmentPercentage}%`;
             return `<article class="mobile-result-card${dashboard ? ' dashboard-score-card' : ''}">
                 <div class="mobile-result-header">
-                    <span class="result-rank${index === 0 ? ' result-rank-first' : ''}" aria-label="Position ${index + 1}">${index + 1}</span>
+                    <span class="result-row-number" aria-label="Row ${index + 1}">${index + 1}</span>
                     <div class="mobile-result-student">
                         <h3>${escapeHtml(row.name)}</h3>
                         <p class="mobile-result-meta">${dashboard ? '' : `Roll ${escapeHtml(row.rollNum)} · `}${escapeHtml(gradeLabel(row.grade))}${dashboard ? ' · ' : '<br>'}${escapeHtml(section(row))}</p>

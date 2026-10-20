@@ -22,7 +22,7 @@ async function historicalIdentities(Model, date) {
         { $project: { _id: 0, name: 1, section: 1, rollNum: '$_id.rollNum', grade: '$_id.grade' } }
     ]);
 }
-async function searchStudents(query = {}) {
+async function searchStudents(query = {}, { limit = 50 } = {}) {
     for (const field of ['q', 'grade', 'section']) if (query[field] != null && typeof query[field] !== 'string') throw problem(400, 'Use a name, grade and section in the search.');
     const q = (query.q || '').trim().toLowerCase();
     if (q.length > 100 || (query.section || '').length > 80) throw problem(400, 'Use a shorter search.');
@@ -42,7 +42,7 @@ async function searchStudents(query = {}) {
         && (!query.grade || row.grade === Number(query.grade))
         && (!query.section || sectionKey(row.section) === sectionKey(query.section)))
         .sort((a, b) => a.name.localeCompare(b.name) || a.rollNum.localeCompare(b.rollNum) || a.grade - b.grade || a.section.localeCompare(b.section));
-    return { students: matched.slice(0, 50), total: matched.length,
+    return { students: limit == null ? matched : matched.slice(0, limit), total: matched.length,
         sections: [...new Set(candidates.filter(row => !query.grade || row.grade === Number(query.grade)).map(row => row.section))].sort() };
 }
 async function resolveStudent(key) {
@@ -76,7 +76,9 @@ async function studentReport(key) {
         Submission.find(filter).select('assignment grade section status marks percentage submittedAt gradedAt assignmentDeletedAt').sort({ submittedAt: -1, _id: -1 }).lean()
     ]);
     const tasks = await Assignment.find({ _id: { $in: submissions.map(row => row.assignment) } }).select('title maxMarks deletedAt').lean();
-    const byId = new Map(tasks.map(row => [String(row._id), row]));
+    return assembleReport(student, savedQuizzes, submissions, new Map(tasks.map(row => [String(row._id), row])));
+}
+function assembleReport(student, savedQuizzes, submissions, byId) {
     const quizzes = savedQuizzes.map(row => ({ id: String(row._id), date: row.date || null, grade: row.grade,
         section: sectionName(row.section), score: row.score ?? null, total: row.total ?? null,
         percentage: Number.isFinite(row.score) && Number.isFinite(row.total) && row.total > 0 && row.score >= 0 && row.score <= row.total ? row.score / row.total * 100 : null,
@@ -100,4 +102,29 @@ async function studentReport(key) {
         assignmentsSubmitted: assignments.length, firstQuiz: scored[0]?.percentage ?? null, latestQuiz: scored.at(-1)?.percentage ?? null
     }, quizzes, assignments };
 }
-module.exports = { searchStudents, studentReport };
+async function gradeReports(query = {}) {
+    if (typeof query.grade !== 'string' || !validGrade(query.grade)) throw problem(400, 'Choose a grade to download its reports.');
+    const { students } = await searchStudents({ grade: query.grade, section: query.section }, { limit: null });
+    if (!students.length) throw problem(404, 'No students found in the selected grade and section.');
+    const filters = students.map(student => student.historical ? legacyFilter(student)
+        : studentRecords({ ...student, _id: new mongoose.Types.ObjectId(student.key.slice(8)) }));
+    const [quizzes, submissions] = await Promise.all([
+        Result.find({ $or: filters }).select('student rollNum grade section sectionKey score total date elapsedMs timeLimitMs').sort({ date: 1, _id: 1 }).lean(),
+        Submission.find({ $or: filters }).select('student rollNum grade section sectionKey assignment status marks percentage submittedAt gradedAt assignmentDeletedAt').sort({ submittedAt: -1, _id: -1 }).lean()
+    ]);
+    const tasks = await Assignment.find({ _id: { $in: [...new Set(submissions.map(row => String(row.assignment)))] } }).select('title maxMarks deletedAt').lean();
+    const tasksById = new Map(tasks.map(row => [String(row._id), row]));
+    const buckets = new Map(students.map(student => [student.key, { quizzes: [], assignments: [] }]));
+    const byIdentity = new Map(students.map(student => [identity(student), student.key]));
+    for (const [kind, rows] of [['quizzes', quizzes], ['assignments', submissions]]) {
+        for (const row of rows) {
+            const key = row.student ? `student:${row.student}` : byIdentity.get(identity(row));
+            if (buckets.has(key)) buckets.get(key)[kind].push(row);
+        }
+    }
+    return { grade: Number(query.grade), section: query.section || '', reports: students.map(student => {
+        const saved = buckets.get(student.key);
+        return assembleReport(student, saved.quizzes, saved.assignments, tasksById);
+    }) };
+}
+module.exports = { searchStudents, studentReport, gradeReports };

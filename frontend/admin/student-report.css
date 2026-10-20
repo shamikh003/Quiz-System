@@ -34,14 +34,17 @@
 .individual-metric strong { display: block; margin-top: 8px; font-size: 28px; color: var(--accent); line-height: 1.25; overflow-wrap: anywhere; }
 .individual-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .individual-section-heading p { margin: 0; font-size: 12px; color: var(--text-secondary); }
-.individual-chart { position: relative; height: 224px; margin: 24px 8px 8px 36px; padding-bottom: 32px; }
+.individual-chart-scroll { overflow-x: auto; }
+.individual-chart { position: relative; height: 260px; margin: 10px 8px 8px 44px; padding-top: 26px; padding-bottom: 46px; }
 .individual-chart-plot { position: relative; height: 100%; }
-.individual-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.individual-chart-grid { position: absolute; left: 0; right: 0; height: 1px; border-top: 1px dashed var(--border); }
+.individual-chart-grid { position: absolute; left: 0; right: 0; height: 1px; border-top: 1px solid var(--border); }
 .individual-chart-grid span { position: absolute; right: calc(100% + 9px); top: -8px; color: var(--text-secondary); font-size: 11px; white-space: nowrap; }
-.individual-chart-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--accent); border: 1px solid var(--surface); }
-.individual-chart-date { position: absolute; bottom: -27px; font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
-.individual-chart-date:last-child { right: 0; }
+.individual-chart-bars { position: absolute; inset: 0; display: flex; justify-content: space-around; gap: 12px; padding: 0 8px; }
+.individual-chart-column { position: relative; flex: 1 1 0; max-width: 120px; min-width: 0; }
+.individual-chart-date { position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: 60px; text-align: center; font-size: 10px; line-height: 1.4; color: var(--text-secondary); }
+.individual-chart-bar-track { position: absolute; inset: 0; border-radius: 7px 7px 0 0; background: var(--accent-subtle); }
+.individual-chart-bar { position: absolute; bottom: 0; width: 100%; min-height: 2px; border-radius: 7px 7px 0 0; background: var(--accent); }
+.individual-chart-bar-label { position: absolute; left: 50%; transform: translateX(-50%); color: var(--accent); font-size: 12px; white-space: nowrap; }
 .individual-history-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .individual-history-grid .school-panel { margin-bottom: 0; }
 .individual-report .individual-table { width: 100%; min-width: 0; margin: 0; table-layout: fixed; border-collapse: collapse; }
@@ -60,8 +63,20 @@
 .individual-report .individual-pagination button, #individual-search-retry { width: auto; min-height: 40px; margin: 0; padding: 8px 12px; font-size: 12px; }
 .individual-pagination span { font-size: 11px; color: var(--text-secondary); text-align: center; }
 .individual-empty { padding: 24px 8px; color: var(--text-secondary); font-size: 13px; line-height: 1.7; }
+.grade-report-export { padding: 22px; margin-bottom: 20px; }
+.grade-report-export h2 { margin: 0 0 18px; font-family: var(--font-ui); font-size: 18px; color: var(--accent); }
+.grade-report-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 16px; }
+.grade-report-fields > div { min-width: 0; }
+.grade-report-fields label { margin-bottom: 10px; font-size: 11px; }
+.grade-report-fields select { margin: 0; min-height: 46px; width: 100%; min-width: 0; font-size: 14px; }
+.grade-report-fields button { margin: 0; width: auto; min-height: 46px; padding: 10px 18px; font-size: 14px; }
+#grade-report-status { margin: 12px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+#grade-report-status:empty { display: none; }
 @media (max-width: 1250px) { .individual-history-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 700px) {
+    .grade-report-export { padding: 16px; }
+    .grade-report-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+    .grade-report-fields button { grid-column: 1 / -1; width: 100%; }
     .individual-report .school-panel { padding: 16px; }
     .individual-search-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
     .individual-search-fields > div:first-child { grid-column: 1 / -1; }
@@ -73,7 +88,7 @@
     .individual-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .individual-metric { padding: 14px; }
     .individual-metric strong { font-size: 25px; }
-    .individual-chart { height: 198px; margin-left: 30px; }
+    .individual-chart { height: 240px; }
     .individual-report .individual-table { display: none; }
     .individual-history-cards { display: grid; gap: 10px; }
 }
