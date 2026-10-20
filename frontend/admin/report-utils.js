@@ -32,7 +32,7 @@
     }
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
     // Both mobile views consume the same ordered rows as the desktop tables/CSV.
-    function resultCards(rows, { dashboard = false } = {}) {
+    function resultCards(rows, { dashboard = false, ranked = false } = {}) {
         return rows.map((row, index) => {
             const flagCount = (row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0);
             const pillClass = flagCount === 0 ? 'good' : flagCount <= 2 ? 'warn' : 'bad';
@@ -46,7 +46,7 @@
             const assignment = row.assignmentPercentage == null ? '—' : `${row.assignmentPercentage}%`;
             return `<article class="mobile-result-card${dashboard ? ' dashboard-score-card' : ''}">
                 <div class="mobile-result-header">
-                    <span class="result-row-number" aria-label="Row ${index + 1}">${index + 1}</span>
+                    <span class="${ranked ? `result-rank${index === 0 ? ' result-rank-first' : ''}` : 'result-row-number'}" aria-label="${ranked ? 'Rank' : 'Row'} ${index + 1}">${index + 1}</span>
                     <div class="mobile-result-student">
                         <h3>${escapeHtml(row.name)}</h3>
                         <p class="mobile-result-meta">${dashboard ? '' : `Roll ${escapeHtml(row.rollNum)} · `}${escapeHtml(gradeLabel(row.grade))}${dashboard ? ' · ' : '<br>'}${escapeHtml(section(row))}</p>
@@ -104,7 +104,24 @@
     function rankBadge(index) {
         return `<span class="score-rank score-rank-${index + 1}">${index + 1}</span>`;
     }
-    const api = { section, filterRows, sections, fillSections, gradeLabel, percent, duration, resultCards, csv, resultCsv, studentCsv, download, marks, rankBadge };
+    function topScorers(rows) {
+        const identity = row => JSON.stringify([String(row.rollNum || '').trim(), Number(row.grade), key(section(row))]);
+        const owners = new Map(), seen = new Set();
+        for (const row of rows) if (row.student) {
+            const legacy = identity(row), owner = String(row.student);
+            owners.set(legacy, owners.has(legacy) && owners.get(legacy) !== owner ? null : owner);
+        }
+        return rows.filter(row => Number.isFinite(row.percentage)).slice().sort((a, b) => b.percentage - a.percentage
+            || (a.timingKnown && Number.isFinite(a.elapsedMs) ? a.elapsedMs : Number.MAX_SAFE_INTEGER) - (b.timingKnown && Number.isFinite(b.elapsedMs) ? b.elapsedMs : Number.MAX_SAFE_INTEGER)
+            || (new Date(a.date).getTime() || 0) - (new Date(b.date).getTime() || 0) || String(a._id).localeCompare(String(b._id)))
+            .filter(row => {
+                const owner = row.student ? String(row.student) : owners.get(identity(row));
+                const id = owner ? `student:${owner}` : `legacy:${identity(row)}`;
+                if (seen.has(id)) return false;
+                seen.add(id); return true;
+            });
+    }
+    const api = { section, filterRows, sections, fillSections, gradeLabel, percent, duration, resultCards, csv, resultCsv, studentCsv, download, marks, rankBadge, topScorers };
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.ReportUtils = api;
 })(typeof window === 'undefined' ? globalThis : window);

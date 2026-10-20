@@ -16,9 +16,15 @@ function resultFilters(query = {}) {
 }
 const legacyKey = row => JSON.stringify([String(row.rollNum || '').trim(), Number(row.grade), sectionKey(row.section)]);
 function selectAttempts(rows, mode, accounts = []) {
-    const ordered = [...rows].sort((a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0)
-        || String(b._id).localeCompare(String(a._id)));
-    if (mode !== 'latest') return ordered;
+    const ordered = [...rows].sort((a, b) => {
+        if (mode === 'best') {
+            const first = resultMetrics(a), second = resultMetrics(b);
+            return second.percentage - first.percentage || (first.elapsedMs ?? Number.MAX_SAFE_INTEGER) - (second.elapsedMs ?? Number.MAX_SAFE_INTEGER)
+                || (new Date(a.date).getTime() || 0) - (new Date(b.date).getTime() || 0) || String(a._id).localeCompare(String(b._id));
+        }
+        return (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0) || String(b._id).localeCompare(String(a._id));
+    });
+    if (!['latest', 'best'].includes(mode)) return ordered;
     const owners = new Map(), seen = new Set();
     for (const student of accounts) {
         const key = legacyKey(student);
@@ -31,7 +37,7 @@ function selectAttempts(rows, mode, accounts = []) {
         seen.add(key); return true;
     });
 }
-async function resultRows(query = {}, { includeAssignments = true, limit } = {}) {
+async function resultRows(query = {}, { includeAssignments = true, limit, bestPerStudent = false } = {}) {
     const filters = resultFilters(query), match = {};
     if (filters.grade) match.grade = Number(filters.grade);
     if (filters.section) {
@@ -40,9 +46,9 @@ async function resultRows(query = {}, { includeAssignments = true, limit } = {})
     }
     const [stored, accounts] = await Promise.all([
         Result.aggregate([{ $match: match }, ...rankingStages()]),
-        filters.attempts === 'latest' ? Student.find({}).select('_id rollNum grade section').lean() : []
+        filters.attempts === 'latest' || bestPerStudent ? Student.find({}).select('_id rollNum grade section').lean() : []
     ]);
-    let rows = selectAttempts(stored, filters.attempts, accounts);
+    let rows = selectAttempts(stored, bestPerStudent ? 'best' : filters.attempts, accounts);
     if (filters.rollNum) rows = rows.filter(row => String(row.rollNum || '').toLowerCase().includes(filters.rollNum.toLowerCase()));
     if (limit) rows = rows.slice(0, limit);
     const byOwner = new Map(), byLegacy = new Map();

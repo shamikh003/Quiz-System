@@ -14,13 +14,13 @@ router.get('/admin/dashboard', requireAdmin, async (req, res) => {
         filter.grade = Number(req.query.grade);
     }
     try {
-        const [totalQuestions, totalAssignments, pendingSubmissions, totalStudents, latestResults] =
+        const [totalQuestions, totalAssignments, pendingSubmissions, totalStudents, topResults] =
             await Promise.all([
                 Question.countDocuments(),
                 Assignment.countDocuments({ deletedAt: null }),
                 Submission.countDocuments({ status: 'pending', assignmentDeletedAt: null }),
                 Student.countDocuments(),
-                resultRows({ grade: filter.grade == null ? '' : String(filter.grade), attempts: 'latest' }, { includeAssignments: false, limit: 5 })
+                resultRows({ grade: filter.grade == null ? '' : String(filter.grade) }, { includeAssignments: false, bestPerStudent: true, limit: 5 })
             ]);
 
         res.json({
@@ -29,9 +29,10 @@ router.get('/admin/dashboard', requireAdmin, async (req, res) => {
             totalAssignments,
             totalStudents,
             pendingSubmissions,
-            latestResults,
-            topResults: latestResults,
-            recentResults: latestResults
+            scoreView: 'best',
+            topResults,
+            latestResults: topResults,
+            recentResults: topResults
         });
     } catch (err) {
         console.error('Admin dashboard error:', err);

@@ -183,10 +183,10 @@ async function loadDashboard() {
     const selectedGrade = dashboardGrade?.value || '';
     const scope = selectedGrade === '' ? 'all grades' : gradeLabel(selectedGrade);
     const status = document.getElementById('dashboard-scores-status');
-    document.getElementById('dashboard-scores-title').textContent = selectedGrade === '' ? 'Latest Quiz Results' : `Latest Quiz Results · ${scope}`;
-    resultCards.setAttribute('aria-label', `Latest quiz results for ${scope}`);
-    document.getElementById('dashboard-view-results').href = `${window.TeacherRoutes?.href('reports') || 'results.html'}?${new URLSearchParams({ attempts: 'latest', grade: selectedGrade })}`;
-    status.textContent = `Loading latest results for ${scope}…`;
+    document.getElementById('dashboard-scores-title').textContent = selectedGrade === '' ? 'Top 5 Scorers' : `Top 5 Scorers · ${scope}`;
+    resultCards.setAttribute('aria-label', `Top 5 scorers for ${scope}`);
+    document.getElementById('dashboard-view-results').href = `${window.TeacherRoutes?.href('reports') || 'results.html'}?${new URLSearchParams({ attempts: 'all', grade: selectedGrade })}`;
+    status.textContent = `Loading top scorers for ${scope}…`;
     const stopLoading = globalThis.QuizLoader?.show(document.getElementById('dashboard-loader'), 'Loading results…') || (() => {});
 
     try {
@@ -196,8 +196,17 @@ async function loadDashboard() {
         const data = await response.json();
         // Ignore an older response if the teacher has already picked another grade.
         if (requestId !== dashboardRequest) return;
-        if (!Array.isArray(data.latestResults)) throw new Error('Dashboard update required');
-        let topResults = data.latestResults;
+        let topResults = data.topResults;
+        if (data.scoreView !== 'best') {
+            const reportQuery = new URLSearchParams({ grade: selectedGrade, attempts: 'all' });
+            const reports = await fetch(`${BACKEND_URL}/api/results?${reportQuery}`, { headers: authHeaders(), cache: 'no-store' });
+            if (!reports.ok) throw new Error('Could not load top scorers');
+            const rows = await reports.json();
+            if (requestId !== dashboardRequest) return;
+            if (!Array.isArray(rows)) throw new Error('Invalid result data');
+            topResults = ReportUtils.topScorers(rows);
+        }
+        if (!Array.isArray(topResults)) throw new Error('Could not load top scorers');
         if (selectedGrade !== '') topResults = topResults.filter(r => Number(r.grade) === Number(selectedGrade));
         topResults = topResults.slice(0, 5);
 
@@ -215,7 +224,7 @@ async function loadDashboard() {
             return;
         }
 
-        resultCards.innerHTML = ReportUtils.resultCards(topResults, { dashboard: true });
+        resultCards.innerHTML = ReportUtils.resultCards(topResults, { dashboard: true, ranked: true });
         resultsBody.innerHTML = topResults.map((r, index) => {
             const flagCount = (r.tabSwitchCount || 0) + (r.fullscreenExitCount || 0);
             const pillClass = flagCount === 0 ? 'good' : (flagCount <= 2 ? 'warn' : 'bad');
@@ -223,7 +232,7 @@ async function loadDashboard() {
             const dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Karachi' }) : '—';
             return `
                 <tr>
-                    <td>${index + 1}</td>
+                    <td class="rank-cell">${ReportUtils.rankBadge(index)}</td>
                     <td>${escapeHtml(r.name)}</td>
                     <td class="mono">${gradeLabel(r.grade)}</td>
                     <td>${escapeHtml(r.section || 'Unassigned')}</td>
@@ -236,7 +245,7 @@ async function loadDashboard() {
         }).join('');
     } catch (error) {
         if (requestId !== dashboardRequest) return;
-        status.textContent = `Could not load latest results for ${scope}. Select a grade to retry.`;
+        status.textContent = `Could not load top scorers for ${scope}. Select a grade to retry.`;
         resultsBody.innerHTML = '<tr><td colspan="9" class="shell-empty">Could not load dashboard data.</td></tr>';
         resultCards.innerHTML = '<p class="shell-empty" role="status">Could not load dashboard data.</p>';
     } finally { stopLoading(); }

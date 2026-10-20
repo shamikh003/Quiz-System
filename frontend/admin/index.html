@@ -93,10 +93,10 @@
 
                 <div class="shell-panel">
                     <div class="shell-panel-header">
-                        <h2 class="shell-panel-title" id="dashboard-scores-title">Latest Quiz Results</h2>
+                        <h2 class="shell-panel-title" id="dashboard-scores-title">Top 5 Scorers</h2>
                         <div class="dashboard-header-actions">
                             <label class="sr-only" for="dashboard-grade">Grade</label>
-                            <select id="dashboard-grade" aria-label="Filter latest results by grade">
+                            <select id="dashboard-grade" aria-label="Filter top scorers by grade">
                                 <option value="">All Grades</option>
                                 <option value="4">Grade 4</option>
                                 <option value="5">Grade 5</option>
@@ -104,7 +104,7 @@
                                 <option value="7">Grade 7</option>
                                 <option value="0">Hifz</option>
                             </select>
-                            <a class="shell-panel-link" id="dashboard-view-results" href="results.html?attempts=latest">View all results</a>
+                            <a class="shell-panel-link" id="dashboard-view-results" href="results.html?attempts=all">View all results</a>
                         </div>
                     </div>
                     <p id="dashboard-scores-status" class="sr-only" role="status" aria-live="polite">Across all grades and sections.</p>
@@ -112,7 +112,7 @@
                     <div class="report-table-wrap result-desktop-table"><table class="v2-table">
                         <thead>
                             <tr>
-                                <th>#</th>
+                                <th>Rank</th>
                                 <th>Student</th>
                                 <th>Grade</th>
                                 <th>Section</th>
@@ -126,7 +126,7 @@
                         <tbody id="dashboard-results-body">
                         </tbody>
                     </table></div>
-                    <div id="dashboard-result-cards" class="mobile-result-list" aria-label="Latest quiz results">
+                    <div id="dashboard-result-cards" class="mobile-result-list" aria-label="Top 5 scorers">
                     </div>
                 </div>
             </div>
@@ -292,8 +292,8 @@
 
     <script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
-<script src="report-utils.js?v=7.2"></script>
-<script src="admin.js?v=7.9"></script>
+<script src="report-utils.js?v=7.3"></script>
+<script src="admin.js?v=7.10"></script>
 <script src="bulk-import.js?v=1.2"></script>
 </body>
 </html>

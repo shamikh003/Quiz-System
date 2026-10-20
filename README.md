@@ -63,7 +63,7 @@ Student spreadsheets accept up to 5,000 rows. Use Name, Father Name, Roll Number
 
 ## Student reports
 
-**Reports → All Results** shows every saved attempt, newest first. Choose **Latest Attempt** for one result per student within the selected grade and section. PDF and Excel downloads use the same grade, section, roll-number and attempt filters. **Latest Quiz Results** on the dashboard shows the five newest student results; View all results opens the selected grade in Latest Attempt mode.
+**Reports → All Results** shows every saved attempt, newest first. Choose **Latest Attempt** for one result per student within the selected grade and section. PDF and Excel downloads use the same grade, section, roll-number and attempt filters. **Top 5 Scorers** on the dashboard uses each student's highest percentage from all saved attempts. Equal percentages are ordered by completion time, with unavailable timing last. View all results opens the selected grade in All Attempts mode.
 
 Open **Reports → Student Report**, search by name or roll number and select the correct account. Reports include saved quiz results and graded assignments, including archived assignment marks. **Download PDF** exports the full saved history. Father names appear in student profiles and individual reports; All Results shows student names only.
 
