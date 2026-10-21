@@ -3,6 +3,7 @@ const schema = new mongoose.Schema({
     owner: { type: String, required: true, index: true },
     kind: { type: String, enum: ['questions', 'students'], required: true },
     filename: String,
+    quizTime: { type: Number, min: 1, max: 1440 },
     status: { type: String, enum: ['preview', 'queued', 'importing', 'completed', 'failed'], default: 'preview' },
     rows: { type: [mongoose.Schema.Types.Mixed], default: [] },
     // Passwords never appear in previews. Uncommitted values are encrypted at rest.

@@ -57,6 +57,8 @@ Requires Node.js 22.3 or newer, MongoDB and Cloudinary.
 
 Use **Import PDF / Word** for questions or **Import Excel Students** for accounts. Download the template from the relevant dialog, upload the completed file, review it and import the selected rows.
 
+Question imports include **Quiz time in minutes (all grades)**, which can also be changed in the preview. The shared duration is saved when questions are imported; active quizzes keep their existing deadline. **Manage Questions** shows the total for the selected grade or all grades.
+
 Questions accept typed PDF or DOCX files, up to 10 MB and 1,000 questions. Include numbered questions, options A-C or A-D and an answer key. Scanned pages and embedded question images need manual entry.
 
 Student spreadsheets accept up to 5,000 rows. Use Name, Father Name, Roll Number, Password, Grade and Section. Father Name and Section are optional; a selected grade can supply missing Grade values. Store roll numbers and passwords as Excel text. Passwords require at least six characters and at most 72 UTF-8 bytes. Existing accounts are not overwritten.

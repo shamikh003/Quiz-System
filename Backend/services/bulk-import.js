@@ -4,11 +4,17 @@ const { Worker } = require('node:worker_threads');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const Batch = require('../models/import-batch');
-const { Question, Student } = require('../models/models');
+const { Question, Student, Settings } = require('../models/models');
 const { questionKey, studentKey, questionErrors } = require('./import-parser');
 const { linkLegacyRecords } = require('./sections');
 
 let parsing = false, draining = false, timer;
+function quizMinutes(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const time = typeof value === 'string' || typeof value === 'number' ? Number(value) : NaN;
+    if (!Number.isInteger(time) || time < 1 || time > 1440) throw Object.assign(new Error('Quiz time must be a whole number from 1 to 1440 minutes.'), { status: 400 });
+    return time;
+}
 function parseFile(file, kind, defaults) {
     if (parsing) return Promise.reject(Object.assign(new Error('Another file is being read. Please try again in a moment.'), { status: 429 }));
     parsing = true;
@@ -52,7 +58,7 @@ function unseal(value) {
 function view(batch) {
     const rows = batch.rows.map((row, index) => ({ ...row, index }));
     return { id: String(batch._id), kind: batch.kind, filename: batch.filename, status: batch.status, revision: batch.revision,
-        warnings: batch.warnings, error: batch.error || '', expiresAt: batch.expiresAt, rows,
+        warnings: batch.warnings, error: batch.error || '', expiresAt: batch.expiresAt, rows, quizTime: batch.quizTime ?? null,
         selected: batch.selected || [], counts: { total: rows.length, ready: rows.filter(r => !r.errors.length).length,
             imported: rows.filter(r => r.outcome === 'imported').length, skipped: rows.filter(r => r.outcome === 'skipped').length,
             failed: rows.filter(r => r.outcome === 'failed').length, processed: rows.filter(r => r.outcome).length } };
@@ -75,6 +81,7 @@ async function markDuplicates(kind, rows) {
     }
 }
 async function preview(file, kind, defaults, owner) {
+    const quizTime = kind === 'questions' ? quizMinutes(defaults.quizTime) : null;
     const parsed = await parseFile(file, kind, defaults);
     await markDuplicates(kind, parsed.rows);
     const passwords = {};
@@ -83,7 +90,7 @@ async function preview(file, kind, defaults, owner) {
     });
     if (Buffer.byteLength(JSON.stringify(parsed.rows)) > 8 * 1024 * 1024) throw new Error('The extracted preview is too large. Split the document.');
     const batch = await Batch.create({ owner, kind, filename: path.basename(file.originalname.replace(/\\/g, '/')).slice(0, 180),
-        rows: parsed.rows, warnings: parsed.warnings, ...(kind === 'students' ? { secrets: seal(passwords) } : {}) });
+        rows: parsed.rows, warnings: parsed.warnings, ...(quizTime === null ? {} : { quizTime }), ...(kind === 'students' ? { secrets: seal(passwords) } : {}) });
     return view(batch);
 }
 const deterministicId = (batch, index) => new mongoose.Types.ObjectId(crypto.createHash('sha256').update(`${batch}:${index}`).digest('hex').slice(0, 24));
@@ -150,6 +157,9 @@ async function processBatch(batch, lease) {
             if (dirty.size >= 10) await checkpoint();
         }
         await checkpoint();
+        if (batch.kind === 'questions' && batch.quizTime != null && rows.some(row => row.outcome === 'imported')) {
+            await Settings.findOneAndUpdate({ settings_id: 'main' }, { $set: { time: quizMinutes(batch.quizTime) } }, { upsert: true });
+        }
         await Batch.updateOne({ _id: batch._id, lease }, { $set: { status: 'completed' }, $unset: { secrets: 1, lease: 1, leaseUntil: 1, error: 1 } });
     } finally { clearInterval(heartbeat); }
 }
@@ -173,4 +183,4 @@ async function drain() {
 }
 function start() { if (!timer) { timer = setInterval(() => void drain(), 30000); timer.unref(); } void drain(); }
 function stop() { clearInterval(timer); timer = null; }
-module.exports = { parseFile, preview, view, markDuplicates, deterministicId, start, stop, drain, questionErrors };
+module.exports = { parseFile, preview, view, markDuplicates, deterministicId, start, stop, drain, questionErrors, quizMinutes };

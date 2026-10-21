@@ -924,6 +924,7 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .results-export-actions { display:flex; flex-wrap:wrap; gap:10px; }
 .results-export-actions button { width:auto; margin:0; }
 .result-row-number { flex:0 0 24px; color:var(--text-secondary); text-align:center; font-size:13px; }
+.manage-question-total { margin:0 0 16px; color:var(--accent); font-size:14px; font-weight:600; }
 .student-detected-fields input[readonly] { background:var(--surface-2, var(--surface)); color:var(--text-secondary); }
 #student-lookup-status { font-size:13px; color:var(--text-secondary); margin:0 0 16px; }
 #student-lookup-status:empty { display:none; }

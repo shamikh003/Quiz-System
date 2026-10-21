@@ -12,7 +12,7 @@ const router = express.Router();
 router.use('/admin/imports', requireAdmin);
 router.use('/admin/imports', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 const limit = rateLimit({ windowMs: 60000, max: 10, message: { error: 'Please wait a minute before uploading another file.' } });
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 3, fieldSize: 1024 } }).single('file');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 4, fieldSize: 1024 } }).single('file');
 function owner(req) { return String(req.admin.id); }
 const owned = req => ({ _id: req.params.id, owner: owner(req), expiresAt: { $gt: new Date() } });
 router.param('id', (req, res, next, id) => isObjectIdOrHexString(id) ? next() : res.status(400).json({ error: 'Invalid import ID.' }));
@@ -25,7 +25,7 @@ router.post('/admin/imports/:kind/preview', limit, (req, res) => {
         if (!req.file || !extensions.includes(path.extname(req.file.originalname).toLowerCase())) return res.status(400).json({ error: `Choose a ${extensions.join(' or ')} file.` });
         if (req.params.kind === 'questions' && gradeValue(req.body.grade) === null) return res.status(400).json({ error: 'Choose the grade for these questions.' });
         try {
-            res.status(201).json(await imports.preview(req.file, req.params.kind, { grade: req.body.grade, section: req.body.section }, owner(req)));
+            res.status(201).json(await imports.preview(req.file, req.params.kind, { grade: req.body.grade, section: req.body.section, quizTime: req.body.quizTime }, owner(req)));
         } catch (error) { res.status(error.status || 400).json({ error: error.message }); }
     });
 });
@@ -54,13 +54,16 @@ router.post('/admin/imports/:id/commit', async (req, res) => {
     const batch = await Batch.findOne(owned(req));
     if (!batch) return res.status(404).json({ error: 'This import expired. Upload the file again.' });
     if (['queued', 'importing', 'completed'].includes(batch.status)) return res.status(202).json(imports.view(batch));
+    let quizTime = null;
+    try { if (batch.kind === 'questions') quizTime = imports.quizMinutes(batch.status === 'failed' || !Object.hasOwn(req.body, 'quizTime') ? batch.quizTime : req.body.quizTime); }
+    catch (error) { return res.status(error.status || 400).json({ error: error.message }); }
     const selected = batch.status === 'failed' ? batch.selected : req.body.selected;
     if (!Array.isArray(selected) || !selected.length || selected.length > batch.rows.length
         || new Set(selected).size !== selected.length || selected.some(i => !Number.isInteger(i) || !batch.rows[i] || batch.rows[i].errors.length)) {
         return res.status(400).json({ error: 'Select at least one valid row. Fix or deselect rows with errors.' });
     }
     const updated = await Batch.findOneAndUpdate({ ...owned(req), status: batch.status, revision: req.body.revision },
-        { $set: { selected, status: 'queued', expiresAt: new Date(Date.now() + 24 * 3600000) }, $inc: { revision: 1 }, $unset: { error: 1 } }, { new: true });
+        { $set: { selected, status: 'queued', expiresAt: new Date(Date.now() + 24 * 3600000), ...(quizTime === null ? {} : { quizTime }) }, $inc: { revision: 1 }, $unset: { error: 1 } }, { new: true });
     if (!updated) return res.status(409).json({ error: 'Preview changed. Reopen it before importing.' });
     res.status(202).json(imports.view(updated));
     imports.start();

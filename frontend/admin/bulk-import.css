@@ -19,6 +19,7 @@
 .qb-import-format { padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-sunken); }
 .qb-import-dialog pre { font-family: inherit; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 .qb-import-summary { padding: 14px 16px; border-radius: 8px; background: var(--accent-subtle); color: var(--accent); font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.qb-import-dialog .qb-import-time { max-width:360px; margin-top:18px; }
 .qb-import-warnings { color: var(--text-secondary); font-size: 12px; }
 .qb-import-dialog #bulk-message:empty { display: none; }
 .qb-import-rows { display: grid; gap: 12px; }

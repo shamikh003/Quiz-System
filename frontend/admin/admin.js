@@ -4,6 +4,7 @@ const gradeLabel = grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`;
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
 document.addEventListener('bulk-import:completed', event => {
     if (event.detail.kind !== 'questions') return;
+    loadSettings();
     if (!manageTabContent.classList.contains('hidden')) loadQuestionList();
     if (!editTabContent.classList.contains('hidden')) loadEditQuestionList();
     loadDashboard();
@@ -466,6 +467,9 @@ function updateClearQuestionsButton() {
 async function loadQuestionList() {
     const requestId = ++questionListRequest;
     const gradeFilter = filterGradeSelect.value;
+    const count = document.getElementById('manage-question-total');
+    const scope = gradeFilter === '' ? 'All Grades' : gradeLabel(gradeFilter);
+    count.textContent = `${scope} · Total questions: —`;
     loadedQuestionGrade = null;
     updateClearQuestionsButton();
     const stopLoading = globalThis.QuizLoader?.show(questionListDiv, 'Loading questions…') || (() => {});
@@ -483,8 +487,10 @@ async function loadQuestionList() {
         if (!response.ok) throw new Error('Could not load questions.');
         const questions = await response.json();
         if (requestId !== questionListRequest) return;
+        if (!Array.isArray(questions)) throw new Error('Could not load questions.');
         loadedQuestionGrade = gradeFilter;
         loadedQuestionCount = questions.length;
+        count.textContent = `${scope} · Total questions: ${questions.length}`;
         updateClearQuestionsButton();
         questionCountBadge.textContent = questions.length;
 

@@ -1,6 +1,6 @@
 // Shared, teacher-only preview/import dialog. File content is rendered as text.
 (() => {
-    let dialog, kind, batch, selected, page = 0, busy = false, polling, generation = 0;
+    let dialog, kind, batch, selected, page = 0, busy = false, polling, generation = 0, draftTime = '10', timeEdited = false;
     const size = 20, backend = window.QUIZ_BACKEND_URL;
     const el = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
     const $ = id => dialog.querySelector(`#${id}`);
@@ -14,17 +14,34 @@
         return data;
     }
     function message(text, error = false) { $('bulk-message').textContent = text; $('bulk-message').classList.toggle('error-text', error); }
+    function updateTimeFields() {
+        $('bulk-time-field').hidden = kind !== 'questions'; $('bulk-time').required = kind === 'questions';
+        $('bulk-preview-time-field').hidden = kind !== 'questions';
+        $('bulk-preview-time').disabled = busy || batch?.status !== 'preview';
+        $('bulk-time').value = draftTime; $('bulk-preview-time').value = draftTime;
+    }
+    async function loadQuizTime() {
+        draftTime = document.getElementById('quiz-time')?.value || '10'; timeEdited = false; updateTimeFields();
+        if (kind !== 'questions') return;
+        const current = generation;
+        try {
+            const settings = await request('/settings');
+            if (current !== generation || timeEdited || batch?.quizTime != null) return;
+            if (Number.isFinite(settings.time) && settings.time > 0) { draftTime = String(settings.time); updateTimeFields(); }
+        } catch { /* Keep the displayed default; the teacher can choose a time. */ }
+    }
     function lock(value) {
         busy = value;
         dialog.querySelectorAll('button, input, select, textarea').forEach(n => { n.disabled = value; });
         $('bulk-close').disabled = false;
-        if (!value) { $('bulk-commit').disabled = batch?.status === 'failed' ? false : !selected?.size || !$('bulk-reviewed').checked; renderRows(); }
+        if (!value) { $('bulk-commit').disabled = batch?.status === 'failed' ? false : !selected?.size || !$('bulk-reviewed').checked; updateTimeFields(); renderRows(); }
     }
     function newUpload() {
         clearTimeout(polling); generation++; batch = null; selected = new Set(); page = 0;
         localStorage.removeItem(savedKey()); $('bulk-upload').hidden = false; $('bulk-preview').hidden = true;
         $('bulk-upload').reset(); $('bulk-reviewed').checked = false; message('');
         $('bulk-grade').value = kind === 'questions' ? document.getElementById('filter-grade')?.value || '' : document.getElementById('account-grade')?.value || '';
+        loadQuizTime();
     }
     function create() {
         dialog = el('dialog', undefined, 'qb-import-dialog');
@@ -32,12 +49,14 @@
             <p id="bulk-message" role="status" aria-live="polite"></p>
             <form id="bulk-upload" class="qb-import-upload">
                 <div class="qb-import-fields"><div class="field"><label for="bulk-grade" id="bulk-grade-label">Grade</label><select id="bulk-grade"><option value="">Choose grade</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div>
-                <div class="field" id="bulk-section-field"><label for="bulk-section">Default section (optional)</label><input id="bulk-section" maxlength="80" placeholder="Unassigned"></div></div>
+                <div class="field" id="bulk-section-field"><label for="bulk-section">Default section (optional)</label><input id="bulk-section" maxlength="80" placeholder="Unassigned"></div>
+                <div class="field" id="bulk-time-field"><label for="bulk-time">Quiz time in minutes (all grades)</label><input id="bulk-time" type="number" min="1" max="1440" step="1" value="10"></div></div>
                 <div class="field"><label for="bulk-file" id="bulk-file-label">Choose a file</label><input type="file" id="bulk-file" required></div>
                 <div class="qb-import-actions"><button type="submit">Read file &amp; preview</button><button type="button" id="bulk-template" class="btn-secondary">Download sample</button></div>
                 <details class="qb-import-format"><summary>See the required format</summary><div id="bulk-format"></div></details>
             </form>
             <section id="bulk-preview" hidden aria-label="Import preview"><div class="qb-import-summary" id="bulk-summary"></div><div id="bulk-warnings" class="qb-import-warnings"></div>
+                <div class="field qb-import-time" id="bulk-preview-time-field"><label for="bulk-preview-time">Quiz time in minutes (all grades)</label><input id="bulk-preview-time" type="number" min="1" max="1440" step="1" required></div>
                 <div class="qb-import-actions" id="bulk-selection"><button type="button" id="bulk-select" class="btn-secondary">Select all valid rows</button><button type="button" id="bulk-deselect" class="btn-secondary">Deselect all</button><span id="bulk-selected"></span></div>
                 <div id="bulk-progress-wrap" hidden><label for="bulk-progress">Import progress</label><progress id="bulk-progress" value="0" max="1"></progress><p id="bulk-progress-label"></p></div>
                 <div id="bulk-rows" class="qb-import-rows"></div><div class="qb-import-pagination"><button type="button" id="bulk-prev" class="btn-secondary">Previous</button><span id="bulk-page"></span><button type="button" id="bulk-next" class="btn-secondary">Next</button></div>
@@ -56,17 +75,19 @@
         $('bulk-deselect').onclick = () => { selected.clear(); renderRows(); };
         $('bulk-reviewed').onchange = () => { $('bulk-commit').disabled = !selected.size || !$('bulk-reviewed').checked; };
         $('bulk-commit').onclick = commit;
+        for (const id of ['bulk-time', 'bulk-preview-time']) $(id).addEventListener('input', () => { draftTime = $(id).value; timeEdited = true; });
     }
     async function upload(event) {
         event.preventDefault(); const file = $('bulk-file').files[0]; if (!file) return;
         if (file.size > 10 * 1024 * 1024) { message('Choose a file up to 10 MB.', true); return; }
         const body = new FormData(); body.append('file', file); body.append('grade', $('bulk-grade').value); body.append('section', $('bulk-section').value);
+        if (kind === 'questions') body.append('quizTime', $('bulk-time').value);
         const current = generation; lock(true); message('Reading file…');
         const loader = el('div'); dialog.append(loader); const stop = window.QuizLoader?.show(loader, 'Preparing your import preview…');
         try {
             const result = await request(`/admin/imports/${kind}/preview`, { method: 'POST', body });
             if (current !== generation) return;
-            batch = result; localStorage.setItem(savedKey(), batch.id);
+            batch = result; if (kind === 'questions') draftTime = String(batch.quizTime ?? draftTime); localStorage.setItem(savedKey(), batch.id);
             selected = new Set(batch.rows.map((r, i) => !r.errors.length ? i : -1).filter(i => i >= 0));
             $('bulk-reviewed').checked = false; message(''); render(); dialog.scrollTop = 0;
         } catch (error) { if (current === generation) message(error.message, true); }
@@ -88,6 +109,7 @@
         if (batch.status === 'failed') { $('bulk-commit').disabled = false; message(batch.error, true); }
         if (working) message('Importing…');
         if (batch.status === 'completed') message('Import complete.');
+        updateTimeFields();
         renderRows();
     }
     function labeled(text, input) {
@@ -154,9 +176,11 @@
     }
     async function commit() {
         if (busy || (batch.status === 'preview' && (!$('bulk-reviewed').checked || !selected.size))) return;
+        if (kind === 'questions' && batch.status === 'preview' && !$('bulk-preview-time').reportValidity()) return;
         lock(true); const current = generation;
         try {
-            const result = await request(`/admin/imports/${batch.id}/commit`, { method: 'POST', body: JSON.stringify({ selected: [...selected], revision: batch.revision }) });
+            const result = await request(`/admin/imports/${batch.id}/commit`, { method: 'POST', body: JSON.stringify({ selected: [...selected], revision: batch.revision,
+                ...(kind === 'questions' && batch.status === 'preview' ? { quizTime: Number(draftTime) } : {}) }) });
             if (current !== generation) return; batch = result;
             render(); dialog.scrollTop = 0; poll();
         } catch (error) { if (current === generation) message(error.message, true); }
@@ -195,12 +219,14 @@
         const id = localStorage.getItem(savedKey());
         $('bulk-upload').hidden = false; $('bulk-preview').hidden = true; $('bulk-reviewed').checked = false;
         $('bulk-upload').reset(); $('bulk-grade').value = type === 'questions' ? document.getElementById('filter-grade')?.value || '' : document.getElementById('account-grade')?.value || '';
+        loadQuizTime();
         lock(false); message(''); dialog.showModal();
         if (id) {
             const current = generation; message('Opening your saved import…');
             try {
                 const result = await request(`/admin/imports/${id}`); if (current !== generation) return;
-                batch = result; selected = new Set(batch.status === 'preview' ? batch.rows.map((r, i) => !r.errors.length ? i : -1).filter(i => i >= 0) : batch.selected); render(); poll();
+                batch = result; if (kind === 'questions') draftTime = String(batch.quizTime ?? draftTime);
+                selected = new Set(batch.status === 'preview' ? batch.rows.map((r, i) => !r.errors.length ? i : -1).filter(i => i >= 0) : batch.selected); render(); poll();
                 if (batch.status === 'preview') message('Your saved preview is ready. Review it before importing.');
                 if (batch.status === 'completed') document.dispatchEvent(new CustomEvent('bulk-import:completed', { detail: { kind } }));
             } catch (error) { if (current !== generation) return; if (error.status === 404) localStorage.removeItem(savedKey()); message(error.message, true); }
