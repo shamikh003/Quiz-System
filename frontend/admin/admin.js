@@ -6,7 +6,6 @@ document.addEventListener('bulk-import:completed', event => {
     if (event.detail.kind !== 'questions') return;
     loadSettings();
     if (!manageTabContent.classList.contains('hidden')) loadQuestionList();
-    if (!editTabContent.classList.contains('hidden')) loadEditQuestionList();
     loadDashboard();
 });
 // Start waking the server while the teacher enters credentials. One request,
@@ -101,7 +100,6 @@ logoutBtn.addEventListener('click', function () {
 // ---------- Tabs ----------
 const tabDashboard = document.getElementById('tab-dashboard');
 const tabAdd = document.getElementById('tab-add');
-const tabEdit = document.getElementById('tab-edit');
 const tabManage = document.getElementById('tab-manage');
 const tabAssignments = document.getElementById('tab-assignments');
 const dashboardTabContent = document.getElementById('dashboard-tab-content');
@@ -110,19 +108,18 @@ const editTabContent = document.getElementById('edit-tab-content');
 const manageTabContent = document.getElementById('manage-tab-content');
 const assignmentsTabContent = document.getElementById('assignments-tab-content');
 
-const tabButtons = { dashboard: tabDashboard, add: tabAdd, edit: tabEdit, manage: tabManage, assignments: tabAssignments };
+const tabButtons = { dashboard: tabDashboard, add: tabAdd, manage: tabManage, assignments: tabAssignments };
 const tabContents = { dashboard: dashboardTabContent, add: addTabContent, edit: editTabContent, manage: manageTabContent, assignments: assignmentsTabContent };
 
 function activateTab(key, { replace = false, updateAddress = true } = {}) {
     if ((key === 'add' || key === 'edit') && saveBtn.disabled) return;
     if (key === 'add' || key === 'edit') switchQuestionForm(key);
     Object.keys(tabButtons).forEach(k => {
-        tabButtons[k].classList.toggle('active', k === key);
-        tabContents[k].classList.toggle('hidden', k !== key);
+        tabButtons[k].classList.toggle('active', k === (key === 'edit' ? 'manage' : key));
     });
+    Object.keys(tabContents).forEach(k => tabContents[k].classList.toggle('hidden', k !== key));
     if (key === 'dashboard') loadDashboard();
     if (key === 'manage') loadQuestionList();
-    if (key === 'edit' && !editingQuestionId) loadEditQuestionList();
     if (key === 'assignments') loadAssignments();
     // Keep the selected section when opening a link or refreshing this page.
     if (updateAddress) window.TeacherRoutes?.navigate(key, { replace });
@@ -135,7 +132,6 @@ function activateTab(key, { replace = false, updateAddress = true } = {}) {
 
 tabDashboard.addEventListener('click', () => activateTab('dashboard'));
 tabAdd.addEventListener('click', () => activateTab('add'));
-tabEdit.addEventListener('click', () => activateTab('edit'));
 tabManage.addEventListener('click', () => activateTab('manage'));
 tabAssignments.addEventListener('click', () => activateTab('assignments'));
 
@@ -303,7 +299,6 @@ function switchQuestionForm(mode) {
 function updateQuestionEditor() {
     const editing = questionFormMode === 'edit';
     questionForm.classList.toggle('hidden', editing && !editingQuestionId);
-    document.getElementById('edit-question-browser').classList.toggle('hidden', Boolean(editingQuestionId));
     cancelEditBtn.classList.toggle('hidden', !editingQuestionId);
     saveBtn.textContent = editingQuestionId ? 'Update Question' : 'Save Question';
 }
@@ -364,7 +359,7 @@ function resetForm({ keepGrade = false } = {}) {
     loadSettings();
 }
 
-cancelEditBtn.addEventListener('click', () => { resetForm(); updateQuestionEditor(); loadEditQuestionList(); });
+cancelEditBtn.addEventListener('click', () => { resetForm(); activateTab('manage'); });
 
 // Form submit: creates a new question, or updates one if we're editing
 questionForm.addEventListener('submit', async function (event) {
@@ -435,12 +430,11 @@ questionForm.addEventListener('submit', async function (event) {
             alert(submittedQuestionId ? 'Question updated!' : 'Question saved to database successfully!');
             resetForm({ keepGrade: true });
             if (submittedQuestionId) {
-                updateQuestionEditor();
-                loadEditQuestionList();
+                activateTab('manage');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
             if (Number(questionGradeSelect.value) === submittedGrade) quizTimeInput.value = quizTime;
-            loadQuestionList();
+            if (!submittedQuestionId) loadQuestionList();
         } else if (response.status === 401) {
             alert('Your session expired. Please log in again.');
             localStorage.removeItem('adminToken');
@@ -578,42 +572,6 @@ function startEditQuestion(q) {
 
     updateQuestionEditor();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-let editListRequest = 0;
-const editGradeSelect = document.getElementById('edit-filter-grade');
-editGradeSelect.addEventListener('change', loadEditQuestionList);
-async function loadEditQuestionList() {
-    const requestId = ++editListRequest;
-    const list = document.getElementById('edit-question-list');
-    const stopLoading = QuizLoader.show(list, 'Loading questions…');
-    try {
-        const grade = editGradeSelect.value;
-        const response = await fetch(`${BACKEND_URL}/api/admin/questions${grade === '' ? '' : `?grade=${encodeURIComponent(grade)}`}`, { headers: authHeaders() });
-        if (requestId !== editListRequest) return;
-        if (response.status === 401) {
-            localStorage.removeItem('adminToken'); showLoggedOutView(); return;
-        }
-        if (!response.ok) throw new Error('Could not load questions.');
-        const questions = await response.json();
-        if (requestId !== editListRequest) return;
-        list.replaceChildren();
-        if (!questions.length) {
-            list.innerHTML = '<p class="empty-state">No questions saved for this grade.</p>';
-            return;
-        }
-        for (const question of questions) {
-            const card = document.createElement('div'); card.className = 'question-card';
-            card.innerHTML = `<p><strong>${escapeHtml(question.text)}</strong> <span class="badge">${gradeLabel(question.grade)}</span></p>
-                <p class="q-options">${question.options.map(option => `${escapeHtml(option.id)}: ${escapeHtml(option.text)}`).join(' | ')}</p>
-                <div class="q-actions"><button type="button" class="btn-secondary btn-small">Edit Question</button></div>`;
-            card.querySelector('button').addEventListener('click', () => startEditQuestion(question));
-            list.appendChild(card);
-        }
-    } catch (error) {
-        if (requestId !== editListRequest) return;
-        list.innerHTML = '<p class="empty-state">Could not load questions. Select a grade to retry.</p>';
-    } finally { stopLoading(); }
 }
 
 async function deleteQuestion(id) {

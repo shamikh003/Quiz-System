@@ -12,7 +12,7 @@
             const base = document.createElement('base'); base.href = root + 'admin/'; document.head.append(base);
         })();
     </script>
-    <script src="teacher-routing.js?v=1.0"></script>
+    <script src="teacher-routing.js?v=1.1"></script>
     <link rel="icon" href="../favicon.ico?v=1">
     <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
     <link rel="manifest" href="../manifest-admin.json">
@@ -48,7 +48,6 @@
             <nav class="sidebar-nav" aria-label="Teacher navigation">
                 <button type="button" id="tab-dashboard" class="sidebar-link active"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="sidebar-label">Dashboard</span></button>
                 <button type="button" id="tab-add" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="sidebar-label">Add Question</span></button>
-                <button type="button" id="tab-edit" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m16 3 5 5-12 12-6 1 1-6ZM14 5l5 5"/></svg></span><span class="sidebar-label">Edit Question</span></button>
                 <button type="button" id="tab-manage" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span><span class="sidebar-label">Manage Questions</span><span class="badge" id="question-count">0</span></button>
                 <button type="button" id="tab-assignments" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7v10a4 4 0 0 0 8 0V6a3 3 0 0 0-6 0v11a1 1 0 0 0 2 0V7"/></svg></span><span class="sidebar-label">Assignments</span></button>
                 <a href="students.html" data-teacher-route="students" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-4-5"/></svg></span><span class="sidebar-label">Students</span></a>
@@ -199,26 +198,12 @@
                     <p class="error-text" id="form-error"></p>
 
                     <button type="submit" id="save-question-btn">Save Question</button>
-                    <button type="button" id="cancel-edit-btn" class="btn-secondary hidden">Back to Questions</button>
+                    <button type="button" id="cancel-edit-btn" class="btn-secondary hidden">Back to Manage Questions</button>
                 </form>
             </div>
 
             <div id="edit-tab-content" class="hidden">
                 <h1>Edit Question</h1>
-                <div id="edit-question-browser">
-                    <div class="field question-grade-filter">
-                        <label for="edit-filter-grade">Filter by Grade:</label>
-                        <select id="edit-filter-grade">
-                            <option value="">All Grades</option>
-                            <option value="4">Grade 4</option>
-                            <option value="5">Grade 5</option>
-                            <option value="6">Grade 6</option>
-                            <option value="7">Grade 7</option>
-                            <option value="0">Hifz</option>
-                        </select>
-                    </div>
-                    <div id="edit-question-list" class="question-list"></div>
-                </div>
             </div>
 
             <div id="manage-tab-content" class="hidden">
@@ -294,7 +279,7 @@
     <script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
 <script src="report-utils.js?v=7.3"></script>
-<script src="admin.js?v=7.12"></script>
+<script src="admin.js?v=7.13"></script>
 <script src="bulk-import.js?v=1.4"></script>
 </body>
 </html>

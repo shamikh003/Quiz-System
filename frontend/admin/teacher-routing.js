@@ -11,12 +11,14 @@
     const known = key => Object.hasOwn(slugs, key);
     function current() {
         const hash = location.hash.slice(1);
-        if (known(hash)) return hash;
+        if (known(hash)) return hash === 'edit' ? 'manage' : hash;
         const leaf = location.pathname.replace(/\/+$/, '').split('/').pop().replace(/\.html$/, '');
+        if (leaf === 'editquestions') return 'manage';
         return Object.keys(slugs).find(key => slugs[key] === leaf)
             || (leaf === 'results' ? 'reports' : 'dashboard');
     }
     function href(key) {
+        if (key === 'edit') key = 'manage';
         if (!known(key)) return adminBase.pathname;
         if (!local) return new URL(slugs[key], appBase).pathname;
         return new URL(key === 'students' ? 'students.html' : key === 'reports' ? 'results.html'
