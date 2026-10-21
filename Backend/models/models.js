@@ -80,7 +80,8 @@ ResultSchema.index({ student: 1, date: 1 });
 // --- Settings (quiz timer) ---
 const SettingsSchema = new mongoose.Schema({
     settings_id: { type: String, default: 'main' },
-    time: { type: Number, default: 10 }
+    time: { type: Number, default: 10 },
+    gradeTimes: { type: Map, of: Number, default: () => ({}) }
 });
 
 // --- Assignment (teacher-uploaded Word/Excel/PowerPoint file) ---

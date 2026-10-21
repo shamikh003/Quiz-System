@@ -3,6 +3,7 @@ const schema = new mongoose.Schema({
     owner: { type: String, required: true, index: true },
     kind: { type: String, enum: ['questions', 'students'], required: true },
     filename: String,
+    grade: { type: Number, enum: [4, 5, 6, 7, 0] },
     quizTime: { type: Number, min: 1, max: 1440 },
     status: { type: String, enum: ['preview', 'queued', 'importing', 'completed', 'failed'], default: 'preview' },
     rows: { type: [mongoose.Schema.Types.Mixed], default: [] },

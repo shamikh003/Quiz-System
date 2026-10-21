@@ -1,6 +1,6 @@
 // Shared, teacher-only preview/import dialog. File content is rendered as text.
 (() => {
-    let dialog, kind, batch, selected, page = 0, busy = false, polling, generation = 0, draftTime = '10', timeEdited = false;
+    let dialog, kind, batch, selected, page = 0, busy = false, polling, generation = 0, draftTime = '', timeEdited = false, timeRequest = 0;
     const size = 20, backend = window.QUIZ_BACKEND_URL;
     const el = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
     const $ = id => dialog.querySelector(`#${id}`);
@@ -14,21 +14,26 @@
         return data;
     }
     function message(text, error = false) { $('bulk-message').textContent = text; $('bulk-message').classList.toggle('error-text', error); }
+    const timeGrade = () => batch ? batch.grade ?? batch.rows[0]?.grade ?? '' : $('bulk-grade').value;
     function updateTimeFields() {
         $('bulk-time-field').hidden = kind !== 'questions'; $('bulk-time').required = kind === 'questions';
         $('bulk-preview-time-field').hidden = kind !== 'questions';
+        const grade = timeGrade(), label = grade === '' ? 'Quiz time in minutes' : `Quiz time in minutes · ${Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`}`;
+        dialog.querySelector('label[for="bulk-time"]').textContent = label;
+        dialog.querySelector('label[for="bulk-preview-time"]').textContent = label;
+        $('bulk-time').disabled = busy || kind !== 'questions' || grade === '';
         $('bulk-preview-time').disabled = busy || batch?.status !== 'preview';
         $('bulk-time').value = draftTime; $('bulk-preview-time').value = draftTime;
     }
     async function loadQuizTime() {
-        draftTime = document.getElementById('quiz-time')?.value || '10'; timeEdited = false; updateTimeFields();
-        if (kind !== 'questions') return;
-        const current = generation;
+        draftTime = ''; timeEdited = false; updateTimeFields();
+        const current = generation, requestId = ++timeRequest, grade = timeGrade();
+        if (kind !== 'questions' || grade === '') return;
         try {
-            const settings = await request('/settings');
-            if (current !== generation || timeEdited || batch?.quizTime != null) return;
+            const settings = await request(`/settings?grade=${encodeURIComponent(grade)}`);
+            if (current !== generation || requestId !== timeRequest || timeEdited || batch?.quizTime != null) return;
             if (Number.isFinite(settings.time) && settings.time > 0) { draftTime = String(settings.time); updateTimeFields(); }
-        } catch { /* Keep the displayed default; the teacher can choose a time. */ }
+        } catch (error) { if (current === generation && requestId === timeRequest) message(error.message, true); }
     }
     function lock(value) {
         busy = value;
@@ -50,13 +55,13 @@
             <form id="bulk-upload" class="qb-import-upload">
                 <div class="qb-import-fields"><div class="field"><label for="bulk-grade" id="bulk-grade-label">Grade</label><select id="bulk-grade"><option value="">Choose grade</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div>
                 <div class="field" id="bulk-section-field"><label for="bulk-section">Default section (optional)</label><input id="bulk-section" maxlength="80" placeholder="Unassigned"></div>
-                <div class="field" id="bulk-time-field"><label for="bulk-time">Quiz time in minutes (all grades)</label><input id="bulk-time" type="number" min="1" max="1440" step="1" value="10"></div></div>
+                <div class="field" id="bulk-time-field"><label for="bulk-time">Quiz time in minutes</label><input id="bulk-time" type="number" min="1" max="1440" step="1"></div></div>
                 <div class="field"><label for="bulk-file" id="bulk-file-label">Choose a file</label><input type="file" id="bulk-file" required></div>
                 <div class="qb-import-actions"><button type="submit">Read file &amp; preview</button><button type="button" id="bulk-template" class="btn-secondary">Download sample</button></div>
                 <details class="qb-import-format"><summary>See the required format</summary><div id="bulk-format"></div></details>
             </form>
             <section id="bulk-preview" hidden aria-label="Import preview"><div class="qb-import-summary" id="bulk-summary"></div><div id="bulk-warnings" class="qb-import-warnings"></div>
-                <div class="field qb-import-time" id="bulk-preview-time-field"><label for="bulk-preview-time">Quiz time in minutes (all grades)</label><input id="bulk-preview-time" type="number" min="1" max="1440" step="1" required></div>
+                <div class="field qb-import-time" id="bulk-preview-time-field"><label for="bulk-preview-time">Quiz time in minutes</label><input id="bulk-preview-time" type="number" min="1" max="1440" step="1" required></div>
                 <div class="qb-import-actions" id="bulk-selection"><button type="button" id="bulk-select" class="btn-secondary">Select all valid rows</button><button type="button" id="bulk-deselect" class="btn-secondary">Deselect all</button><span id="bulk-selected"></span></div>
                 <div id="bulk-progress-wrap" hidden><label for="bulk-progress">Import progress</label><progress id="bulk-progress" value="0" max="1"></progress><p id="bulk-progress-label"></p></div>
                 <div id="bulk-rows" class="qb-import-rows"></div><div class="qb-import-pagination"><button type="button" id="bulk-prev" class="btn-secondary">Previous</button><span id="bulk-page"></span><button type="button" id="bulk-next" class="btn-secondary">Next</button></div>
@@ -75,6 +80,7 @@
         $('bulk-deselect').onclick = () => { selected.clear(); renderRows(); };
         $('bulk-reviewed').onchange = () => { $('bulk-commit').disabled = !selected.size || !$('bulk-reviewed').checked; };
         $('bulk-commit').onclick = commit;
+        $('bulk-grade').addEventListener('change', loadQuizTime);
         for (const id of ['bulk-time', 'bulk-preview-time']) $(id).addEventListener('input', () => { draftTime = $(id).value; timeEdited = true; });
     }
     async function upload(event) {
@@ -225,7 +231,7 @@
             const current = generation; message('Opening your saved import…');
             try {
                 const result = await request(`/admin/imports/${id}`); if (current !== generation) return;
-                batch = result; if (kind === 'questions') draftTime = String(batch.quizTime ?? draftTime);
+                batch = result; if (kind === 'questions') { if (batch.quizTime != null) draftTime = String(batch.quizTime); else loadQuizTime(); }
                 selected = new Set(batch.status === 'preview' ? batch.rows.map((r, i) => !r.errors.length ? i : -1).filter(i => i >= 0) : batch.selected); render(); poll();
                 if (batch.status === 'preview') message('Your saved preview is ready. Review it before importing.');
                 if (batch.status === 'completed') document.dispatchEvent(new CustomEvent('bulk-import:completed', { detail: { kind } }));

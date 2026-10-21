@@ -271,6 +271,9 @@ const filterGradeSelect = document.getElementById('filter-grade');
 let editingQuestionId = null; // null = adding new question
 let questionFormMode = 'add';
 const questionDrafts = {};
+let settingsRequest = 0;
+questionGradeSelect.addEventListener('change', loadSettings);
+quizTimeInput.addEventListener('input', () => { settingsRequest++; });
 
 function switchQuestionForm(mode) {
     if (mode === questionFormMode) return;
@@ -289,6 +292,9 @@ function switchQuestionForm(mode) {
         editingQuestionId = draft.id;
         document.getElementById('question-image').files = draft.files;
         document.getElementById('current-question-image').textContent = draft.imageNote;
+        settingsRequest++;
+        quizTimeInput.disabled = questionGradeSelect.value === '';
+        updateTimeLabel();
     }
     (mode === 'edit' ? editTabContent : addTabContent).appendChild(questionForm);
     updateQuestionEditor();
@@ -302,12 +308,21 @@ function updateQuestionEditor() {
     saveBtn.textContent = editingQuestionId ? 'Update Question' : 'Save Question';
 }
 
+function updateTimeLabel() {
+    document.querySelector('label[for="quiz-time"]').textContent = questionGradeSelect.value === ''
+        ? 'Quiz Time (in Minutes):' : `Quiz Time (in Minutes) · ${gradeLabel(questionGradeSelect.value)}:`;
+}
 async function loadSettings() {
+    const requestId = ++settingsRequest, grade = questionGradeSelect.value;
+    updateTimeLabel();
+    quizTimeInput.disabled = grade === '';
+    quizTimeInput.value = grade === '' ? '10' : '';
+    if (grade === '') return;
     try {
-        const response = await fetch(`${BACKEND_URL}/api/settings`);
+        const response = await fetch(`${BACKEND_URL}/api/settings?grade=${encodeURIComponent(grade)}`, { cache: 'no-store' });
         if (response.ok) {
             const settings = await response.json();
-            if (settings && settings.time) {
+            if (requestId === settingsRequest && grade === questionGradeSelect.value && settings && settings.time) {
                 quizTimeInput.value = settings.time;
             }
         }
@@ -346,6 +361,7 @@ function resetForm({ keepGrade = false } = {}) {
     saveBtn.textContent = 'Save Question';
     cancelEditBtn.classList.add('hidden');
     formError.textContent = '';
+    loadSettings();
 }
 
 cancelEditBtn.addEventListener('click', () => { resetForm(); updateQuestionEditor(); loadEditQuestionList(); });
@@ -360,14 +376,20 @@ questionForm.addEventListener('submit', async function (event) {
     saveBtn.innerHTML = (editingQuestionId ? 'Updating...' : 'Saving...') + ' <span class="spinner"></span>';
 
     const quizTime = quizTimeInput.value;
+    const submittedGrade = Number(questionGradeSelect.value);
 
     try {
         // Save settings (time) alongside the question
-        await fetch(`${BACKEND_URL}/api/settings`, {
+        const timeResponse = await fetch(`${BACKEND_URL}/api/settings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ time: Number(quizTime) })
+            body: JSON.stringify({ grade: submittedGrade, time: Number(quizTime) })
         });
+        if (!timeResponse.ok) {
+            const error = await timeResponse.json();
+            formError.textContent = error.error || 'Could not save quiz time.';
+            return;
+        }
 
         const optionsArray = [
             { id: 'A', text: document.getElementById('option-a').value },
@@ -380,7 +402,7 @@ questionForm.addEventListener('submit', async function (event) {
 
         const questionData = {
             text: document.getElementById('question-text').value,
-            grade: Number(questionGradeSelect.value),
+            grade: submittedGrade,
             options: optionsArray,
             correct: document.getElementById('correct-answer').value
         };
@@ -417,7 +439,7 @@ questionForm.addEventListener('submit', async function (event) {
                 loadEditQuestionList();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
-            quizTimeInput.value = quizTime;
+            if (Number(questionGradeSelect.value) === submittedGrade) quizTimeInput.value = quizTime;
             loadQuestionList();
         } else if (response.status === 401) {
             alert('Your session expired. Please log in again.');
@@ -537,6 +559,7 @@ function startEditQuestion(q) {
     editingQuestionId = q._id;
     document.getElementById('question-text').value = q.text;
     questionGradeSelect.value = q.grade;
+    loadSettings();
     optionCountSelector.value = q.options.length >= 4 ? '4' : '3';
     optionCountSelector.dispatchEvent(new Event('change'));
 

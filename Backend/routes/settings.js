@@ -1,26 +1,25 @@
 const express = require('express');
 const { Settings } = require('../models/models');
 const { requireAdmin } = require('../middleware/auth');
+const { validGrade } = require('../grades');
+const { quizMinutes, quizTime, saveGradeTime } = require('../services/quiz-settings');
 
 const router = express.Router();
 
 router.get('/settings', async (req, res) => {
+    if (req.query.grade !== undefined && !validGrade(req.query.grade)) return res.status(400).json({ error: 'Choose a valid grade.' });
     const settings = await Settings.findOne({ settings_id: 'main' });
-    res.json(settings || { time: 10 });
+    res.set('Cache-Control', 'no-store');
+    res.json(req.query.grade === undefined ? settings || { time: 10 } : { grade: Number(req.query.grade), time: quizTime(settings, req.query.grade) });
 });
 
 router.post('/settings', requireAdmin, async (req, res) => {
-    const time = Number(req.body.time);
-    if (!time || time <= 0) {
-        return res.status(400).json({ error: 'Quiz time must be a positive number of minutes.' });
-    }
-
-    const updated = await Settings.findOneAndUpdate(
-        { settings_id: 'main' },
-        { time },
-        { new: true, upsert: true }
-    );
-    res.json(updated);
+    if (!validGrade(req.body.grade)) return res.status(400).json({ error: 'Choose the grade for this quiz time.' });
+    let time;
+    try { time = quizMinutes(req.body.time); }
+    catch (error) { return res.status(400).json({ error: error.message }); }
+    await saveGradeTime(Settings, req.body.grade, time);
+    res.json({ grade: Number(req.body.grade), time });
 });
 
 module.exports = router;

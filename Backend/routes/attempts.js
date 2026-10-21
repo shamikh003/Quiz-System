@@ -6,6 +6,7 @@ const { finalizeAttempt } = require('../services/attempts');
 const { studentRecords } = require('../sections');
 const { resultMetrics } = require('../result-ranking');
 const { cachedUrdu, studentQuestion } = require('../services/translation');
+const { quizTime } = require('../services/quiz-settings');
 const router = express.Router();
 router.use('/quiz', requireStudent);
 async function resultView(result) {
@@ -50,7 +51,7 @@ router.post('/quiz/start', async (req, res) => {
         const settings = await Settings.findOne({ settings_id: 'main' });
         try {
             attempt = await Attempt.create({ student: student._id, day,
-                expiresAt: new Date(Date.now() + (settings?.time || 10) * 60000),
+                expiresAt: new Date(Date.now() + quizTime(settings, student.grade) * 60000),
                 questions: questions.map(q => ({ questionId: q._id, correct: q.correct, options: q.options.map(o => o.id) })) });
         } catch (error) {
             if (error.code !== 11000) throw error;
