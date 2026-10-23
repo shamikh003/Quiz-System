@@ -194,7 +194,7 @@ async function loadDashboard() {
         // Ignore an older response if the teacher has already picked another grade.
         if (requestId !== dashboardRequest) return;
         let topResults = data.topResults;
-        if (data.scoreView !== 'best') {
+        if (data.scoreView !== 'best' || data.topScoreFlagLimit !== ReportUtils.TOP_SCORER_FLAG_LIMIT) {
             const reportQuery = new URLSearchParams({ grade: selectedGrade, attempts: 'all' });
             const reports = await fetch(`${BACKEND_URL}/api/results?${reportQuery}`, { headers: authHeaders(), cache: 'no-store' });
             if (!reports.ok) throw new Error('Could not load top scorers');
@@ -204,6 +204,7 @@ async function loadDashboard() {
             topResults = ReportUtils.topScorers(rows);
         }
         if (!Array.isArray(topResults)) throw new Error('Could not load top scorers');
+        topResults = ReportUtils.topScorers(topResults);
         if (selectedGrade !== '') topResults = topResults.filter(r => Number(r.grade) === Number(selectedGrade));
         topResults = topResults.slice(0, 5);
 
@@ -215,7 +216,7 @@ async function loadDashboard() {
 
         status.textContent = selectedGrade === '' ? 'Across all grades and sections.' : `${scope} · All sections`;
         if (topResults.length === 0) {
-            const empty = selectedGrade === '' ? 'No quiz results yet.' : `No quiz results yet for ${scope}.`;
+            const empty = selectedGrade === '' ? 'No eligible top scorers.' : `No eligible top scorers for ${scope}.`;
             resultsBody.innerHTML = `<tr><td colspan="9" class="shell-empty">${escapeHtml(empty)}</td></tr>`;
             resultCards.innerHTML = `<p class="shell-empty" role="status">${escapeHtml(empty)}</p>`;
             return;

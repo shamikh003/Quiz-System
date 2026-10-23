@@ -3,6 +3,7 @@ const { Question, Assignment, Submission, Student } = require('../models/models'
 const { requireAdmin } = require('../middleware/auth');
 const { resultRows } = require('../services/result-reports');
 const { VALID_GRADES } = require('../grades');
+const { TOP_SCORER_FLAG_LIMIT } = require('../result-ranking');
 
 const router = express.Router();
 router.get('/admin/dashboard', requireAdmin, async (req, res) => {
@@ -30,6 +31,7 @@ router.get('/admin/dashboard', requireAdmin, async (req, res) => {
             totalStudents,
             pendingSubmissions,
             scoreView: 'best',
+            topScoreFlagLimit: TOP_SCORER_FLAG_LIMIT,
             topResults,
             latestResults: topResults,
             recentResults: topResults

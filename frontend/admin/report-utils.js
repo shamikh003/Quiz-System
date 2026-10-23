@@ -1,4 +1,10 @@
 (function (root) {
+    const TOP_SCORER_FLAG_LIMIT = 3;
+    function topScoreEligible(row) {
+        const switches = Number(row.tabSwitchCount ?? 0), exits = Number(row.fullscreenExitCount ?? 0);
+        return Number.isFinite(switches) && switches >= 0 && Number.isFinite(exits) && exits >= 0
+            && switches + exits <= TOP_SCORER_FLAG_LIMIT;
+    }
     const section = row => (row.section || 'Unassigned').trim() || 'Unassigned';
     const key = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
     function filterRows(rows, filters = {}) {
@@ -111,7 +117,7 @@
             const legacy = identity(row), owner = String(row.student);
             owners.set(legacy, owners.has(legacy) && owners.get(legacy) !== owner ? null : owner);
         }
-        return rows.filter(row => Number.isFinite(row.percentage)).slice().sort((a, b) => b.percentage - a.percentage
+        return rows.filter(row => Number.isFinite(row.percentage) && topScoreEligible(row)).sort((a, b) => b.percentage - a.percentage
             || (a.timingKnown && Number.isFinite(a.elapsedMs) ? a.elapsedMs : Number.MAX_SAFE_INTEGER) - (b.timingKnown && Number.isFinite(b.elapsedMs) ? b.elapsedMs : Number.MAX_SAFE_INTEGER)
             || (new Date(a.date).getTime() || 0) - (new Date(b.date).getTime() || 0) || String(a._id).localeCompare(String(b._id)))
             .filter(row => {
@@ -121,7 +127,7 @@
                 seen.add(id); return true;
             });
     }
-    const api = { section, filterRows, sections, fillSections, gradeLabel, percent, duration, resultCards, csv, resultCsv, studentCsv, download, marks, rankBadge, topScorers };
+    const api = { section, filterRows, sections, fillSections, gradeLabel, percent, duration, resultCards, csv, resultCsv, studentCsv, download, marks, rankBadge, topScorers, topScoreEligible, TOP_SCORER_FLAG_LIMIT };
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.ReportUtils = api;
 })(typeof window === 'undefined' ? globalThis : window);

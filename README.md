@@ -14,6 +14,7 @@ Website: https://quizboard-app.pages.dev/
 - Student and father names in registration and profiles.
 - Assignment uploads, grading and saved assignment history.
 - Searchable student reports, class PDFs and filtered PDF/Excel exports.
+- Top Scorers uses each student's best attempt with at most three combined activity flags; reports keep every attempt.
 - Roll number and password login with automatic grade and section lookup.
 - English/Urdu support, dark mode and responsive layouts.
 

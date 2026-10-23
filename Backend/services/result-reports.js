@@ -1,5 +1,5 @@
 const { Result, Submission, Student } = require('../models/models');
-const { resultMetrics, rankingStages } = require('../result-ranking');
+const { resultMetrics, rankingStages, topScoreEligible } = require('../result-ranking');
 const { sectionName, sectionKey } = require('../sections');
 const { VALID_GRADES } = require('../grades');
 
@@ -16,7 +16,8 @@ function resultFilters(query = {}) {
 }
 const legacyKey = row => JSON.stringify([String(row.rollNum || '').trim(), Number(row.grade), sectionKey(row.section)]);
 function selectAttempts(rows, mode, accounts = []) {
-    const ordered = [...rows].sort((a, b) => {
+    const candidates = mode === 'best' ? rows.filter(topScoreEligible) : rows;
+    const ordered = [...candidates].sort((a, b) => {
         if (mode === 'best') {
             const first = resultMetrics(a), second = resultMetrics(b);
             return second.percentage - first.percentage || (first.elapsedMs ?? Number.MAX_SAFE_INTEGER) - (second.elapsedMs ?? Number.MAX_SAFE_INTEGER)
