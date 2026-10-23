@@ -36,7 +36,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const chosen = first ? { grade: '', section: '', rollNum: '', attempts: 'all' } : filters();
         const stopLoading = QuizLoader.show($('reports-loader'), 'Loading reports…');
         try {
-            const response = await fetch(`${BACKEND_URL}/api/results?${new URLSearchParams(chosen)}`, { headers: authHeaders(), signal: controller.signal, cache: 'no-store' });
+            // Search both visible names and rolls, including during a backend rollout.
+            const response = await fetch(`${BACKEND_URL}/api/results?${new URLSearchParams({ ...chosen, rollNum: '' })}`, { headers: authHeaders(), signal: controller.signal, cache: 'no-store' });
             if (!response.ok) throw new Error('Could not load reports. Please log in as teacher.');
             const data = await response.json();
             if (current !== requestId) return;
@@ -49,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (const [key, value] of Object.entries(chosen)) value && !(key === 'attempts' && value === 'all') ? url.searchParams.set(key, value) : url.searchParams.delete(key);
                 history.replaceState(null, '', url.pathname + url.search + url.hash);
             }
-            rows = data; applied = chosen; render();
+            rows = ReportUtils.searchResults(data, chosen.rollNum); applied = chosen; render();
         } catch (error) {
             if (error.name === 'AbortError' || current !== requestId) return;
             rows = []; render(); $('results-note').textContent = error.message;

@@ -7,6 +7,10 @@
     }
     const section = row => (row.section || 'Unassigned').trim() || 'Unassigned';
     const key = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    function searchResults(rows, search = '') {
+        const term = key(search);
+        return term ? rows.filter(row => key(row.name).includes(term) || key(row.rollNum).includes(term)) : rows;
+    }
     function filterRows(rows, filters = {}) {
         return rows.filter(row =>
             (filters.grade === '' || filters.grade == null || String(row.grade) === String(filters.grade)) &&
@@ -127,7 +131,7 @@
                 seen.add(id); return true;
             });
     }
-    const api = { section, filterRows, sections, fillSections, gradeLabel, percent, duration, resultCards, csv, resultCsv, studentCsv, download, marks, rankBadge, topScorers, topScoreEligible, TOP_SCORER_FLAG_LIMIT };
+    const api = { section, filterRows, searchResults, sections, fillSections, gradeLabel, percent, duration, resultCards, csv, resultCsv, studentCsv, download, marks, rankBadge, topScorers, topScoreEligible, TOP_SCORER_FLAG_LIMIT };
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.ReportUtils = api;
 })(typeof window === 'undefined' ? globalThis : window);
