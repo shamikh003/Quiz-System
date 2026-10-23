@@ -986,6 +986,7 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .results-page .results-header .theme-toggle { min-height: 44px; }
 .results-page .report-filters { grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); align-items:end; gap:16px; margin:16px 0; }
 .results-page .report-filters label { font-size: 11px; line-height: 1.4; margin: 0; }
+.results-page .report-filters label[for="filter-roll"] { white-space: nowrap; }
 .results-page .report-filters input, .results-page .report-filters select { height: 44px; min-height: 44px; box-sizing: border-box; margin: 0; padding: 10px 12px; font-size: 14px; }
 .results-page .results-summary-toolbar { gap: 12px; margin-bottom: 12px; }
 .results-page .results-summary-toolbar p { margin: 0; font-size: 13px; }
