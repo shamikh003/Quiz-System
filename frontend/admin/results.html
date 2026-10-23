@@ -28,15 +28,6 @@
         <div class="results-header">
             <h1 class="shell-page-title">Reports</h1>
         </div>
-        <section class="school-panel grade-report-export" aria-labelledby="grade-reports-title">
-            <h2 id="grade-reports-title">Grade Reports</h2>
-            <div class="grade-report-fields">
-                <div><label for="grade-report-grade">Grade</label><select id="grade-report-grade"><option value="">Choose grade</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div>
-                <div><label for="grade-report-section">Section</label><select id="grade-report-section" disabled><option value="">All Sections</option></select></div>
-                <button type="button" id="grade-report-download" disabled>Download Grade PDF</button>
-            </div>
-            <p id="grade-report-status" role="status" aria-live="polite"></p>
-        </section>
         <div class="report-view-tabs" role="tablist" aria-label="Report view">
             <button type="button" role="tab" id="all-results-tab" aria-controls="all-results-panel" aria-selected="true">All Results</button>
             <button type="button" role="tab" id="individual-report-tab" aria-controls="individual-report-panel" aria-selected="false" tabindex="-1">Student Report</button>
@@ -52,7 +43,7 @@
             <option value="0">Hifz</option>
         </select>
         </div><div><label for="filter-section">Section</label><select id="filter-section"><option value="">All Sections</option></select></div>
-        <div><label for="filter-roll">Roll number</label><input type="search" id="filter-roll" placeholder="Search roll number" maxlength="100"></div>
+        <div><label for="filter-roll">Student name or roll number</label><input type="search" id="filter-roll" placeholder="Search name or roll number" maxlength="100"></div>
         <div><label for="filter-attempts">Attempts</label><select id="filter-attempts"><option value="all">All Attempts</option><option value="latest">Latest Attempt</option></select></div></div>
         <div class="report-toolbar results-summary-toolbar">
             <p id="results-count" role="status"></p>
@@ -90,7 +81,17 @@
         </div>
         </section>
         <section id="individual-report-panel" role="tabpanel" aria-labelledby="individual-report-tab" class="individual-report" hidden>
-            <section class="individual-search school-panel" aria-label="Find a student">
+            <section class="school-panel grade-report-export" aria-labelledby="grade-reports-title">
+                <h2 id="grade-reports-title">Grade Reports</h2>
+                <div class="grade-report-fields">
+                    <div><label for="grade-report-grade">Grade</label><select id="grade-report-grade"><option value="">Choose grade</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div>
+                    <div><label for="grade-report-section">Section</label><select id="grade-report-section" disabled><option value="">All Sections</option></select></div>
+                    <button type="button" id="grade-report-download" disabled>Download Grade PDF</button>
+                </div>
+                <p id="grade-report-status" role="status" aria-live="polite"></p>
+            </section>
+            <section class="individual-search school-panel" aria-labelledby="individual-search-title">
+                <div class="individual-section-heading"><h2 id="individual-search-title">Student Report</h2></div>
                 <div class="individual-search-fields">
                     <div><label for="individual-name">Student name or roll number</label><input type="search" id="individual-name" placeholder="Search students" maxlength="100" autocomplete="off"></div>
                     <div><label for="individual-grade">Grade</label><select id="individual-grade"><option value="">All Grades</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div>
@@ -120,7 +121,7 @@
 <script src="../loader.js?v=1.1"></script>
 <script src="teacher-shell.js?v=1.4"></script>
 <script src="report-utils.js?v=7.4"></script>
-<script src="results.js?v=7.3"></script>
+<script src="results.js?v=7.4"></script>
 <script src="student-report.js?v=1.5"></script>
 
 </body>

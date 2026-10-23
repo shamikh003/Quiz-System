@@ -50,7 +50,12 @@ async function resultRows(query = {}, { includeAssignments = true, limit, bestPe
         filters.attempts === 'latest' || bestPerStudent ? Student.find({}).select('_id rollNum grade section').lean() : []
     ]);
     let rows = selectAttempts(stored, bestPerStudent ? 'best' : filters.attempts, accounts);
-    if (filters.rollNum) rows = rows.filter(row => String(row.rollNum || '').toLowerCase().includes(filters.rollNum.toLowerCase()));
+    if (filters.rollNum) {
+        // Keep the existing query key so saved report links still work.
+        const normalize = value => String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+        const search = normalize(filters.rollNum);
+        rows = rows.filter(row => normalize(row.rollNum).includes(search) || normalize(row.name).includes(search));
+    }
     if (limit) rows = rows.slice(0, limit);
     const byOwner = new Map(), byLegacy = new Map();
     if (includeAssignments && rows.length) {

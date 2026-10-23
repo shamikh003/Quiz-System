@@ -9,7 +9,7 @@ const values = row => [row.name || '-', row.rollNum || '-', grade(row.grade), ro
     row.percentage, duration(row.elapsedMs), (row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0), row.assignmentPercentage, stamp(row.date)];
 function scope(filters) {
     return [filters.grade ? grade(filters.grade) : 'All Grades', filters.section || 'All Sections',
-        filters.attempts === 'latest' ? 'Latest Attempt' : 'All Attempts', filters.rollNum ? `Roll: ${filters.rollNum}` : ''].filter(Boolean).join(' | ');
+        filters.attempts === 'latest' ? 'Latest Attempt' : 'All Attempts', filters.rollNum ? `Name / Roll: ${filters.rollNum}` : ''].filter(Boolean).join(' | ');
 }
 async function resultsWorkbook(rows, filters) {
     const book = new ExcelJS.Workbook(); book.creator = 'Dar-e-Arqam School Metroville Campus';
