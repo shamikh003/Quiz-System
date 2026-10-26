@@ -958,6 +958,10 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .student-control-row button { min-height: 44px; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
 .student-account-form p[role="status"] { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
 .student-account-form p[role="status"]:empty { display: none; }
+.student-quiz-reset { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
+.student-quiz-reset > button { width: auto; min-height: 44px; margin: 0; padding: 8px 12px; font-size: 12px; }
+.student-quiz-reset > p { flex: 1 1 160px; margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.student-quiz-reset > p:empty { display: none; }
 @media (max-width: 800px) { .student-account-controls { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) {
     .dashboard-score-toolbar .field { flex: 1 1 100%; }

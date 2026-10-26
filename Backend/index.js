@@ -100,6 +100,7 @@ app.get('/', (req, res) => {
 // Consistent JSON errors, without exposing internals.
 app.use((err, req, res, next) => {
     console.error('Request failed:', err.message);
+    if (err.code === 'QUIZ_RESET') return res.status(410).json({ error: err.message });
     res.status(err.name === 'CastError' || err.name === 'ValidationError' ? 400 : 500)
         .json({ error: err.name === 'CastError' ? 'Invalid record ID.' : 'Could not complete the request. Please try again.' });
 });

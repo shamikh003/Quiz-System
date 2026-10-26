@@ -84,7 +84,25 @@ function render() {
             catch (error) { status.textContent = error.message; }
             finally { button.disabled = false; }
         };
-        controls.append(form); card.append(controls); $('students-list').append(card);
+        const quizReset = node('div'); quizReset.className = 'student-quiz-reset';
+        const resetQuizButton = node('button', 'Reset Today\u2019s Quiz'); resetQuizButton.type = 'button'; resetQuizButton.className = 'btn-secondary';
+        resetQuizButton.setAttribute('aria-label', `Reset today\u2019s quiz for ${student.name}`);
+        const resetStatus = node('p'); resetStatus.setAttribute('role', 'status');
+        resetQuizButton.onclick = async () => {
+            resetQuizButton.disabled = true; resetStatus.textContent = ''; resetQuizButton.textContent = 'Checking\u2026';
+            try {
+                const preview = await request(`/admin/students/${student.id}/quiz-reset`);
+                const date = new Date(`${preview.day}T12:00:00+05:00`).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi' });
+                const accepted = confirm(`Reset today\u2019s quiz for ${student.name}?\nRoll ${student.rollNum} \u00b7 ${grade} \u00b7 ${ReportUtils.section(student)}\n${date} \u00b7 ${preview.resultIds.length} result(s)\n\nOnly today\u2019s quiz will be removed. The account and older reports will stay.`);
+                if (!accepted) return;
+                resetQuizButton.textContent = 'Resetting\u2026';
+                const data = await request(`/admin/students/${student.id}/quiz-reset`, preview);
+                resetStatus.textContent = data.message;
+            } catch (error) { resetStatus.textContent = error.message; }
+            finally { resetQuizButton.disabled = false; resetQuizButton.textContent = 'Reset Today\u2019s Quiz'; }
+        };
+        quizReset.append(resetQuizButton, resetStatus);
+        controls.append(form, quizReset); card.append(controls); $('students-list').append(card);
         const deleteButton = node('button'); deleteButton.type = 'button'; deleteButton.className = 'btn-danger student-delete-btn';
         deleteButton.setAttribute('aria-label', `Delete ${student.name}`); deleteButton.title = `Delete ${student.name}`;
         deleteButton.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg>';
