@@ -8,7 +8,6 @@ const { requireAdmin, requireStudent } = require('../middleware/auth');
 const { validGrade } = require('../grades');
 const { pakistanDay } = require('../quiz-policy');
 const { finalizeAttempt } = require('../services/attempts');
-const { previewTodayReset, resetTodayQuiz } = require('../services/quiz-reset');
 const { sectionName, sectionKey, studentRecords } = require('../sections');
 const { linkLegacyRecords } = require('../services/sections');
 const { resultMetrics } = require('../result-ranking');
@@ -137,16 +136,6 @@ router.post('/admin/students/:id/password', requireAdmin, async (req, res) => {
         { $set: { passwordHash: await bcrypt.hash(password, 10) }, $inc: { tokenVersion: 1 } });
     if (!student) return res.status(404).json({ error: 'Student not found.' });
     res.json({ message: 'Password reset.' });
-});
-
-router.get('/admin/students/:id/quiz-reset', requireAdmin, async (req, res) => {
-    try { res.set('Cache-Control', 'no-store').json(await previewTodayReset(req.params.id)); }
-    catch (error) { if (error.status) return res.status(error.status).json({ error: error.message }); throw error; }
-});
-
-router.post('/admin/students/:id/quiz-reset', requireAdmin, async (req, res) => {
-    try { res.set('Cache-Control', 'no-store').json(await resetTodayQuiz(req.params.id, req.body)); }
-    catch (error) { if (error.status) return res.status(error.status).json({ error: error.message }); throw error; }
 });
 
 router.delete('/admin/students/:id', requireAdmin, async (req, res) => {

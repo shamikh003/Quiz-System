@@ -83,6 +83,7 @@ async function seedAdminIfNeeded() {
 
 // 4. ROUTES
 app.use('/api/auth', authRoutes);
+app.use('/api', require('./routes/quiz-reset'));
 app.use('/api', require('./routes/students'));
 app.use('/api', require('./routes/attempts'));
 app.use('/api', questionRoutes);
