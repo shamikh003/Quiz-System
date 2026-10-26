@@ -10,8 +10,14 @@ async function request(path, body, method) {
         method: method || (body ? 'POST' : 'GET'), headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {})
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Could not complete request.');
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json') ? await response.json() : {};
+    if (!response.ok) {
+        if (response.status === 404 && path.endsWith('/quiz-reset')) {
+            throw new Error('Quiz reset is not available on the server yet. Deploy the latest backend and try again.');
+        }
+        throw new Error(data.error || 'Could not complete request.');
+    }
     return data;
 }
 function node(tag, text) { const el = document.createElement(tag); if (text) el.textContent = text; return el; }
