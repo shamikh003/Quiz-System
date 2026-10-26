@@ -17,14 +17,24 @@
     <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
     <link rel="manifest" href="../manifest-admin.json">
     <meta name="theme-color" content="#171293">
-    <link rel="stylesheet" href="../style.css?v=8.3">
+    <link rel="stylesheet" href="../style.css?v=8.7">
     <link rel="stylesheet" href="bulk-import.css?v=1.1">
     <link rel="stylesheet" href="../clean-select.css?v=1.0">
     <script src="../clean-select.js?v=1.0" defer></script>
 </head>
 <body class="blue-gold">
 
-    <div class="container wide" id="teacher-login-container">
+    <div class="teacher-startup" id="teacher-startup" role="status" aria-live="polite">
+        <div class="qb-loader">
+            <div class="qb-loader-identity">
+                <div class="qb-loader-emblem" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2m1 10 2 2 4-4"/></svg></div>
+                <div><strong class="qb-loader-brand">QuizBoard</strong><span class="qb-loader-label">Starting server…</span></div>
+            </div>
+            <div class="qb-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+        </div>
+    </div>
+
+    <div class="container wide" id="teacher-login-container" style="display:none;">
         <button class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false">Dark mode</button>
         <h1>Teacher Login</h1>
         <div id="teacher-login-loader" class="qb-loader-slot" data-auth-loader hidden></div>
@@ -281,7 +291,7 @@
     <script src="../config.js?v=5.1"></script>
 <script src="../loader.js?v=1.1"></script>
 <script src="report-utils.js?v=7.5"></script>
-<script src="admin.js?v=7.14"></script>
+<script src="admin.js?v=7.15"></script>
 <script src="bulk-import.js?v=1.4"></script>
 </body>
 </html>

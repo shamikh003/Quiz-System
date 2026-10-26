@@ -1340,6 +1340,9 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .blue-gold .question-grade-filter label { margin: 0; line-height: 1.5; }
 .blue-gold .question-grade-filter select { margin: 0; }
 .qb-loader-slot[hidden] { display: none !important; }
+.teacher-startup[hidden] { display: none !important; }
+.teacher-startup { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; min-height: 100dvh; padding: 20px; background: var(--page-bg); }
+.teacher-startup .qb-loader { min-height: 0; padding: 36px 24px; border: 1px solid var(--border); border-top: 4px solid var(--gold); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-md); }
 .qb-loader { width: 100%; max-width: 340px; min-height: 220px; margin: auto; padding: 30px 12px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; color: var(--text-primary); }
 .qb-loader-identity { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .qb-loader-emblem { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 13px; background: #171293; color: var(--gold); }

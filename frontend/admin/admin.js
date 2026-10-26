@@ -43,13 +43,18 @@ const loginFormAdmin = document.getElementById('login-form-admin');
 const loginError = document.getElementById('login-error');
 const loginSubmitBtn = document.getElementById('login-submit-btn');
 const logoutBtn = document.getElementById('logout-btn');
+const teacherStartup = document.getElementById('teacher-startup');
+
+function hideStartup() { if (teacherStartup) teacherStartup.hidden = true; }
 
 function showLoggedOutView() {
+    hideStartup();
     teacherLoginContainer.style.display = 'block';
     adminPanel.style.display = 'none';
     document.body.classList.remove('app-shell-page');
 }
 function showLoggedInView() {
+    hideStartup();
     teacherLoginContainer.style.display = 'none';
     adminPanel.style.display = 'flex';
     document.body.classList.add('app-shell-page');
@@ -189,6 +194,12 @@ async function loadDashboard() {
     try {
         const query = selectedGrade === '' ? '' : `?grade=${encodeURIComponent(selectedGrade)}`;
         const response = await fetch(`${BACKEND_URL}/api/admin/dashboard${query}`, { headers: authHeaders() });
+        if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('adminToken');
+            loginError.textContent = 'Your session expired. Please log in again.';
+            showLoggedOutView();
+            return;
+        }
         if (!response.ok) throw new Error('Request failed');
         const data = await response.json();
         // Ignore an older response if the teacher has already picked another grade.
@@ -197,6 +208,12 @@ async function loadDashboard() {
         if (data.scoreView !== 'best' || data.topScoreFlagLimit !== ReportUtils.TOP_SCORER_FLAG_LIMIT) {
             const reportQuery = new URLSearchParams({ grade: selectedGrade, attempts: 'all' });
             const reports = await fetch(`${BACKEND_URL}/api/results?${reportQuery}`, { headers: authHeaders(), cache: 'no-store' });
+            if (reports.status === 401 || reports.status === 403) {
+                localStorage.removeItem('adminToken');
+                loginError.textContent = 'Your session expired. Please log in again.';
+                showLoggedOutView();
+                return;
+            }
             if (!reports.ok) throw new Error('Could not load top scorers');
             const rows = await reports.json();
             if (requestId !== dashboardRequest) return;
@@ -852,14 +869,39 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// Initialize after all form/table bindings exist. Older tokens require fresh login.
+// Keep the panel hidden while a sleeping backend wakes, then validate the saved
+// session before rendering any dashboard content.
 try {
     const payload = JSON.parse(atob((getToken() || '').split('.')[1] || ''));
     if (payload.role !== 'admin') localStorage.removeItem('adminToken');
 } catch { localStorage.removeItem('adminToken'); }
-if (getToken()) {
-    showLoggedInView();
-} else showLoggedOutView();
+async function openTeacherPanel() {
+    if (!getToken()) { showLoggedOutView(); return; }
+    teacherLoginContainer.style.display = 'none';
+    adminPanel.style.display = 'none';
+    if (teacherStartup) teacherStartup.hidden = false;
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/admin/dashboard`, {
+                headers: authHeaders(), cache: 'no-store', signal: AbortSignal.timeout(70000)
+            });
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('adminToken');
+                loginError.textContent = 'Your session expired. Please log in again.';
+                showLoggedOutView();
+                return;
+            }
+            if (response.ok) { showLoggedInView(); return; }
+        } catch (error) {
+            // Render may briefly refuse connections while its service starts.
+        }
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    loginError.textContent = 'Could not connect to the server. Please try again in a moment.';
+    showLoggedOutView();
+}
+openTeacherPanel();
 window.addEventListener('hashchange', () => {
     const tab = window.TeacherRoutes?.current();
     if (getToken() && Object.hasOwn(tabButtons, tab)) activateTab(tab, { replace: true });
