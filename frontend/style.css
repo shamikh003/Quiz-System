@@ -958,16 +958,21 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .student-control-row button { min-height: 44px; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
 .student-account-form p[role="status"] { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
 .student-account-form p[role="status"]:empty { display: none; }
-.student-quiz-reset { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
-.student-quiz-reset > button { width: auto; min-height: 44px; margin: 0; padding: 8px 12px; font-size: 12px; }
-.student-quiz-reset > p { flex: 1 1 160px; margin: 0; font-size: 12px; overflow-wrap: anywhere; }
-.student-quiz-reset > p:empty { display: none; }
+.student-quiz-records { padding-top: 12px; border-top: 1px solid var(--border); }
+.student-quiz-records > button { width: auto; min-height: 44px; margin: 0; padding: 8px 12px; font-size: 12px; }
+.student-quiz-records-panel { margin-top: 10px; }
+.student-quiz-records-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.student-quiz-records-row select { min-width: 0; }
+.student-quiz-records-row button { min-height: 44px; margin: 0; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+.student-quiz-records-panel > p { margin: 8px 0 0; font-size: 12px; overflow-wrap: anywhere; }
+.student-quiz-records-panel > p:empty { display: none; }
 @media (max-width: 800px) { .student-account-controls { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) {
     .dashboard-score-toolbar .field { flex: 1 1 100%; }
     .dashboard-score-toolbar p { margin: 0; }
     .student-account-header { flex-wrap: wrap; gap: 8px; }
     .student-account-identity { flex-basis: 180px; }
+    .student-quiz-records-row { grid-template-columns: 1fr; }
 }
 @media (max-width:600px) { .report-filters { grid-template-columns:1fr; } .student-page-header,.report-toolbar { align-items:flex-start; flex-direction:column; } .page-context { display:none; } }
 .portal-actions { display: flex; gap: 12px; align-items: center; margin: 16px 0; }

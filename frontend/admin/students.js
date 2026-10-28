@@ -13,9 +13,6 @@ async function request(path, body, method) {
     const contentType = response.headers.get('content-type') || '';
     const data = contentType.includes('application/json') ? await response.json() : {};
     if (!response.ok) {
-        if (response.status === 404 && path.endsWith('/quiz-reset')) {
-            throw new Error('Quiz reset is not available on the server yet. Deploy the latest backend and try again.');
-        }
         throw new Error(data.error || 'Could not complete request.');
     }
     return data;
@@ -90,25 +87,48 @@ function render() {
             catch (error) { status.textContent = error.message; }
             finally { button.disabled = false; }
         };
-        const quizReset = node('div'); quizReset.className = 'student-quiz-reset';
-        const resetQuizButton = node('button', 'Reset Today\u2019s Quiz'); resetQuizButton.type = 'button'; resetQuizButton.className = 'btn-secondary';
-        resetQuizButton.setAttribute('aria-label', `Reset today\u2019s quiz for ${student.name}`);
-        const resetStatus = node('p'); resetStatus.setAttribute('role', 'status');
-        resetQuizButton.onclick = async () => {
-            resetQuizButton.disabled = true; resetStatus.textContent = ''; resetQuizButton.textContent = 'Checking\u2026';
+        const quizRecords = node('div'); quizRecords.className = 'student-quiz-records';
+        const recordsButton = node('button', 'Quiz Records'); recordsButton.type = 'button'; recordsButton.className = 'btn-secondary';
+        recordsButton.setAttribute('aria-expanded', 'false');
+        const recordsPanel = node('div'); recordsPanel.className = 'student-quiz-records-panel hidden';
+        const recordsSelect = node('select'); recordsSelect.setAttribute('aria-label', `Quiz records for ${student.name}`);
+        const deleteRecordButton = node('button', 'Delete Selected Record'); deleteRecordButton.type = 'button'; deleteRecordButton.className = 'btn-danger';
+        const recordsStatus = node('p'); recordsStatus.setAttribute('role', 'status');
+        const recordsRow = node('div'); recordsRow.className = 'student-quiz-records-row'; recordsRow.append(recordsSelect, deleteRecordButton);
+        recordsPanel.append(recordsRow, recordsStatus); quizRecords.append(recordsButton, recordsPanel);
+        const loadRecords = async () => {
+            recordsButton.disabled = true; recordsStatus.textContent = ''; recordsButton.textContent = 'Loading\u2026';
             try {
-                const preview = await request(`/admin/students/${student.id}/quiz-reset`);
-                const date = new Date(`${preview.day}T12:00:00+05:00`).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi' });
-                const accepted = confirm(`Reset today\u2019s quiz for ${student.name}?\nRoll ${student.rollNum} \u00b7 ${grade} \u00b7 ${ReportUtils.section(student)}\n${date} \u00b7 ${preview.resultIds.length} result(s)\n\nOnly today\u2019s quiz will be removed. The account and older reports will stay.`);
-                if (!accepted) return;
-                resetQuizButton.textContent = 'Resetting\u2026';
-                const data = await request(`/admin/students/${student.id}/quiz-reset`, preview);
-                resetStatus.textContent = data.message;
-            } catch (error) { resetStatus.textContent = error.message; }
-            finally { resetQuizButton.disabled = false; resetQuizButton.textContent = 'Reset Today\u2019s Quiz'; }
+                const records = await request(`/admin/students/${student.id}/quiz-records`);
+                recordsSelect.replaceChildren();
+                for (const record of records) {
+                    const option = node('option'); option.value = record.id;
+                    option.textContent = `${new Date(record.date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Karachi' })} \u00b7 ${record.score}/${record.total} \u00b7 ${record.percentage}%`;
+                    option.dataset.attemptId = record.attemptId || ''; option.dataset.record = JSON.stringify(record); recordsSelect.append(option);
+                }
+                deleteRecordButton.disabled = records.length === 0;
+                if (!records.length) recordsStatus.textContent = 'No quiz records.';
+            } catch (error) { recordsStatus.textContent = error.message; deleteRecordButton.disabled = true; }
+            finally { recordsButton.disabled = false; recordsButton.textContent = 'Quiz Records'; }
         };
-        quizReset.append(resetQuizButton, resetStatus);
-        controls.append(form, quizReset); card.append(controls); $('students-list').append(card);
+        recordsButton.onclick = async () => {
+            const opening = recordsPanel.classList.contains('hidden'); recordsPanel.classList.toggle('hidden', !opening);
+            recordsButton.setAttribute('aria-expanded', String(opening));
+            if (opening) await loadRecords();
+        };
+        deleteRecordButton.onclick = async () => {
+            const option = recordsSelect.selectedOptions[0]; if (!option) return;
+            const record = JSON.parse(option.dataset.record);
+            const date = new Date(record.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Karachi' });
+            if (!confirm(`Delete this quiz record for ${student.name}?\nRoll ${student.rollNum} \u00b7 ${grade} \u00b7 ${ReportUtils.section(student)}\n${date} \u00b7 ${record.score}/${record.total} (${record.percentage}%)\n\nOnly this quiz record will be removed. This cannot be undone.`)) return;
+            deleteRecordButton.disabled = true; recordsStatus.textContent = 'Deleting\u2026';
+            try {
+                const data = await request(`/admin/students/${student.id}/quiz-records/${record.id}`, { attemptId: record.attemptId }, 'DELETE');
+                await loadRecords(); recordsStatus.textContent = data.message;
+            } catch (error) { recordsStatus.textContent = error.message; }
+            finally { deleteRecordButton.disabled = recordsSelect.options.length === 0; }
+        };
+        controls.append(form, quizRecords); card.append(controls); $('students-list').append(card);
         const deleteButton = node('button'); deleteButton.type = 'button'; deleteButton.className = 'btn-danger student-delete-btn';
         deleteButton.setAttribute('aria-label', `Delete ${student.name}`); deleteButton.title = `Delete ${student.name}`;
         deleteButton.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg>';
