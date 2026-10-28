@@ -10,5 +10,5 @@
     const local = host === 'localhost' || host === '[::1]' || privateAddress;
     window.QUIZ_BACKEND_URL = location.protocol === 'file:'
         ? 'http://127.0.0.1:5000'
-        : local ? `http://${host}:5000` : 'https://quiz-system-wf0d.onrender.com';
+        : local ? `http://${host}:5000` : 'https://quiz-system-hpy5.onrender.com';
 })();

@@ -1,4 +1,4 @@
-const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
+const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-hpy5.onrender.com';
 const token = localStorage.getItem('adminToken');
 const $ = id => document.getElementById(id);
 let students = [];

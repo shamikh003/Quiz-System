@@ -1,6 +1,6 @@
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const gradeLabel = grade => Number(grade) === 0 ? 'Hifz' : `Grade ${grade}`;
-const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-wf0d.onrender.com';
+const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-hpy5.onrender.com';
 function getToken() { return localStorage.getItem('adminToken'); }
 function authHeaders() { return { Authorization: `Bearer ${getToken()}` }; }
 
