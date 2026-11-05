@@ -1230,7 +1230,7 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .blue-gold .student-account-card .student-delete-btn:hover { background: var(--danger-subtle); }
 .blue-gold .student-account-actions .btn-secondary { color: var(--accent); }
 .blue-gold .student-account-header { margin-bottom: 12px; }
-.blue-gold[data-teacher-page="students"] .registration-panel { width: min(100%, 720px); max-width: none; margin-inline: auto; padding: 18px 20px; }
+.blue-gold[data-teacher-page="students"] .registration-panel { width: 100%; max-width: none; margin-inline: 0; padding: 18px 20px; }
 .blue-gold[data-teacher-page="students"] .registration-panel h2 { margin-bottom: 12px; font-size: 20px; }
 .blue-gold[data-teacher-page="students"] #account-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .blue-gold[data-teacher-page="students"] #account-form .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -1259,7 +1259,7 @@ td.mono { font-family: var(--font-mono); font-size: 12.5px; }
     .blue-gold[data-teacher-page="students"] .registered-panel .report-filters > div:last-child { grid-column: 1 / -1; }
 }
 @media (max-width: 860px) {
-    .blue-gold[data-teacher-page="students"] .registration-panel { width: min(100%, 620px); }
+    .blue-gold[data-teacher-page="students"] .registration-panel { width: 100%; }
     .blue-gold[data-teacher-page="students"] #students-list { max-height: none; overflow: visible; }
 }
 @media (max-width: 600px) {
