@@ -4,12 +4,13 @@ const path = require('node:path');
 const grade = value => Number(value) === 0 ? 'Hifz' : `Grade ${value}`;
 const duration = value => Number.isFinite(value) ? `${Math.floor(value / 60000)}:${String(Math.floor(value / 1000) % 60).padStart(2, '0')}` : '-';
 const stamp = value => value && Number.isFinite(new Date(value).getTime()) ? new Date(value).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }) : '-';
+const absentDate = value => new Date(value).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi', day: '2-digit', month: 'short', year: 'numeric' });
 const columns = ['Student Name', 'Roll Number', 'Grade', 'Section', 'Quiz Score', 'Marks %', 'Time', 'Flags', 'Assignment %', 'Timestamp'];
-const values = row => [row.name || '-', row.rollNum || '-', grade(row.grade), row.section, `${row.score} / ${row.total}`,
-    row.percentage, duration(row.elapsedMs), (row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0), row.assignmentPercentage, stamp(row.date)];
+const values = row => [row.name || '-', row.rollNum || '-', grade(row.grade), row.section, row.absent ? 'Absent' : `${row.score} / ${row.total}`,
+    row.percentage, duration(row.elapsedMs), (row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0), row.assignmentPercentage, row.absent ? absentDate(row.date) : stamp(row.date)];
 function scope(filters) {
     return [filters.grade ? grade(filters.grade) : 'All Grades', filters.section || 'All Sections',
-        filters.attempts === 'latest' ? 'Latest Attempt' : 'All Attempts', filters.rollNum ? `Name / Roll: ${filters.rollNum}` : ''].filter(Boolean).join(' | ');
+        filters.attempts === 'latest' ? 'Latest Attempt' : filters.attempts === 'absent' ? 'Absent' : 'All Attempts', filters.rollNum ? `Name / Roll: ${filters.rollNum}` : ''].filter(Boolean).join(' | ');
 }
 async function resultsWorkbook(rows, filters) {
     const book = new ExcelJS.Workbook(); book.creator = 'Dar-e-Arqam School Metroville Campus';

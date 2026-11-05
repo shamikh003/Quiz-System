@@ -2,6 +2,7 @@ const { Result, Submission, Student } = require('../models/models');
 const { resultMetrics, rankingStages, topScoreEligible } = require('../result-ranking');
 const { sectionName, sectionKey } = require('../sections');
 const { VALID_GRADES } = require('../grades');
+const { absentRows } = require('./absences');
 
 function resultFilters(query = {}) {
     const read = (key, max) => {
@@ -11,7 +12,7 @@ function resultFilters(query = {}) {
     };
     const grade = read('grade', 2), section = read('section', 80), rollNum = read('rollNum', 100), attempts = read('attempts', 10) || 'all';
     if (grade && !VALID_GRADES.map(String).includes(grade)) throw Object.assign(new Error('Choose Grade 4, 5, 6, 7 or Hifz.'), { status: 400 });
-    if (!['all', 'latest'].includes(attempts)) throw Object.assign(new Error('Choose All Attempts or Latest Attempt.'), { status: 400 });
+    if (!['all', 'latest', 'absent'].includes(attempts)) throw Object.assign(new Error('Choose All Attempts, Latest Attempt or Absent.'), { status: 400 });
     return { grade, section, rollNum, attempts };
 }
 const legacyKey = row => JSON.stringify([String(row.rollNum || '').trim(), Number(row.grade), sectionKey(row.section)]);
@@ -40,6 +41,7 @@ function selectAttempts(rows, mode, accounts = []) {
 }
 async function resultRows(query = {}, { includeAssignments = true, limit, bestPerStudent = false } = {}) {
     const filters = resultFilters(query), match = {};
+    if (filters.attempts === 'absent') { const absent = await absentRows(filters); return limit ? absent.slice(0, limit) : absent; }
     if (filters.grade) match.grade = Number(filters.grade);
     if (filters.section) {
         const key = sectionKey(filters.section);
@@ -55,6 +57,13 @@ async function resultRows(query = {}, { includeAssignments = true, limit, bestPe
         const normalize = value => String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
         const search = normalize(filters.rollNum);
         rows = rows.filter(row => normalize(row.rollNum).includes(search) || normalize(row.name).includes(search));
+    }
+    // All Attempts is the complete class register: submitted quizzes plus students
+    // who missed a quiz day. Dashboard/top-score callers stay score-only.
+    if (filters.attempts === 'all' && !bestPerStudent) {
+        rows = [...rows, ...await absentRows(filters)].sort((a, b) =>
+            (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0)
+            || String(a.name || '').localeCompare(String(b.name || '')));
     }
     if (limit) rows = rows.slice(0, limit);
     const byOwner = new Map(), byLegacy = new Map();

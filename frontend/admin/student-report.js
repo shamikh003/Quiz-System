@@ -163,11 +163,12 @@
         plot.append(bars); chart.append(plot); scroller.append(chart); container.append(scroller);
     }
     function renderHistory(kind) {
-        const quiz = kind === 'quiz', rows = quiz ? [...data.quizzes].reverse() : data.assignments;
+        const quiz = kind === 'quiz', absent = quiz ? (data.absences || []).length : 0;
+        const rows = quiz ? [...data.quizzes, ...(data.absences || [])].sort((a, b) => new Date(a.date) - new Date(b.date)).reverse() : data.assignments;
         const pages = Math.max(1, Math.ceil(rows.length / size)); let page = Math.min(quiz ? quizPage : assignmentPage, pages);
         if (quiz) quizPage = page; else assignmentPage = page;
         const visible = rows.slice((page - 1) * size, page * size), container = $(`individual-${kind}-history`); container.replaceChildren();
-        $(`individual-${kind}-count`).textContent = `${rows.length} ${quiz ? (rows.length === 1 ? 'quiz' : 'quizzes') : (rows.length === 1 ? 'assignment' : 'assignments')}`;
+        $(`individual-${kind}-count`).textContent = `${rows.length} ${quiz ? (rows.length === 1 ? 'quiz' : 'quizzes') : (rows.length === 1 ? 'assignment' : 'assignments')}${absent ? ` · ${absent} absent` : ''}`;
         if (!rows.length) container.append(make('p', quiz ? 'No quiz results.' : 'No assignments.', 'individual-empty'));
         else {
             const table = make('table', null, `individual-table${quiz ? '' : ' individual-assignment-table'}`), head = make('thead'), tr = make('tr'), body = make('tbody');
@@ -176,12 +177,12 @@
             const cards = make('div', null, 'individual-history-cards');
             for (const row of visible) {
                 const status = row.status === 'graded' ? (row.archived ? 'Graded · Archived' : 'Graded') : 'Awaiting marking';
-                const marks = quiz ? `${row.score ?? '—'} / ${row.total ?? '—'}` : row.status === 'graded' ? `${row.marks ?? '—'} / ${row.maxMarks ?? '—'}` : '—';
+                const marks = quiz ? (row.absent ? 'Absent' : `${row.score ?? '—'} / ${row.total ?? '—'}`) : row.status === 'graded' ? `${row.marks ?? '—'} / ${row.maxMarks ?? '—'}` : '—';
                 const when = date(quiz ? row.date : row.gradedAt || row.submittedAt), meta = `${grade(row.grade)} · ${row.section}`;
                 const record = make('tr');
                 const cells = quiz ? [when, meta, marks, pct(row.percentage), ReportUtils.duration(row.elapsedMs)]
                     : [row.title, when, marks, pct(row.percentage), status];
-                cells.forEach((value, i) => { const td = make('td', value); if (!quiz && i === 0) td.append(make('small', meta)); record.append(td); }); body.append(record);
+                cells.forEach((value, i) => { const td = make('td', row.absent && i === 2 ? null : value); if (row.absent && i === 2) td.append(make('span', 'Absent', 'absent-badge')); if (!quiz && i === 0) td.append(make('small', meta)); record.append(td); }); body.append(record);
                 const card = make('article', null, 'individual-history-card'); card.append(make('strong', quiz ? when : row.title), make('p', quiz ? meta : `${when} · ${meta}`));
                 const values = make('div', null, 'individual-history-values'); values.append(make('span', `Marks: ${marks}`), make('strong', pct(row.percentage))); card.append(values);
                 card.append(make('p', quiz ? `Time: ${ReportUtils.duration(row.elapsedMs)}` : status)); cards.append(card);

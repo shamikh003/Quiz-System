@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const exports = [$('export-pdf-btn'), $('export-excel-btn')], initial = new URLSearchParams(location.search);
     const filterGrade = $('filter-grade'), filterSection = $('filter-section'), filterRoll = $('filter-roll'), filterAttempts = $('filter-attempts');
     if ([...filterGrade.options].some(option => option.value === initial.get('grade'))) filterGrade.value = initial.get('grade');
-    filterAttempts.value = initial.get('attempts') === 'latest' ? 'latest' : 'all';
+    filterAttempts.value = ['latest', 'absent'].includes(initial.get('attempts')) ? initial.get('attempts') : 'all';
     filterRoll.value = (initial.get('rollNum') || '').slice(0, 100);
     const filters = () => ({ grade: filterGrade.value, section: filterSection.value, rollNum: filterRoll.value.trim(), attempts: filterAttempts.value });
     let rows = [], sourceRows = [], applied = filters(), requestId = 0, controller, exportController, rollTimer;
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (getToken()) $('clear-results-btn').classList.remove('hidden');
 
     function render() {
-        $('results-count').textContent = `${rows.length} ${rows.length === 1 ? 'result' : 'results'} · ${applied.attempts === 'latest' ? 'Latest Attempt' : 'All Attempts'}`;
+        $('results-count').textContent = `${rows.length} ${rows.length === 1 ? 'result' : 'results'} · ${applied.attempts === 'latest' ? 'Latest Attempt' : applied.attempts === 'absent' ? 'Absent' : 'All Attempts'}`;
         disableExports(!rows.length);
         if (!rows.length) {
             $('results-body').innerHTML = '<tr><td colspan="10" class="shell-empty">No results match these filters.</td></tr>';
@@ -26,9 +26,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         $('report-result-cards').innerHTML = ReportUtils.resultCards(rows);
         $('results-body').innerHTML = rows.map(row => `<tr>
             <td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.rollNum)}</td><td>${gradeLabel(row.grade)}</td><td>${escapeHtml(ReportUtils.section(row))}</td>
-            <td>${row.score} / ${row.total}</td><td>${ReportUtils.marks(row.percentage)}</td><td>${ReportUtils.duration(row.elapsedMs)}</td>
+            <td>${row.absent ? '<span class="absent-badge">Absent</span>' : `${row.score} / ${row.total}`}</td><td>${ReportUtils.marks(row.percentage)}</td><td>${ReportUtils.duration(row.elapsedMs)}</td>
             <td>${(row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0)}</td><td>${row.assignmentPercentage == null ? '—' : `${row.assignmentPercentage}%`}</td>
-            <td>${row.date ? escapeHtml(new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })) : '—'}</td></tr>`).join('');
+            <td>${row.date ? escapeHtml(row.absent ? new Date(row.date).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi', day: '2-digit', month: 'short', year: 'numeric' }) : new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })) : '—'}</td></tr>`).join('');
     }
     async function fetchResults(first = false) {
         const current = ++requestId; controller?.abort(); exportController?.abort();

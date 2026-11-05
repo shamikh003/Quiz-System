@@ -92,3 +92,5 @@
     .individual-report .individual-table { display: none; }
     .individual-history-cards { display: grid; gap: 10px; }
 }
+
+.absent-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--danger-subtle); color: var(--danger); font-weight: 700; font-size: 12px; }

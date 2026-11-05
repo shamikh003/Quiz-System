@@ -3,6 +3,7 @@ const { Student, Result, Submission, Assignment } = require('../models/models');
 const { sectionName, sectionKey, studentRecords } = require('../sections');
 const { validGrade } = require('../grades');
 const { resultMetrics } = require('../result-ranking');
+const { absentDaysByStudent, absenceRecords } = require('./absences');
 const problem = (status, message) => Object.assign(new Error(message), { status });
 const identity = row => JSON.stringify([row.rollNum, row.grade, sectionKey(row.section)]);
 const legacyKey = row => 'legacy:' + Buffer.from(identity(row)).toString('base64url');
@@ -76,9 +77,14 @@ async function studentReport(key) {
         Submission.find(filter).select('assignment grade section status marks percentage submittedAt gradedAt assignmentDeletedAt').sort({ submittedAt: -1, _id: -1 }).lean()
     ]);
     const tasks = await Assignment.find({ _id: { $in: submissions.map(row => row.assignment) } }).select('title maxMarks deletedAt').lean();
-    return assembleReport(student, savedQuizzes, submissions, new Map(tasks.map(row => [String(row._id), row])));
+    let absences = [];
+    if (student.key.startsWith('student:')) {
+        const account = await Student.findById(student.key.slice(8)).select('rollNum grade section createdAt').lean();
+        if (account) absences = absenceRecords(account, (await absentDaysByStudent([account])).get(String(account._id)));
+    }
+    return assembleReport(student, savedQuizzes, submissions, new Map(tasks.map(row => [String(row._id), row])), absences);
 }
-function assembleReport(student, savedQuizzes, submissions, byId) {
+function assembleReport(student, savedQuizzes, submissions, byId, absences = []) {
     const quizzes = savedQuizzes.map(row => ({ id: String(row._id), date: row.date || null, grade: row.grade,
         section: sectionName(row.section), score: row.score ?? null, total: row.total ?? null,
         percentage: Number.isFinite(row.score) && Number.isFinite(row.total) && row.total > 0 && row.score >= 0 && row.score <= row.total ? row.score / row.total * 100 : null,
@@ -99,8 +105,9 @@ function assembleReport(student, savedQuizzes, submissions, byId) {
         quizzesTaken: quizzes.length, scoredQuizzes: scored.length, averageQuiz: average(scored.map(row => row.percentage)),
         bestQuiz: scored.length ? Math.max(...scored.map(row => row.percentage)) : null,
         assignmentAverage: average(graded.map(row => row.percentage).filter(validPercent)), gradedAssignments: graded.length,
-        assignmentsSubmitted: assignments.length, firstQuiz: scored[0]?.percentage ?? null, latestQuiz: scored.at(-1)?.percentage ?? null
-    }, quizzes, assignments };
+        assignmentsSubmitted: assignments.length, firstQuiz: scored[0]?.percentage ?? null, latestQuiz: scored.at(-1)?.percentage ?? null,
+        absentDays: absences.length, quizDays: quizzes.length + absences.length
+    }, quizzes, absences, assignments };
 }
 async function gradeReports(query = {}) {
     if (typeof query.grade !== 'string' || !validGrade(query.grade)) throw problem(400, 'Choose a grade to download its reports.');
@@ -122,9 +129,11 @@ async function gradeReports(query = {}) {
             if (buckets.has(key)) buckets.get(key)[kind].push(row);
         }
     }
+    const accounts = await Student.find({ _id: { $in: students.filter(s => !s.historical).map(s => s.key.slice(8)) } }).select('rollNum grade section createdAt').lean();
+    const absentDays = await absentDaysByStudent(accounts);
     return { grade: Number(query.grade), section: query.section || '', reports: students.map(student => {
         const saved = buckets.get(student.key);
-        return assembleReport(student, saved.quizzes, saved.assignments, tasksById);
+        return assembleReport(student, saved.quizzes, saved.assignments, tasksById, absenceRecords(student, absentDays.get(student.key.slice(8))));
     }) };
 }
 module.exports = { searchStudents, studentReport, gradeReports };

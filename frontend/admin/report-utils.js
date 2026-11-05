@@ -47,7 +47,7 @@
             const flagCount = (row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0);
             const pillClass = flagCount === 0 ? 'good' : flagCount <= 2 ? 'warn' : 'bad';
             const flagText = flagCount === 0 ? '0 · Clean' : `${flagCount} flag${flagCount === 1 ? '' : 's'}`;
-            const score = escapeHtml(`${row.score} / ${row.total}`);
+            const score = escapeHtml(row.absent ? 'Absent' : `${row.score} / ${row.total}`);
             const time = escapeHtml(duration(row.elapsedMs));
             const date = row.date ? new Date(row.date) : null;
             const validDate = date && Number.isFinite(date.getTime());

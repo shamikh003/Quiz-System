@@ -117,8 +117,11 @@ function renderReports(reports, title) {
                 y += chartHeight + 52;
             } else { text('No quiz results.', left, y + 8, width, 10, false, MUTED); y += 40; }
             const quizColumns = [['Date', 78], ['Grade', 45], ['Section', 118], ['Score', 76], ['Marks %', 90], ['Time', width - 407]].map(([name, width]) => ({ name, width }));
-            table('Quiz History', quizColumns, [...report.quizzes].reverse().map(row => [date(row.date), grade(row.grade), row.section,
-                `${row.score ?? '-'} / ${row.total ?? '-'}`, percent(row.percentage), duration(row.elapsedMs)]));
+            const absences = report.absences || [];
+            const history = [...report.quizzes, ...absences].sort((a, b) => new Date(a.date) - new Date(b.date)).reverse();
+            table(absences.length ? `Quiz History (Absent: ${absences.length})` : 'Quiz History', quizColumns, history.map(row => row.absent
+                ? [date(row.date), grade(row.grade), row.section, 'Absent', '-', '-']
+                : [date(row.date), grade(row.grade), row.section, `${row.score ?? '-'} / ${row.total ?? '-'}`, percent(row.percentage), duration(row.elapsedMs)]));
             const assignmentColumns = [['Assignment', 150], ['Date', 74], ['Grade', 45], ['Marks', 70], ['Marks %', 65], ['Status', width - 404]].map(([name, width]) => ({ name, width }));
             table('Assignment History', assignmentColumns, report.assignments.map(row => [row.title, date(row.gradedAt || row.submittedAt), grade(row.grade),
                 row.status === 'graded' ? `${row.marks ?? '-'} / ${row.maxMarks ?? '-'}` : '-', percent(row.percentage),
