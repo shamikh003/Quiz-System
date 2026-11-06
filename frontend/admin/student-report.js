@@ -222,5 +222,11 @@
     $('grade-report-section').onchange = () => loadGradeStudents();
     $('grade-report-download').onclick = downloadGrade;
     document.addEventListener('quiz-results:cleared', () => { if (chosen) selectStudent(chosen); });
+    document.addEventListener('quiz-report:open-student', event => {
+        const student = event.detail?.student;
+        if (!student?.key) return;
+        setView(true); selectStudent(student);
+        document.querySelector('.report-view-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
     setView(new URLSearchParams(location.search).get('view') === 'student');
 })();

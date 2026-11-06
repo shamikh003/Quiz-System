@@ -77,6 +77,7 @@
                         ${dashboard ? '' : `<div><dt>Submitted at</dt><dd>${escapeHtml(submittedAt)}</dd></div>`}
                     </dl>
                 </details>
+                ${!dashboard && row.reportKey ? `<button type="button" class="report-history-btn mobile-history-btn" data-report-key="${escapeHtml(row.reportKey)}" data-name="${escapeHtml(row.name)}" data-roll="${escapeHtml(row.rollNum)}" data-grade="${escapeHtml(row.grade)}" data-section="${escapeHtml(section(row))}">View Full History</button>` : ''}
             </article>`;
         }).join('');
     }

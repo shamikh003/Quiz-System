@@ -19,14 +19,14 @@ const legacyKey = row => JSON.stringify([String(row.rollNum || '').trim(), Numbe
 function selectAttempts(rows, mode, accounts = []) {
     const candidates = mode === 'best' ? rows.filter(topScoreEligible) : rows;
     const ordered = [...candidates].sort((a, b) => {
-        if (mode === 'best') {
+        if (mode === 'best' || mode === 'highest') {
             const first = resultMetrics(a), second = resultMetrics(b);
             return second.percentage - first.percentage || (first.elapsedMs ?? Number.MAX_SAFE_INTEGER) - (second.elapsedMs ?? Number.MAX_SAFE_INTEGER)
                 || (new Date(a.date).getTime() || 0) - (new Date(b.date).getTime() || 0) || String(a._id).localeCompare(String(b._id));
         }
         return (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0) || String(b._id).localeCompare(String(a._id));
     });
-    if (!['latest', 'best'].includes(mode)) return ordered;
+    if (!['latest', 'best', 'highest'].includes(mode)) return ordered;
     const owners = new Map(), seen = new Set();
     for (const student of accounts) {
         const key = legacyKey(student);
@@ -49,21 +49,15 @@ async function resultRows(query = {}, { includeAssignments = true, limit, bestPe
     }
     const [stored, accounts] = await Promise.all([
         Result.aggregate([{ $match: match }, ...rankingStages()]),
-        filters.attempts === 'latest' || bestPerStudent ? Student.find({}).select('_id rollNum grade section').lean() : []
+        filters.attempts === 'latest' || filters.attempts === 'all' || bestPerStudent ? Student.find({}).select('_id rollNum grade section').lean() : []
     ]);
-    let rows = selectAttempts(stored, bestPerStudent ? 'best' : filters.attempts, accounts);
+    const mode = bestPerStudent ? 'best' : filters.attempts === 'all' ? 'highest' : filters.attempts;
+    let rows = selectAttempts(stored, mode, accounts);
     if (filters.rollNum) {
         // Keep the existing query key so saved report links still work.
         const normalize = value => String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
         const search = normalize(filters.rollNum);
         rows = rows.filter(row => normalize(row.rollNum).includes(search) || normalize(row.name).includes(search));
-    }
-    // All Attempts is the complete class register: submitted quizzes plus students
-    // who missed a quiz day. Dashboard/top-score callers stay score-only.
-    if (filters.attempts === 'all' && !bestPerStudent) {
-        rows = [...rows, ...await absentRows(filters)].sort((a, b) =>
-            (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0)
-            || String(a.name || '').localeCompare(String(b.name || '')));
     }
     if (limit) rows = rows.slice(0, limit);
     const byOwner = new Map(), byLegacy = new Map();
@@ -83,7 +77,8 @@ async function resultRows(query = {}, { includeAssignments = true, limit, bestPe
         const owned = row.student && byOwner.get(String(row.student)), legacy = byLegacy.get(legacyKey(row));
         const submission = owned && legacy ? (new Date(owned.gradedAt) >= new Date(legacy.gradedAt) ? owned : legacy) : owned || legacy;
         const assignmentPercentage = submission ? submission.percentage : null;
-        return { ...row, ...resultMetrics(row), section: sectionName(row.section), assignmentPercentage };
+        const reportKey = row.student ? `student:${row.student}` : `legacy:${Buffer.from(legacyKey(row)).toString('base64url')}`;
+        return { ...row, ...resultMetrics(row), section: sectionName(row.section), assignmentPercentage, reportKey };
     });
 }
 module.exports = { resultFilters, selectAttempts, resultRows };

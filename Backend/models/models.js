@@ -81,7 +81,8 @@ ResultSchema.index({ student: 1, date: 1 });
 const SettingsSchema = new mongoose.Schema({
     settings_id: { type: String, default: 'main' },
     time: { type: Number, default: 10 },
-    gradeTimes: { type: Map, of: Number, default: () => ({}) }
+    gradeTimes: { type: Map, of: Number, default: () => ({}) },
+    absenceStartAt: { type: Date, default: null }
 });
 
 // --- Assignment (teacher-uploaded Word/Excel/PowerPoint file) ---

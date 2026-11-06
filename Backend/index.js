@@ -59,6 +59,7 @@ mongoose.connect(process.env.MONGO_URI)
         // Unique indexes must exist before concurrent quiz starts are accepted.
         await Promise.all(Object.values(require('./models/models')).map(model => model.init()));
         await require('./services/sections').migrateSections();
+        await require('./services/absences').initializeAbsenceTracking();
         await require('./models/import-batch').init();
         require('./services/bulk-import').start();
         app.listen(port, () => console.log(`Backend server is live on http://localhost:${port}`));

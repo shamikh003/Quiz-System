@@ -17,10 +17,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (getToken()) $('clear-results-btn').classList.remove('hidden');
 
     function render() {
-        $('results-count').textContent = `${rows.length} ${rows.length === 1 ? 'result' : 'results'} · ${applied.attempts === 'latest' ? 'Latest Attempt' : applied.attempts === 'absent' ? 'Absent' : 'All Attempts'}`;
+        const summary = applied.attempts === 'latest' ? 'Latest attempt per student' : applied.attempts === 'absent' ? 'Absent students' : 'Highest score per student';
+        $('results-count').textContent = `${rows.length} ${rows.length === 1 ? 'student' : 'students'} · ${summary}`;
         disableExports(!rows.length);
         if (!rows.length) {
-            $('results-body').innerHTML = '<tr><td colspan="10" class="shell-empty">No results match these filters.</td></tr>';
+            $('results-body').innerHTML = '<tr><td colspan="11" class="shell-empty">No results match these filters.</td></tr>';
             $('report-result-cards').innerHTML = '<p class="shell-empty" role="status">No results match these filters.</p>'; return;
         }
         $('report-result-cards').innerHTML = ReportUtils.resultCards(rows);
@@ -28,8 +29,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             <td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.rollNum)}</td><td>${gradeLabel(row.grade)}</td><td>${escapeHtml(ReportUtils.section(row))}</td>
             <td>${row.absent ? '<span class="absent-badge">Absent</span>' : `${row.score} / ${row.total}`}</td><td>${ReportUtils.marks(row.percentage)}</td><td>${ReportUtils.duration(row.elapsedMs)}</td>
             <td>${(row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0)}</td><td>${row.assignmentPercentage == null ? '—' : `${row.assignmentPercentage}%`}</td>
-            <td>${row.date ? escapeHtml(row.absent ? new Date(row.date).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi', day: '2-digit', month: 'short', year: 'numeric' }) : new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })) : '—'}</td></tr>`).join('');
+            <td>${row.date ? escapeHtml(row.absent ? new Date(row.date).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi', day: '2-digit', month: 'short', year: 'numeric' }) : new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })) : '—'}</td>
+            <td><button type="button" class="report-history-btn" data-report-key="${escapeHtml(row.reportKey)}" data-name="${escapeHtml(row.name)}" data-roll="${escapeHtml(row.rollNum)}" data-grade="${escapeHtml(row.grade)}" data-section="${escapeHtml(ReportUtils.section(row))}">View History</button></td></tr>`).join('');
     }
+    function openHistory(button) {
+        document.dispatchEvent(new CustomEvent('quiz-report:open-student', { detail: { student: {
+            key: button.dataset.reportKey, name: button.dataset.name, rollNum: button.dataset.roll,
+            grade: Number(button.dataset.grade), section: button.dataset.section
+        } } }));
+    }
+    document.addEventListener('click', event => { const button = event.target.closest('.report-history-btn'); if (button) openHistory(button); });
     async function fetchResults(first = false) {
         const current = ++requestId; controller?.abort(); exportController?.abort();
         controller = new AbortController(); disableExports(true); $('results-note').textContent = '';
