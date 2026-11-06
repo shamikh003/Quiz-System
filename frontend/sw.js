@@ -1,5 +1,5 @@
 // v5: cache only static assets. Private API responses are never cached.
-const CACHE_NAME = 'quizboard-cache-v8.43';
+const CACHE_NAME = 'quizboard-cache-v8.44';
 const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.2','/index.html','/admin/index.html','/admin/results.html','/admin/students.html',
     '/clean-select.js?v=1.0','/clean-select.css?v=1.0',
     '/password-toggle.js?v=1.0','/password-toggle.css?v=1.0',
@@ -7,7 +7,7 @@ const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.2','/index.html','/admin/i
     '/admin/admin.js?v=7.16','/admin/report-utils.js?v=7.7','/admin/results.js?v=7.9','/admin/students.js?v=5.9',
     '/admin/student-report.js?v=1.7','/admin/student-report.css?v=1.7',
     '/admin/bulk-import.js?v=1.4','/admin/bulk-import.css?v=1.1',
-    '/student/quiz.html','/student/quiz.js?v=8.4','/student/quiz-session.css?v=1.1','/style.css?v=8.10',
+    '/student/quiz.html','/student/quiz.js?v=8.5','/student/quiz-session.css?v=1.1','/student/student-login.css?v=1.0','/assets/dar-e-arqam.png','/style.css?v=8.10',
     '/favicon.ico?v=1','/favicon.svg?v=1',
     '/manifest-admin.json','/manifest-quiz.json']
     .map(path => new URL(path.slice(1), self.registration.scope).href);

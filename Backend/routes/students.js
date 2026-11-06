@@ -24,25 +24,23 @@ router.post('/student/lookup', rateLimit({ windowMs: 60000, max: 600,
     message: { error: 'Please wait a moment and try again.' } }), async (req, res) => {
     const rollNum = req.body?.rollNum;
     if (typeof rollNum !== 'string' || !rollNum.trim() || rollNum.trim().length > 40) return res.status(400).json({ error: 'Enter a valid roll number.' });
-    const matches = await Student.find({ rollNum: rollNum.trim() }).select('grade section').limit(2).lean();
+    const matches = await Student.find({ rollNum: rollNum.trim() }).select('name fatherName rollNum grade section').limit(2).lean();
     res.set('Cache-Control', 'no-store');
     if (!matches.length) return res.json({ found: false });
-    if (matches.length > 1) return res.json({ found: true, needsPassword: true });
-    res.json({ found: true, grade: matches[0].grade, section: sectionName(matches[0].section) });
+    if (matches.length > 1) return res.json({ found: true, ambiguous: true });
+    res.json({ found: true, student: profile(matches[0]) });
 });
 
 router.post('/student/login', rateLimit({ windowMs: 15 * 60000, max: 60, skipSuccessfulRequests: true,
     message: { error: 'Too many login attempts. Please try again later.' } }), async (req, res) => {
-    const { rollNum, password } = req.body;
-    if (typeof rollNum !== 'string' || !rollNum.trim() || rollNum.trim().length > 40 || typeof password !== 'string' || !password || Buffer.byteLength(password) > 72) {
-        return res.status(400).json({ error: 'Roll number and password are required.' });
+    const { rollNum } = req.body;
+    if (typeof rollNum !== 'string' || !rollNum.trim() || rollNum.trim().length > 40) {
+        return res.status(400).json({ error: 'Roll number is required.' });
     }
-    const candidates = await Student.find({ rollNum: rollNum.trim() }).select('+passwordHash');
-    const matches = [];
-    for (const candidate of candidates) if (await bcrypt.compare(password, candidate.passwordHash)) matches.push(candidate);
-    const student = matches.length === 1 ? matches[0] : null;
-    if (matches.length > 1) return res.status(409).json({ error: 'Multiple accounts match this roll number and password. Please contact your teacher.' });
-    if (!student) return res.status(401).json({ error: 'Incorrect roll number or password.' });
+    const matches = await Student.find({ rollNum: rollNum.trim() }).limit(2);
+    if (matches.length > 1) return res.status(409).json({ error: 'This roll number belongs to multiple accounts. Please contact your teacher.' });
+    const student = matches[0];
+    if (!student) return res.status(401).json({ error: 'Roll number not found.' });
     await linkLegacyRecords(student);
     const token = jwt.sign({ id: student._id, role: 'student', version: student.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '8h' });
     res.set('Cache-Control', 'no-store').json({ token, student: profile(student) });

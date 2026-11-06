@@ -9,8 +9,8 @@
 <link rel="manifest" href="../manifest-quiz.json">
 <meta name="theme-color" content="#171293"><link rel="stylesheet" href="../style.css?v=8.2">
 <link rel="stylesheet" href="quiz-session.css?v=1.1">
+<link rel="stylesheet" href="student-login.css?v=1.0">
 <link rel="stylesheet" href="../clean-select.css?v=1.0"><script src="../clean-select.js?v=1.0" defer></script>
-<link rel="stylesheet" href="../password-toggle.css?v=1.0"><script src="../password-toggle.js?v=1.0" defer></script>
 </head>
 <body class="blue-gold student-app">
 <main class="container wide student-portal">
@@ -24,19 +24,25 @@
     </div>
     </div>
     <p id="message" role="status" aria-live="polite"></p>
-    <section id="login-container">
+    <section id="login-container" class="student-login-card">
         <div id="student-login-loader" class="qb-loader-slot" data-auth-loader hidden></div>
-        <h1 data-i18n="login">Student Login</h1>
-        <form id="login-form">
+        <div class="student-login-grid"><div class="student-login-entry">
+        <span class="student-login-kicker" data-i18n="quickAccess">Quick access</span>
+        <h1 data-i18n="enterRoll">Enter your roll number</h1>
+        <p class="student-login-intro" data-i18n="autoDetails">Your details will appear automatically.</p>
+        <form id="login-form" novalidate>
             <label for="student-roll" data-i18n="roll">Roll number</label>
-            <input id="student-roll" required maxlength="40" autocomplete="username">
-            <div class="field-row student-detected-fields"><div class="field"><label for="student-grade" data-i18n="grade">Grade</label><input id="student-grade" readonly placeholder="—"></div>
-            <div class="field"><label for="student-section" data-i18n="section">Section</label><input id="student-section" readonly placeholder="—"></div></div>
+            <input id="student-roll" required maxlength="40" autocomplete="username" inputmode="numeric" placeholder="e.g. 520">
             <p id="student-lookup-status" role="status" aria-live="polite"></p>
-            <label for="student-password" data-i18n="password">Password</label>
-            <input id="student-password" type="password" required maxlength="72" autocomplete="current-password">
-            <button id="login-btn" type="submit" data-i18n="login">Student Login</button>
-        </form>
+            <button id="login-btn" type="submit" data-i18n="continue" disabled>Continue</button>
+        </form></div>
+        <div id="student-profile-preview" class="student-profile-preview is-empty" aria-live="polite">
+            <div id="student-profile-empty" class="student-profile-empty"><span class="student-preview-icon" aria-hidden="true">&#9786;</span><strong data-i18n="profile">Student profile</strong><p data-i18n="previewPrompt">Enter a valid roll number to preview your account.</p></div>
+            <div id="student-profile-found" class="student-profile-found hidden">
+                <div class="student-preview-heading"><img src="../assets/dar-e-arqam.png" alt="Dar-e-Arqam School logo"><div><small data-i18n="profile">Student profile</small><h2 id="detected-student-name"></h2><span id="detected-student-roll"></span></div><span class="student-verified" aria-label="Profile found">&#10003;</span></div>
+                <dl><div class="student-father-detail"><dt data-i18n="fatherName">Father name</dt><dd id="detected-student-father"></dd></div><div><dt data-i18n="grade">Grade</dt><dd id="detected-student-grade"></dd></div><div><dt data-i18n="section">Section</dt><dd id="detected-student-section"></dd></div></dl>
+            </div>
+        </div></div>
     </section>
     <section id="dashboard" class="hidden">
         <h1 data-i18n="studentPanel">My Student Panel</h1>
@@ -122,5 +128,5 @@
 <script src="../config.js?v=5.2"></script>
 <script src="../loader.js?v=1.1"></script>
 <script src="../admin/report-utils.js?v=7.3"></script>
-<script src="quiz.js?v=8.4"></script>
+<script src="quiz.js?v=8.5"></script>
 </body></html>

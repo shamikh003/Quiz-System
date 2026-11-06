@@ -1,0 +1,40 @@
+.student-portal #login-container.student-login-card { max-width: 900px; margin: 28px auto 0; overflow: hidden; border: 1px solid var(--border); border-top: 7px solid var(--gold); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-lg); }
+.student-login-card > .qb-loader-slot { margin: 18px 28px 0; }
+.student-login-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(320px, 1.1fr); gap: 32px; padding: 36px; }
+.student-login-entry { align-self: start; min-width: 0; }
+.student-login-kicker { display: block; margin-bottom: 9px; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.student-login-entry h1 { margin: 0; color: var(--text-primary); font-size: clamp(30px, 4vw, 42px); line-height: 1.15; }
+.student-login-intro { margin: 10px 0 24px; color: var(--text-secondary); }
+.student-login-entry form { display: grid; gap: 12px; }
+.student-login-entry form label { margin: 0; }
+.student-login-entry #student-roll { min-height: 58px; margin: 0; font-size: 19px; font-weight: 700; }
+.student-login-entry #student-lookup-status { min-height: 22px; margin: 0; }
+.student-login-entry #login-btn { min-height: 54px; margin: 0; }
+.student-profile-preview { display: grid; min-height: 280px; padding: 28px; border-radius: 14px; background: var(--accent-subtle); }
+.student-profile-empty { display: grid; place-items: center; align-content: center; gap: 9px; text-align: center; }
+.student-profile-empty p { max-width: 290px; margin: 0; color: var(--text-secondary); line-height: 1.6; }
+.student-preview-icon { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 50%; background: var(--surface); color: var(--accent); font-size: 28px; }
+.student-profile-found { align-self: center; }
+.student-preview-heading { display: flex; align-items: center; gap: 15px; }
+.student-preview-heading img { flex: 0 0 66px; width: 66px; height: 66px; object-fit: contain; object-position: center; }
+.student-preview-heading > div { min-width: 0; }
+.student-preview-heading small { display: block; color: var(--text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.student-preview-heading h2 { margin: 4px 0; color: var(--text-primary); font-size: 25px; overflow-wrap: anywhere; }
+.student-preview-heading span { color: var(--text-secondary); font-size: 13px; }
+.student-preview-heading .student-verified { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; margin-left: auto; border-radius: 50%; background: var(--accent); color: var(--text-on-accent); font-weight: 700; }
+.student-profile-found dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px; margin: 24px 0 0; }
+.student-profile-found dl > div { min-width: 0; }
+.student-profile-found .student-father-detail { grid-column: 1 / -1; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.student-profile-found dt { color: var(--text-secondary); font-size: 12px; }
+.student-profile-found dd { margin: 5px 0 0; color: var(--text-primary); font-weight: 700; overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+    .student-portal #login-container.student-login-card { margin-top: 18px; }
+    .student-login-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 24px; }
+    .student-profile-preview { min-height: 220px; }
+}
+@media (max-width: 420px) {
+    .student-login-grid { padding: 20px 16px; }
+    .student-profile-preview { padding: 20px; }
+    .student-preview-heading img { flex-basis: 56px; width: 56px; height: 56px; }
+    .student-preview-heading h2 { font-size: 22px; }
+}

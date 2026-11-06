@@ -2,8 +2,8 @@ const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-hpy5.onrende
 const $ = id => document.getElementById(id);
 const labels = {
  studentPanel:['My Student Panel','میرا اسٹوڈنٹ پینل'], section:['Section','سیکشن'],
- lookupBusy:['Finding grade and section…','کلاس اور سیکشن تلاش ہو رہے ہیں…'], lookupMissing:['Roll number not found.','رول نمبر موجود نہیں۔'],
- lookupPassword:['Enter password to identify your account.','اپنے اکاؤنٹ کی شناخت کے لیے پاس ورڈ درج کریں۔'], lookupError:['Could not find grade and section. Try signing in.','کلاس اور سیکشن معلوم نہیں ہو سکے۔ لاگ اِن کریں۔'],
+ lookupBusy:['Finding your profile…','آپ کی پروفائل تلاش ہو رہی ہے…'], lookupMissing:['Roll number not found.','رول نمبر موجود نہیں۔'],
+ lookupDuplicate:['This roll number belongs to multiple accounts. Please contact your teacher.','یہ رول نمبر ایک سے زیادہ اکاؤنٹس میں ہے۔ اپنے استاد سے رابطہ کریں۔'], lookupError:['Could not find your profile. Please try again.','پروفائل نہیں مل سکی۔ دوبارہ کوشش کریں۔'],
  signingIn:['Signing you in…','لاگ اِن ہو رہا ہے…'], loadingScores:['Loading scores…','نتائج لوڈ ہو رہے ہیں…'],
  loadingAssignments:['Loading assignments…','اسائنمنٹس لوڈ ہو رہی ہیں…'], loadingQuiz:['Loading quiz…','کوئز لوڈ ہو رہا ہے…'],
  uploading:['Uploading assignment…','اسائنمنٹ جمع ہو رہی ہے…'], submittingQuiz:['Submitting quiz…','کوئز جمع ہو رہا ہے…'],
@@ -17,8 +17,8 @@ const labels = {
  leaveQuiz:['Sign out? Your saved answers remain, but the quiz timer will continue.','لاگ آؤٹ کریں؟ محفوظ جوابات رہیں گے لیکن وقت چلتا رہے گا۔'],
  translationMissing:['Urdu translation is not available for this question yet.','اس سوال کا اردو ترجمہ ابھی دستیاب نہیں ہے۔'],
  review:['Your answer','آپ کا جواب'], unanswered:['Not answered','جواب نہیں دیا'],
- login:['Student Login','طالب علم لاگ اِن'], fatherName:['Father name','والد کا نام'],
- roll:['Roll number','رول نمبر'], grade:['Grade','کلاس'], choose:['Choose grade','کلاس منتخب کریں'], password:['Password','پاس ورڈ'], logout:['Log out','لاگ آؤٹ'],
+ login:['Student Login','طالب علم لاگ اِن'], quickAccess:['Quick access','فوری رسائی'], enterRoll:['Enter your roll number','اپنا رول نمبر درج کریں'], autoDetails:['Your details will appear automatically.','آپ کی تفصیلات خود ظاہر ہو جائیں گی۔'], continue:['Continue','جاری رکھیں'], profile:['Student profile','طالب علم پروفائل'], previewPrompt:['Enter a valid roll number to preview your account.','اپنا اکاؤنٹ دیکھنے کے لیے درست رول نمبر درج کریں۔'], fatherName:['Father name','والد کا نام'],
+ roll:['Roll number','رول نمبر'], grade:['Grade','کلاس'], choose:['Choose grade','کلاس منتخب کریں'], logout:['Log out','لاگ آؤٹ'],
  start:['Start / Resume Quiz','کوئز شروع / جاری کریں'], refresh:['Refresh report','رپورٹ تازہ کریں'], scores:['My Test Scores','میرے ٹیسٹ کے نمبر'], date:['Date','تاریخ'], score:['Score','نمبر'],
  previous:['Previous','پچھلا'], next:['Next','اگلا'], assignments:['My Assignments','میری اسائنمنٹس'], skip:['Skip','چھوڑیں'],
  saveNext:['Save & Next','محفوظ کریں اور آگے جائیں'], finish:['Submit Quiz','کوئز جمع کریں'], complete:['Quiz Complete','کوئز مکمل'],
@@ -89,8 +89,16 @@ async function api(path, options = {}) {
 const post = (path, body = {}, options = {}) => api(path, { ...options, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
 const saveTimeout = () => typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(15000) } : {};
 function renderDetectedStudent() {
- $('student-grade').value = detectedStudent ? gradeLabel(detectedStudent.grade) : '';
- $('student-section').value = detectedStudent?.section || '';
+ const found = Boolean(detectedStudent);
+ $('student-profile-empty').classList.toggle('hidden', found);
+ $('student-profile-found').classList.toggle('hidden', !found);
+ $('student-profile-preview').classList.toggle('is-empty', !found);
+ $('login-btn').disabled = !found || lookupState === 'lookupBusy';
+ $('detected-student-name').textContent = detectedStudent?.name || '';
+ $('detected-student-roll').textContent = detectedStudent ? `${t('roll')} ${detectedStudent.rollNum}` : '';
+ $('detected-student-father').textContent = detectedStudent?.fatherName || '—';
+ $('detected-student-grade').textContent = detectedStudent ? gradeLabel(detectedStudent.grade) : '';
+ $('detected-student-section').textContent = detectedStudent?.section || '—';
  $('student-lookup-status').textContent = lookupState ? t(lookupState) : '';
 }
 async function findStudent() {
@@ -102,8 +110,8 @@ async function findStudent() {
   const response = await fetch(`${BACKEND_URL}/api/student/lookup`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({rollNum}), signal:lookupController.signal, cache:'no-store' });
   if (!response.ok) throw new Error('Lookup failed');
   const data = await response.json(); if(current !== lookupId) return;
-  detectedStudent = data.found && !data.needsPassword ? data : null;
-  lookupState = !data.found ? 'lookupMissing' : data.needsPassword ? 'lookupPassword' : '';
+  detectedStudent = data.found && !data.ambiguous ? data.student : null;
+  lookupState = !data.found ? 'lookupMissing' : data.ambiguous ? 'lookupDuplicate' : '';
  } catch(error) { if(error.name === 'AbortError' || current !== lookupId) return; lookupState = 'lookupError'; }
  renderDetectedStudent();
 }
@@ -116,10 +124,11 @@ $('login-form').onsubmit = async event => {
  event.preventDefault(); $('login-btn').disabled = true; notify('');
  const stopLoading = globalThis.QuizLoader?.show($('student-login-loader'), t('signingIn')) || (() => {});
  try {
-  const data = await post('/student/login', { rollNum:$('student-roll').value.trim(), password:$('student-password').value });
+  if (!detectedStudent) throw new Error(t('lookupMissing'));
+  const data = await post('/student/login', { rollNum:$('student-roll').value.trim() });
   ++lookupId; clearTimeout(lookupTimer); lookupController?.abort(); detectedStudent = data.student; lookupState = ''; renderDetectedStudent();
-  token = data.token; sessionStorage.setItem('studentToken', token); $('student-password').value = ''; page = 1; await loadReport();
- } catch (error) { notify(error.message); } finally { stopLoading(); $('login-btn').disabled = false; }
+  token = data.token; sessionStorage.setItem('studentToken', token); page = 1; await loadReport();
+ } catch (error) { notify(error.message); } finally { stopLoading(); renderDetectedStudent(); }
 };
 $('logout-btn').onclick = async () => {
  if (active) {
