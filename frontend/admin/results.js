@@ -59,7 +59,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (const [key, value] of Object.entries(chosen)) value && !(key === 'attempts' && value === 'all') ? url.searchParams.set(key, value) : url.searchParams.delete(key);
                 history.replaceState(null, '', url.pathname + url.search + url.hash);
             }
-            rows = ReportUtils.searchResults(data, chosen.rollNum); applied = chosen; render();
+            // Older backends appended inferred absences to All Attempts. Keep this
+            // summary score-only even while a backend deployment is rolling out.
+            const visibleData = chosen.attempts === 'all' ? data.filter(row => !row.absent) : data;
+            rows = ReportUtils.searchResults(visibleData, chosen.rollNum); applied = chosen; render();
         } catch (error) {
             if (error.name === 'AbortError' || current !== requestId) return;
             rows = []; render(); $('results-note').textContent = error.message;

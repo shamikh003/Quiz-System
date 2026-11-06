@@ -34,6 +34,10 @@ async function computeAbsences(students) {
     const start = await initializeAbsenceTracking();
     const classes = new Map();
     for (const student of students) classes.set(classKey(student.grade, student.section), { grade: Number(student.grade), key: sectionKey(student.section) });
+    const classSizes = new Map(await Promise.all([...classes].map(async ([key, value]) => {
+        const section = value.key === 'unassigned' ? { $in: [null, 'unassigned'] } : value.key;
+        return [key, await Student.countDocuments({ grade: value.grade, sectionKey: section })];
+    })));
     const groups = await Result.aggregate([
         { $match: { date: { $gte: start }, $or: [...classes.values()].map(c => ({ grade: c.grade, sectionKey: sectionMatch(c.key) })) } },
         { $group: { _id: {
@@ -54,6 +58,10 @@ async function computeAbsences(students) {
     for (const student of students) {
         const joined = student.createdAt ? karachiDay(student.createdAt) : '';
         for (const [day, present] of days.get(classKey(student.grade, student.section)) || []) {
+            // A single late/retry submission is not a new class quiz. A quiz day is
+            // recognized only when at least half of the enrolled class submitted.
+            const classSize = classSizes.get(classKey(student.grade, student.section)) || 0;
+            if (present.size < Math.max(2, Math.ceil(classSize / 2))) continue;
             if (day < joined || present.has(`s:${student._id}`) || present.has(`r:${student.rollNum}`)) continue;
             absences.push({ student, day });
         }
