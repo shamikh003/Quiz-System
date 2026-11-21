@@ -36,6 +36,7 @@ app.use(express.json());
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 10000, // Shared school IP: authenticated answer saves from a whole lab.
+    skip: req => req.method === 'POST' && req.path === '/quiz/heartbeat',
     standardHeaders: true,
     legacyHeaders: false
 });
@@ -50,6 +51,7 @@ const loginLimiter = rateLimit({
     legacyHeaders: false
 });
 app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/report-login', loginLimiter);
 
 // 3. DATABASE CONNECTION
 mongoose.connect(process.env.MONGO_URI)
@@ -71,14 +73,14 @@ mongoose.connect(process.env.MONGO_URI)
 
 // Creates a default admin account on first run so there's always a way to log in.
 async function seedAdminIfNeeded() {
-    const existing = await Admin.findOne({});
+    const existing = await Admin.findOne({ role: { $ne: 'viewer' } });
     if (existing) return;
 
     const username = process.env.ADMIN_USERNAME || 'admin';
     const password = process.env.ADMIN_PASSWORD || 'changeme123';
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await Admin.create({ username, passwordHash });
+    await Admin.create({ username, passwordHash, role: 'admin', displayName: 'Administrator' });
     console.log(`No admin found — created default admin account "${username}". Please log in and consider changing this password.`);
 }
 
@@ -91,6 +93,7 @@ app.use('/api', questionRoutes);
 app.use('/api', require('./routes/imports'));
 app.use('/api', resultRoutes);
 app.use('/api', require('./routes/student-reports'));
+app.use('/api', require('./routes/attendance'));
 app.use('/api', settingsRoutes);
 app.use('/api', assignmentRoutes);
 app.use('/api', dashboardRoutes);

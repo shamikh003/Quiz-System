@@ -2,7 +2,7 @@ const { Result, Submission, Student } = require('../models/models');
 const { resultMetrics, rankingStages, topScoreEligible } = require('../result-ranking');
 const { sectionName, sectionKey } = require('../sections');
 const { VALID_GRADES } = require('../grades');
-const { absentRows } = require('./absences');
+const { absentRows, notAttemptedRows } = require('./absences');
 
 function resultFilters(query = {}) {
     const read = (key, max) => {
@@ -12,7 +12,7 @@ function resultFilters(query = {}) {
     };
     const grade = read('grade', 2), section = read('section', 80), rollNum = read('rollNum', 100), attempts = read('attempts', 10) || 'all';
     if (grade && !VALID_GRADES.map(String).includes(grade)) throw Object.assign(new Error('Choose Grade 4, 5, 6, 7 or Hifz.'), { status: 400 });
-    if (!['all', 'latest', 'absent'].includes(attempts)) throw Object.assign(new Error('Choose All Attempts, Latest Attempt or Absent.'), { status: 400 });
+    if (!['all', 'latest', 'absent', 'not-attempted'].includes(attempts)) throw Object.assign(new Error('Choose a valid report view.'), { status: 400 });
     return { grade, section, rollNum, attempts };
 }
 const legacyKey = row => JSON.stringify([String(row.rollNum || '').trim(), Number(row.grade), sectionKey(row.section)]);
@@ -41,7 +41,11 @@ function selectAttempts(rows, mode, accounts = []) {
 }
 async function resultRows(query = {}, { includeAssignments = true, limit, bestPerStudent = false } = {}) {
     const filters = resultFilters(query), match = {};
-    if (filters.attempts === 'absent') { const absent = await absentRows(filters); return limit ? absent.slice(0, limit) : absent; }
+    if (filters.attempts === 'absent' || filters.attempts === 'not-attempted') {
+        const attendance = await (filters.attempts === 'absent' ? absentRows(filters) : notAttemptedRows(filters));
+        const rows = limit ? attendance.slice(0, limit) : attendance;
+        return includeAssignments ? attachWorkMarks(rows) : rows;
+    }
     if (filters.grade) match.grade = Number(filters.grade);
     if (filters.section) {
         const key = sectionKey(filters.section);
@@ -60,25 +64,36 @@ async function resultRows(query = {}, { includeAssignments = true, limit, bestPe
         rows = rows.filter(row => normalize(row.rollNum).includes(search) || normalize(row.name).includes(search));
     }
     if (limit) rows = rows.slice(0, limit);
-    const byOwner = new Map(), byLegacy = new Map();
-    if (includeAssignments && rows.length) {
-        const ids = [...new Set(rows.filter(row => row.student).map(row => String(row.student)))];
-        const identities = new Map(rows.map(row => [legacyKey(row), { rollNum: row.rollNum, grade: row.grade,
-            sectionKey: sectionKey(row.section) === 'unassigned' ? { $in: [null, 'unassigned'] } : sectionKey(row.section) }]));
-        const submissions = await Submission.find({ status: 'graded', $or: [
-            { student: { $in: ids } }, { student: null, $or: [...identities.values()] }
-        ] }).select('student rollNum grade section percentage gradedAt').sort({ gradedAt: -1, _id: -1 }).lean();
-        for (const submission of submissions) {
-            const map = submission.student ? byOwner : byLegacy, key = submission.student ? String(submission.student) : legacyKey(submission);
-            if (!map.has(key)) map.set(key, submission);
-        }
+    rows = rows.map(row => {
+        const reportKey = row.student ? `student:${row.student}` : `legacy:${Buffer.from(legacyKey(row)).toString('base64url')}`;
+        return { ...row, ...resultMetrics(row), section: sectionName(row.section), assignmentPercentage: null, reportKey };
+    });
+    return includeAssignments ? attachWorkMarks(rows) : rows;
+}
+async function attachWorkMarks(rows) {
+    if (!rows.length) return rows;
+    const work = {
+        assignment: { byOwner: new Map(), byLegacy: new Map() },
+        worksheet: { byOwner: new Map(), byLegacy: new Map() }
+    };
+    const ids = [...new Set(rows.filter(row => row.student).map(row => String(row.student)))];
+    const identities = new Map(rows.map(row => [legacyKey(row), { rollNum: row.rollNum, grade: row.grade,
+        sectionKey: sectionKey(row.section) === 'unassigned' ? { $in: [null, 'unassigned'] } : sectionKey(row.section) }]));
+    const submissions = await Submission.find({ status: 'graded', $or: [
+        { student: { $in: ids } }, { student: null, $or: [...identities.values()] }
+    ] }).select('student rollNum grade section percentage gradedAt manual assignment')
+        .populate('assignment', 'manual').sort({ gradedAt: -1, _id: -1 }).lean();
+    for (const submission of submissions) {
+        const { byOwner, byLegacy } = work[(submission.assignment?.manual ?? submission.manual) ? 'worksheet' : 'assignment'];
+        const map = submission.student ? byOwner : byLegacy, key = submission.student ? String(submission.student) : legacyKey(submission);
+        if (!map.has(key)) map.set(key, submission);
     }
-    return rows.map(row => {
+    function latestPercentage(row, { byOwner, byLegacy }) {
         const owned = row.student && byOwner.get(String(row.student)), legacy = byLegacy.get(legacyKey(row));
         const submission = owned && legacy ? (new Date(owned.gradedAt) >= new Date(legacy.gradedAt) ? owned : legacy) : owned || legacy;
-        const assignmentPercentage = submission ? submission.percentage : null;
-        const reportKey = row.student ? `student:${row.student}` : `legacy:${Buffer.from(legacyKey(row)).toString('base64url')}`;
-        return { ...row, ...resultMetrics(row), section: sectionName(row.section), assignmentPercentage, reportKey };
-    });
+        return submission?.percentage ?? null;
+    }
+    return rows.map(row => ({ ...row, assignmentPercentage: latestPercentage(row, work.assignment),
+        worksheetPercentage: latestPercentage(row, work.worksheet) }));
 }
 module.exports = { resultFilters, selectAttempts, resultRows };

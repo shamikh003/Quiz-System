@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>QuizBoard | Reports Portal</title>
+<link rel="icon" href="../favicon.ico?v=1"><link rel="stylesheet" href="../style.css?v=8.11"><link rel="stylesheet" href="reports.css?v=1.6">
+<link rel="stylesheet" href="../clean-select.css?v=1.0"><script src="../clean-select.js?v=1.0" defer></script>
+</head>
+<body class="blue-gold viewer-page">
+<main id="viewer-login" class="viewer-login">
+  <section class="viewer-login-card"><img src="../assets/dar-e-arqam.png" alt="Dar-e-Arqam School logo"><p>Dar-e-Arqam School · Metroville SITE Campus, Karachi</p><h1>Reports Portal</h1>
+  <form id="viewer-login-form"><label>Username<input id="viewer-username" autocomplete="username" required maxlength="100"></label><label>Password<input id="viewer-password" type="password" autocomplete="current-password" required maxlength="72"></label><button id="viewer-login-btn">Log In</button><p id="viewer-login-message" role="alert"></p></form></section>
+</main>
+<div id="viewer-app" class="viewer-app" hidden>
+  <aside class="viewer-sidebar"><div class="viewer-brand"><img src="../favicon.svg" alt=""><b>QuizBoard</b></div><nav><button id="viewer-overview-nav" class="active" aria-current="page">Overview</button><button id="viewer-students-nav">Student Reports</button></nav>
+  <div class="viewer-user"><img src="../assets/dar-e-arqam.png" alt="Dar-e-Arqam School logo"><div><b id="viewer-name">Report Viewer</b></div></div></aside>
+  <main class="viewer-main"><header><div class="viewer-school"><img src="../assets/dar-e-arqam.png" alt=""><div><strong>Dar-e-Arqam School</strong><small>Metroville SITE Campus, Karachi</small><h1>Reports Overview</h1></div></div><div class="viewer-header-actions"><button id="viewer-logout" class="btn-secondary">Log out</button></div></header>
+  <section class="viewer-filters">
+    <div class="viewer-filter-field">
+      <label for="viewer-grade">Grade</label>
+      <select id="viewer-grade"><option value="">All Grades</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select>
+    </div>
+    <div class="viewer-filter-field">
+      <label for="viewer-section">Section</label>
+      <select id="viewer-section"><option value="">All Sections</option></select>
+    </div>
+    <label>Student<input id="viewer-search" type="search" placeholder="Name or roll number" maxlength="100"></label>
+  </section>
+  <section class="viewer-panel"><div class="viewer-panel-head"><div><h2 id="viewer-panel-title">Top Scorers</h2><p id="viewer-summary">Loading reports…</p></div></div>
+  <p id="viewer-message" role="status"></p><div class="viewer-table-wrap"><table><thead><tr><th>Student</th><th>Grade / Section</th><th>Score</th><th>Marks</th><th>Time</th><th></th></tr></thead><tbody id="viewer-results"></tbody></table></div><div id="viewer-cards" class="viewer-cards"></div></section>
+  </main>
+</div>
+<dialog id="viewer-history"><div class="viewer-dialog-actions"><button id="viewer-student-pdf" type="button" disabled>Download PDF</button><button id="viewer-history-close" type="button" aria-label="Close report">×</button></div><div id="viewer-history-content"></div></dialog>
+<script src="../config.js?v=5.2"></script><script src="../admin/report-utils.js?v=7.7"></script><script src="reports.js?v=1.9"></script>
+</body></html>

@@ -12,15 +12,17 @@
             const base = document.createElement('base'); base.href = root + 'admin/'; document.head.append(base);
         })();
     </script>
-    <script src="teacher-routing.js?v=1.1"></script>
-    <link rel="icon" href="../favicon.ico?v=1">
-    <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
-    <link rel="manifest" href="../manifest-admin.json">
+    <script src="/admin/teacher-routing.js?v=1.1"></script>
+    <link rel="icon" href="/favicon.ico?v=1">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=1">
+    <link rel="manifest" href="/manifest-admin.json">
     <meta name="theme-color" content="#171293">
-    <link rel="stylesheet" href="../style.css?v=8.7">
-    <link rel="stylesheet" href="bulk-import.css?v=1.1">
-    <link rel="stylesheet" href="../clean-select.css?v=1.0">
-    <script src="../clean-select.js?v=1.0" defer></script>
+    <link rel="stylesheet" href="/style.css?v=8.11">
+    <link rel="stylesheet" href="/admin/bulk-import.css?v=1.1">
+    <link rel="stylesheet" href="/admin/assignments.css?v=4">
+    <link rel="stylesheet" href="/admin/dashboard.css?v=1">
+    <link rel="stylesheet" href="/clean-select.css?v=1.0">
+    <script src="/clean-select.js?v=1.0" defer></script>
 </head>
 <body class="blue-gold">
 
@@ -63,6 +65,7 @@
                 <button type="button" id="tab-manage" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span><span class="sidebar-label">Manage Questions</span><span class="badge" id="question-count">0</span></button>
                 <button type="button" id="tab-assignments" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7v10a4 4 0 0 0 8 0V6a3 3 0 0 0-6 0v11a1 1 0 0 0 2 0V7"/></svg></span><span class="sidebar-label">Assignments</span></button>
                 <a href="students.html" data-teacher-route="students" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-4-5"/></svg></span><span class="sidebar-label">Students</span></a>
+                <a href="attendance.html" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM9 8l2 2 4-4M9 15h6"/></svg></span><span class="sidebar-label">Attendance</span></a>
                 <a href="results.html" data-teacher-route="reports" class="sidebar-link"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3v18h17M9 17v-5M14 17V7M19 17V4"/></svg></span><span class="sidebar-label">Reports</span></a>
             </nav>
 
@@ -89,7 +92,7 @@
                         <div class="stat-value" id="stat-total-questions">—</div>
                     </div>
                     <div class="stat-card">
-                        <p class="stat-label">Total Assignments</p>
+                        <p class="stat-label" id="stat-assignment-label">Assignments / Worksheets</p>
                         <div class="stat-value" id="stat-total-assignments">—</div>
                     </div>
                     <div class="stat-card">
@@ -127,11 +130,10 @@
                                 <th>Student</th>
                                 <th>Grade</th>
                                 <th>Section</th>
-                                <th>Score</th>
-                                <th>Marks %</th>
-                                <th>Time</th>
-                                <th>Flags</th>
-                                <th>Date</th>
+                                <th>Quiz Avg</th>
+                                <th>Worksheet Avg</th>
+                                <th>Assignment Avg</th>
+                                <th>Overall Score</th>
                             </tr>
                         </thead>
                         <tbody id="dashboard-results-body">
@@ -242,6 +244,22 @@
 
             <div id="assignments-tab-content" class="hidden">
                 <h1>Assignments</h1>
+                <details class="school-panel worksheet-panel">
+                    <summary><span class="worksheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h3"/></svg></span><span>Worksheet</span><span class="worksheet-chevron" aria-hidden="true"></span></summary>
+                    <form id="manual-assignment-form">
+                        <label for="manual-title">Worksheet name</label>
+                        <input id="manual-title" maxlength="120" required>
+                        <div class="field-row">
+                            <div class="field"><label for="manual-grade">Grade</label><select id="manual-grade" required></select></div>
+                            <div class="field"><label for="manual-section">Section</label><select id="manual-section" required disabled></select></div>
+                            <div class="field"><label for="manual-max">Total marks</label><input id="manual-max" type="number" min="1" max="10000" required></div>
+                        </div>
+                        <button type="submit" disabled>Create Worksheet</button>
+                        <p id="manual-assignment-status" role="status"></p>
+                    </form>
+                </details>
+                <details class="school-panel worksheet-panel">
+                    <summary><span class="worksheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m-4 4 4-4 4 4M5 16v4h14v-4"/></svg></span><span>Upload Assignment</span><span class="worksheet-chevron" aria-hidden="true"></span></summary>
                 <form id="assignment-upload-form">
                     <label for="assignment-title">Assignment Title:</label>
                     <input type="text" id="assignment-title" required>
@@ -270,10 +288,11 @@
 
                     <button type="submit" id="upload-assignment-btn">Upload Assignment</button>
                 </form>
+                </details>
 
                 <hr class="separator">
 
-                <h3>Uploaded Assignments</h3>
+                <h3>Assignments and Worksheets</h3>
                 <div id="assignment-list" class="question-list"></div>
 
                 <div id="submissions-panel" class="hidden">
@@ -288,10 +307,10 @@
         </main>
     </div>
 
-    <script src="../config.js?v=5.2"></script>
-<script src="../loader.js?v=1.1"></script>
-<script src="report-utils.js?v=7.5"></script>
-<script src="admin.js?v=7.16"></script>
-<script src="bulk-import.js?v=1.4"></script>
+<script src="/config.js?v=5.2"></script>
+<script src="/loader.js?v=1.1"></script>
+<script src="/admin/report-utils.js?v=7.7"></script>
+<script src="/admin/admin.js?v=7.25"></script>
+<script src="/admin/bulk-import.js?v=1.5"></script>
 </body>
 </html>

@@ -221,7 +221,7 @@
         $('bulk-grade').required = type === 'questions'; $('bulk-section-field').hidden = type === 'questions';
         $('bulk-file').accept = type === 'questions' ? '.pdf,.docx' : '.xlsx';
         $('bulk-file-label').textContent = type === 'questions' ? 'PDF / Word (.docx), up to 10 MB' : 'Excel (.xlsx), up to 10 MB';
-        $('bulk-format').replaceChildren(el('pre', type === 'questions' ? '1. Which device is used to type?\nA. Keyboard\nB. Monitor\nC. Printer\nD. Speaker\n\n2. Which device prints on paper?\nA. Mouse\nB. Printer\nC. Monitor\n\nAnswer Key\n1. A\n2. B' : 'Name | Father Name | Roll Number | Grade | Section | Password\nSample Student | Sample Father | 00401 | 4 | A | Sample123\nHifz Student | Sample Father | H-001 | Hifz | | Sample456'));
+        $('bulk-format').replaceChildren(el('pre', type === 'questions' ? '1. Which device is used to type?\nA. Keyboard\nB. Monitor\nC. Printer\nD. Speaker\n\n2. Which device prints on paper?\nA. Mouse\nB. Printer\nC. Monitor\n\nAnswer Key\n1. A\n2. B' : 'Name | Father Name | Roll Number | Grade | Section\nSample Student | Sample Father | 00401 | 4 | A\nHifz Student | Sample Father | H-001 | Hifz |'));
         const id = localStorage.getItem(savedKey());
         $('bulk-upload').hidden = false; $('bulk-preview').hidden = true; $('bulk-reviewed').checked = false;
         $('bulk-upload').reset(); $('bulk-grade').value = type === 'questions' ? document.getElementById('filter-grade')?.value || '' : document.getElementById('account-grade')?.value || '';

@@ -13,7 +13,10 @@ function normalizeSection(next) {
 // --- Admin (Teacher login) ---
 const AdminSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
-    passwordHash: { type: String, required: true }
+    passwordHash: { type: String, required: true },
+    role: { type: String, enum: ['admin', 'viewer'], default: 'admin' },
+    displayName: { type: String, trim: true, maxlength: 100, default: '' },
+    active: { type: Boolean, default: true }
 });
 
 // --- Question ---
@@ -82,37 +85,59 @@ const SettingsSchema = new mongoose.Schema({
     settings_id: { type: String, default: 'main' },
     time: { type: Number, default: 10 },
     gradeTimes: { type: Map, of: Number, default: () => ({}) },
-    absenceStartAt: { type: Date, default: null }
+    absenceStartAt: { type: Date, default: null },
+    manualAttendanceStartAt: { type: Date, default: null },
+    quizAccessOpen: { type: Boolean, default: false }
 });
+
+// Teacher-marked attendance only. Missing a quiz does not imply absence.
+const AttendanceSchema = new mongoose.Schema({
+    ...sectionFields,
+    student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+    day: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+    grade: { type: Number, required: true, enum: VALID_GRADES },
+    status: { type: String, required: true, enum: ['absent', 'present-not-attempted'] },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+AttendanceSchema.pre('validate', normalizeSection);
+AttendanceSchema.index({ student: 1, day: 1 }, { unique: true });
+AttendanceSchema.index({ day: -1, grade: 1, sectionKey: 1 });
 
 // --- Assignment (teacher-uploaded Word/Excel/PowerPoint file) ---
 const AssignmentSchema = new mongoose.Schema({
+    ...sectionFields,
+    manual: { type: Boolean, default: false },
+    manualMarksUpdatedAt: Date,
     title: { type: String, required: true },
     grade: { type: Number, required: true, enum: VALID_GRADES },
     maxMarks: { type: Number, required: true, default: 100 },
-    fileName: { type: String, required: true },   // original file name shown to users
-    fileUrl: { type: String, required: function () { return !this.deletedAt; } },
-    filePath: { type: String, required: function () { return !this.deletedAt; } },
+    fileName: { type: String, required: function () { return !this.manual; } },   // original file name shown to users
+    fileUrl: { type: String, required: function () { return !this.manual && !this.deletedAt; } },
+    filePath: { type: String, required: function () { return !this.manual && !this.deletedAt; } },
     // Keep compact assignment metadata for earned-mark history after file deletion.
     deletedAt: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now }
 });
 
+AssignmentSchema.pre('validate', normalizeSection);
+
 // --- Submission (student's completed file for an Assignment) ---
 const SubmissionSchema = new mongoose.Schema({
     ...sectionFields,
+    manual: { type: Boolean, default: false },
     student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student' },
     assignment: { type: mongoose.Schema.Types.ObjectId, ref: 'Assignment', required: true },
     name: { type: String, required: true },
     rollNum: { type: String, required: true },
     grade: { type: Number, required: true, enum: VALID_GRADES },
-    fileName: { type: String, required: true },   // original file name
-    fileUrl: { type: String, required: function () { return !this.assignmentDeletedAt; } },
-    filePath: { type: String, required: function () { return !this.assignmentDeletedAt; } },
+    fileName: { type: String, required: function () { return !this.manual; } },   // original file name
+    fileUrl: { type: String, required: function () { return !this.manual && !this.assignmentDeletedAt; } },
+    filePath: { type: String, required: function () { return !this.manual && !this.assignmentDeletedAt; } },
     assignmentDeletedAt: { type: Date, default: null },
     marks: { type: Number, default: null },
     percentage: { type: Number, default: null },
-    status: { type: String, enum: ['pending', 'graded'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'graded', 'absent'], default: 'pending' },
     submittedAt: { type: Date, default: Date.now },
     gradedAt: { type: Date, default: null }
 });
@@ -127,7 +152,9 @@ const StudentSchema = new mongoose.Schema({
     fatherName: { type: String, default: '', trim: true, maxlength: 100 },
     rollNum: { type: String, required: true, maxlength: 40 },
     grade: { type: Number, required: true, enum: VALID_GRADES },
-    passwordHash: { type: String, required: true, select: false },
+    // Kept only for backward compatibility with older accounts. Student login is roll-number based.
+    passwordHash: { type: String, select: false },
+    pinHash: { type: String, select: false },
     tokenVersion: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now }
 });
@@ -142,6 +169,9 @@ const AttemptSchema = new mongoose.Schema({
     startedAt: { type: Date, default: Date.now },
     completedAt: Date,
     expiresAt: { type: Date, required: true },
+    timeBudgetMs: Number,
+    remainingMs: Number,
+    lastHeartbeatAt: Date,
     status: { type: String, enum: ['active', 'submitted'], default: 'active' },
     // Temporary attempt keys expire; permanent scores remain in Result.
     purgeAt: Date,
@@ -163,5 +193,6 @@ module.exports = {
     Result: mongoose.model('Result', ResultSchema),
     Settings: mongoose.model('Settings', SettingsSchema),
     Assignment: mongoose.model('Assignment', AssignmentSchema),
-    Submission: mongoose.model('Submission', SubmissionSchema)
+    Submission: mongoose.model('Submission', SubmissionSchema),
+    Attendance: mongoose.model('Attendance', AttendanceSchema)
 };

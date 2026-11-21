@@ -1,5 +1,5 @@
 const { validGrade } = require('../grades');
-const { sectionName, sectionKey } = require('../sections');
+const { sectionName } = require('../sections');
 
 const MAX_QUESTIONS = 1000, MAX_STUDENTS = 5000;
 function gradeValue(value) {
@@ -21,7 +21,7 @@ const normalize = value => String(value).normalize('NFKC').toLowerCase().replace
 function questionKey(row) {
     return JSON.stringify([row.grade, normalize(row.text), (row.options || []).map(o => [o.id, normalize(o.text)])]);
 }
-function studentKey(row) { return JSON.stringify([row.grade, row.rollNum, sectionKey(row.section)]); }
+function studentKey(row) { return String(row.rollNum || '').trim().toLowerCase(); }
 
 function parseQuestionText(text, grade) {
     if (typeof text !== 'string' || text.length > 2000000) throw new Error('Use a smaller document (at most two million extracted characters).');
@@ -89,9 +89,9 @@ function parseQuestionText(text, grade) {
 function parseStudentRows(lines, defaults = {}) {
     if (!lines.length) throw new Error('The first sheet needs a header and student rows.');
     const aliases = { fullname: 'name', studentname: 'name', roll: 'rollNum', rollnum: 'rollNum', rollno: 'rollNum', rollnumber: 'rollNum',
-        name: 'name', fathername: 'fatherName', fathersname: 'fatherName', grade: 'grade', class: 'grade', section: 'section', password: 'password' };
+        name: 'name', fathername: 'fatherName', fathersname: 'fatherName', grade: 'grade', class: 'grade', section: 'section' };
     const headers = lines[0].map(value => aliases[String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')] || '');
-    for (const required of ['name', 'rollNum', 'password']) if (!headers.includes(required)) throw new Error('Required columns: Name, Roll Number, Password. Include Grade or choose a default grade. Section is optional.');
+    for (const required of ['name', 'rollNum']) if (!headers.includes(required)) throw new Error('Required columns: Name and Roll Number. Include Grade or choose a default grade. Section is optional.');
     if (headers.filter(Boolean).length !== new Set(headers.filter(Boolean)).size) throw new Error('Column names are repeated. Keep one column for each field.');
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
@@ -99,17 +99,14 @@ function parseStudentRows(lines, defaults = {}) {
         const record = Object.fromEntries(headers.filter(Boolean).map(h => [h, lines[i][headers.indexOf(h)]]));
         const text = key => typeof record[key] === 'object' && record[key] !== null ? '' : String(record[key] ?? '').trim();
         const errors = [];
-        // Preserve password spaces and Excel text roll numbers (including leading zeros).
-        const password = record.password == null || typeof record.password === 'object' ? '' : String(record.password);
         const row = { number: i + 1, name: text('name'), fatherName: text('fatherName'), rollNum: text('rollNum'),
-            grade: gradeValue(text('grade') || defaults.grade), password, section: '', errors };
+            grade: gradeValue(text('grade') || defaults.grade), section: '', errors };
         try { row.section = sectionName(text('section') || defaults.section); } catch (error) { errors.push(error.message); }
         if (!row.name || row.name.length > 100) errors.push('Name must have 1–100 characters.');
         if (row.fatherName.length > 100) errors.push('Father name must have at most 100 characters.');
         if (!row.rollNum || row.rollNum.length > 40) errors.push('Roll number must have 1–40 characters.');
         if (row.grade === null) errors.push('Provide Grade 4–7 or Hifz in the sheet or choose a default grade.');
-        if (password.length < 6 || Buffer.byteLength(password) > 72) errors.push('Password must have at least 6 characters and at most 72 bytes.');
-        if (['name', 'fatherName', 'rollNum', 'grade', 'section', 'password'].some(k => typeof record[k] === 'object' && record[k] !== null)) errors.push('Use plain cell values; formulas and linked cells are not accepted.');
+        if (['name', 'fatherName', 'rollNum', 'grade', 'section'].some(k => typeof record[k] === 'object' && record[k] !== null)) errors.push('Use plain cell values; formulas and linked cells are not accepted.');
         rows.push(row);
         if (rows.length > MAX_STUDENTS) throw new Error(`Import at most ${MAX_STUDENTS.toLocaleString()} students per file.`);
     }

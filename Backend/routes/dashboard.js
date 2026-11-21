@@ -1,7 +1,7 @@
 const express = require('express');
 const { Question, Assignment, Submission, Student } = require('../models/models');
 const { requireAdmin } = require('../middleware/auth');
-const { resultRows } = require('../services/result-reports');
+const { dashboardScores } = require('../services/dashboard-scores');
 const { VALID_GRADES } = require('../grades');
 const { TOP_SCORER_FLAG_LIMIT } = require('../result-ranking');
 
@@ -15,22 +15,24 @@ router.get('/admin/dashboard', requireAdmin, async (req, res) => {
         filter.grade = Number(req.query.grade);
     }
     try {
-        const [totalQuestions, totalAssignments, pendingSubmissions, totalStudents, topResults] =
+        const [totalQuestions, totalAssignments, totalWorksheets, pendingSubmissions, totalStudents, topResults] =
             await Promise.all([
                 Question.countDocuments(),
-                Assignment.countDocuments({ deletedAt: null }),
+                Assignment.countDocuments({ deletedAt: null, manual: { $ne: true } }),
+                Assignment.countDocuments({ deletedAt: null, manual: true }),
                 Submission.countDocuments({ status: 'pending', assignmentDeletedAt: null }),
                 Student.countDocuments(),
-                resultRows({ grade: filter.grade == null ? '' : String(filter.grade) }, { includeAssignments: false, bestPerStudent: true, limit: 5 })
+                dashboardScores(filter)
             ]);
 
         res.json({
             grade: filter.grade ?? null,
             totalQuestions,
             totalAssignments,
+            totalWorksheets,
             totalStudents,
             pendingSubmissions,
-            scoreView: 'best',
+            scoreView: 'overall',
             topScoreFlagLimit: TOP_SCORER_FLAG_LIMIT,
             topResults,
             latestResults: topResults,

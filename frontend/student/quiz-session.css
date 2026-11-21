@@ -26,6 +26,27 @@
 .quiz-question-card { padding: 26px; }
 .quiz-question-meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; font-size: 12px; }
 .quiz-question-meta > span:first-child { color: var(--text-secondary); }
+.quiz-question-meta { flex-wrap: wrap; gap: 6px 12px; }
+.quiz-count-summary {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.quiz-submit-dialog {
+    box-sizing: border-box;
+    width: min(440px, calc(100vw - 24px));
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--gold);
+    border-radius: 14px;
+    background: var(--surface);
+    color: var(--text-primary);
+}
+.quiz-submit-dialog::backdrop { background: #0b1120ba; }
+.quiz-submit-dialog h2 { margin: 0 0 12px; }
+.quiz-submit-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.blue-gold .quiz-submit-actions button { flex: 1 1 auto; width: auto; min-height: 44px; margin: 0; }
 .quiz-grade-chip { background: var(--accent-subtle); color: var(--accent); padding: 7px 11px; border-radius: 99px; font-size: 12px; font-weight: 700; }
 .blue-gold .student-portal #question-title { margin: 0 0 24px; font-family: var(--font-ui); font-weight: 700; font-size: 23px; line-height: 1.55; overflow-wrap: anywhere; }
 .blue-gold .student-portal #question-title[lang=ur] { font-family: "Noto Nastaliq Urdu", "Segoe UI", sans-serif; line-height: 2; }
@@ -177,4 +198,90 @@
     .quiz-question-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .quiz-navigator-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .quiz-exam-heading { align-items: start; }
+}
+
+.blue-gold .student-app-header #logout-btn {
+    min-width: 108px;
+    min-height: 46px;
+    padding-inline: 18px;
+    background: var(--table-head);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+}
+#quiz-pause-notice {
+    margin: 0 0 8px;
+    padding: 8px 12px;
+    background: #fff4c9;
+    color: #584000;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.blue-gold .student-app-header {
+    border-block-start: 3px solid var(--accent);
+}
+.blue-gold .student-app-header .quiz-header-actions {
+    gap: 8px;
+    align-items: center;
+}
+#quiz-header-student:not(.hidden) {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    margin-inline-end: 4px;
+    padding-inline-end: 14px;
+    border-inline-end: 1px solid var(--border);
+    line-height: 1.25;
+}
+#quiz-header-student strong { color: var(--text-primary); font-size: 14px; }
+#quiz-header-student small { color: var(--text-secondary); font-size: 12px; }
+.blue-gold .student-app-header .quiz-header-actions :is(#lang-toggle, #theme-toggle) {
+    min-height: 42px;
+    height: 42px;
+    padding-inline: 12px;
+    gap: 9px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font-weight: 650;
+    box-shadow: none;
+}
+.blue-gold .student-app-header #lang-toggle { min-width: 62px; }
+.blue-gold .student-app-header #lang-toggle::before {
+    content: "";
+    width: 15px;
+    height: 15px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    background: linear-gradient(currentColor, currentColor) center / 100% 1px no-repeat;
+    box-shadow: inset 3px 0 var(--surface), inset -3px 0 var(--surface), inset 4px 0 currentColor, inset -4px 0 currentColor;
+}
+.blue-gold .student-app-header .quiz-header-actions :is(#lang-toggle, #theme-toggle):hover {
+    border-color: var(--accent);
+}
+.blue-gold .student-app-header .quiz-header-actions :is(#lang-toggle, #theme-toggle):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.blue-gold .student-app-header #theme-toggle[aria-checked="true"] {
+    border-color: var(--accent);
+    background: var(--page-bg);
+}
+.blue-gold .student-app-header .quiz-header-actions #logout-btn {
+    height: 42px;
+    min-height: 42px;
+    border: 0;
+    box-shadow: none;
+}
+@media (max-width: 600px) {
+    #quiz-header-student:not(.hidden) {
+        flex-basis: 100%;
+        padding: 8px 0;
+        border-inline-end: 0;
+        border-block-end: 1px solid var(--border);
+    }
+    .blue-gold .student-app-header .quiz-header-actions { width: 100%; }
+    .blue-gold .student-app-header .quiz-header-actions #logout-btn { margin-inline-start: auto; }
 }

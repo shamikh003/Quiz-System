@@ -72,6 +72,7 @@
                     <summary>View Details<span class="sr-only"> for ${escapeHtml(row.name)}</span></summary>
                     <dl class="mobile-result-detail-grid">
                         ${dashboard ? '' : `<div><dt>Assignment</dt><dd>${escapeHtml(assignment)}</dd></div>`}
+                        ${dashboard ? '' : `<div><dt>Worksheet</dt><dd>${percent(row.worksheetPercentage)}</dd></div>`}
                         <div><dt>Activity flags</dt><dd><span class="pill ${pillClass}">${flagText}</span></dd></div>
                         <div><dt>Date</dt><dd>${escapeHtml(dateText)}</dd></div>
                         ${dashboard ? '' : `<div><dt>Submitted at</dt><dd>${escapeHtml(submittedAt)}</dd></div>`}
@@ -90,10 +91,10 @@
         }).join(',')).join('\r\n');
     }
     function resultCsv(rows) {
-        return csv([['Name', 'Roll Number', 'Grade', 'Section', 'Score', 'Total', 'Marks %', 'Time Taken', 'Timing Available', 'Flags', 'Assignment %', 'Timestamp'],
+        return csv([['Name', 'Roll Number', 'Grade', 'Section', 'Score', 'Total', 'Marks %', 'Time Taken', 'Timing Available', 'Flags', 'Assignment %', 'Worksheet %', 'Timestamp'],
             ...rows.map(row => [row.name, row.rollNum, gradeLabel(row.grade), section(row), row.score, row.total,
                 row.percentage ?? '', duration(row.elapsedMs), row.timingKnown ? 'Yes' : 'No',
-                (row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0), row.assignmentPercentage ?? '',
+                (row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0), row.assignmentPercentage ?? '', row.worksheetPercentage ?? '',
                 row.date ? new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }) : ''])]);
     }
     function studentCsv(rows) {

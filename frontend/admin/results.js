@@ -9,25 +9,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const exports = [$('export-pdf-btn'), $('export-excel-btn')], initial = new URLSearchParams(location.search);
     const filterGrade = $('filter-grade'), filterSection = $('filter-section'), filterRoll = $('filter-roll'), filterAttempts = $('filter-attempts');
     if ([...filterGrade.options].some(option => option.value === initial.get('grade'))) filterGrade.value = initial.get('grade');
-    filterAttempts.value = ['latest', 'absent'].includes(initial.get('attempts')) ? initial.get('attempts') : 'all';
+    filterAttempts.value = ['latest', 'absent', 'not-attempted'].includes(initial.get('attempts')) ? initial.get('attempts') : 'all';
     filterRoll.value = (initial.get('rollNum') || '').slice(0, 100);
     const filters = () => ({ grade: filterGrade.value, section: filterSection.value, rollNum: filterRoll.value.trim(), attempts: filterAttempts.value });
-    let rows = [], sourceRows = [], applied = filters(), requestId = 0, controller, exportController, rollTimer;
+    let rows = [], sourceRows = [], resultSet = [], ready = false, applied = filters(), requestId = 0, controller, exportController;
     const disableExports = disabled => exports.forEach(button => { button.disabled = disabled; });
     if (getToken()) $('clear-results-btn').classList.remove('hidden');
 
     function render() {
-        const summary = applied.attempts === 'latest' ? 'Latest attempt per student' : applied.attempts === 'absent' ? 'Absent students' : 'Highest score per student';
+        const summary = applied.attempts === 'latest' ? 'Latest attempt per student' : applied.attempts === 'absent' ? 'Teacher-marked absent students' : applied.attempts === 'not-attempted' ? 'Present students who did not attempt' : 'Highest score per student';
         $('results-count').textContent = `${rows.length} ${rows.length === 1 ? 'student' : 'students'} · ${summary}`;
         disableExports(!rows.length);
         if (!rows.length) {
-            $('results-body').innerHTML = '<tr><td colspan="11" class="shell-empty">No results match these filters.</td></tr>';
+            $('results-body').innerHTML = '<tr><td colspan="12" class="shell-empty">No results match these filters.</td></tr>';
             $('report-result-cards').innerHTML = '<p class="shell-empty" role="status">No results match these filters.</p>'; return;
         }
         $('report-result-cards').innerHTML = ReportUtils.resultCards(rows);
         $('results-body').innerHTML = rows.map(row => `<tr>
             <td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.rollNum)}</td><td>${gradeLabel(row.grade)}</td><td>${escapeHtml(ReportUtils.section(row))}</td>
-            <td>${row.absent ? '<span class="absent-badge">Absent</span>' : `${row.score} / ${row.total}`}</td><td>${ReportUtils.marks(row.percentage)}</td><td>${ReportUtils.duration(row.elapsedMs)}</td>
+            <td>${row.absent ? '<span class="absent-badge">Absent</span>' : row.notAttempted ? '<span class="pending-badge">Not Attempted</span>' : `${row.score} / ${row.total}`}</td><td>${ReportUtils.marks(row.percentage)}</td>
+            <td>${ReportUtils.percent(row.worksheetPercentage)}</td><td>${ReportUtils.duration(row.elapsedMs)}</td>
             <td>${(row.tabSwitchCount || 0) + (row.fullscreenExitCount || 0)}</td><td>${row.assignmentPercentage == null ? '—' : `${row.assignmentPercentage}%`}</td>
             <td>${row.date ? escapeHtml(row.absent ? new Date(row.date).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi', day: '2-digit', month: 'short', year: 'numeric' }) : new Date(row.date).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })) : '—'}</td>
             <td><button type="button" class="report-history-btn" data-report-key="${escapeHtml(row.reportKey)}" data-name="${escapeHtml(row.name)}" data-roll="${escapeHtml(row.rollNum)}" data-grade="${escapeHtml(row.grade)}" data-section="${escapeHtml(ReportUtils.section(row))}">View History</button></td></tr>`).join('');
@@ -39,8 +40,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         } } }));
     }
     document.addEventListener('click', event => { const button = event.target.closest('.report-history-btn'); if (button) openHistory(button); });
+    function applySearch() {
+        applied = filters();
+        const url = new URL(location.href);
+        for (const [key, value] of Object.entries(applied)) {
+            if (value && !(key === 'attempts' && value === 'all')) url.searchParams.set(key, value);
+            else url.searchParams.delete(key);
+        }
+        history.replaceState(null, '', url.pathname + url.search + url.hash);
+        if (!ready) return;
+        rows = ReportUtils.searchResults(resultSet, applied.rollNum);
+        render();
+    }
     async function fetchResults(first = false) {
         const current = ++requestId; controller?.abort(); exportController?.abort();
+        ready = false;
         controller = new AbortController(); disableExports(true); $('results-note').textContent = '';
         const chosen = first ? { grade: '', section: '', rollNum: '', attempts: 'all' } : filters();
         const stopLoading = QuizLoader.show($('reports-loader'), 'Loading reports…');
@@ -54,24 +68,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (first) {
                 sourceRows = data; ReportUtils.fillSections(filterSection, sourceRows, filterGrade.value);
                 if ([...filterSection.options].some(option => option.value === initial.get('section'))) filterSection.value = initial.get('section');
-            } else {
-                const url = new URL(location.href);
-                for (const [key, value] of Object.entries(chosen)) value && !(key === 'attempts' && value === 'all') ? url.searchParams.set(key, value) : url.searchParams.delete(key);
-                history.replaceState(null, '', url.pathname + url.search + url.hash);
+                if (filterGrade.value || filterSection.value || filterAttempts.value !== 'all') return fetchResults();
             }
             // Older backends appended inferred absences to All Attempts. Keep this
             // summary score-only even while a backend deployment is rolling out.
-            const visibleData = chosen.attempts === 'all' ? data.filter(row => !row.absent) : data;
-            rows = ReportUtils.searchResults(visibleData, chosen.rollNum); applied = chosen; render();
+            resultSet = chosen.attempts === 'all' ? data.filter(row => !row.absent) : data;
+            ready = true;
+            applySearch();
         } catch (error) {
             if (error.name === 'AbortError' || current !== requestId) return;
             rows = []; render(); $('results-note').textContent = error.message;
         } finally { stopLoading(); }
     }
-    filterGrade.addEventListener('change', () => { clearTimeout(rollTimer); ReportUtils.fillSections(filterSection, sourceRows, filterGrade.value); fetchResults(); });
-    filterSection.addEventListener('change', () => { clearTimeout(rollTimer); fetchResults(); });
-    filterAttempts.addEventListener('change', () => { clearTimeout(rollTimer); fetchResults(); });
-    filterRoll.addEventListener('input', () => { ++requestId; disableExports(true); controller?.abort(); exportController?.abort(); clearTimeout(rollTimer); rollTimer = setTimeout(() => fetchResults(), 250); });
+    filterGrade.addEventListener('change', () => { ReportUtils.fillSections(filterSection, sourceRows, filterGrade.value); fetchResults(); });
+    filterSection.addEventListener('change', () => fetchResults());
+    filterAttempts.addEventListener('change', () => fetchResults());
+    filterRoll.addEventListener('input', () => {
+        exportController?.abort();
+        applySearch();
+    });
     exports.forEach((button, index) => button.addEventListener('click', async () => {
         const format = index === 0 ? 'pdf' : 'xlsx', snapshot = applied, current = requestId;
         exportController?.abort(); exportController = new AbortController(); disableExports(true);
@@ -80,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await fetch(`${BACKEND_URL}/api/results/export.${format}?${new URLSearchParams(snapshot)}`, { headers: authHeaders(), signal: exportController.signal, cache: 'no-store' });
             if (!response.ok) { let body; try { body = await response.json(); } catch {} throw new Error(body?.error || 'Could not download results.'); }
             const blob = await response.blob();
-            if (current !== requestId) return;
+            if (current !== requestId || snapshot.rollNum !== applied.rollNum) return;
             const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url;
             link.download = `QuizBoard-${snapshot.grade ? gradeLabel(snapshot.grade).replace(/ /g, '-') : 'All-Grades'}-${snapshot.attempts}-results.${format}`;
             document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
@@ -93,12 +108,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const response = await fetch(`${BACKEND_URL}/api/results`, { method: 'DELETE', headers: authHeaders() });
             if (!response.ok) throw new Error('Could not delete results.');
-            ++requestId; controller?.abort(); exportController?.abort(); clearTimeout(rollTimer);
-            sourceRows = []; rows = []; ReportUtils.fillSections(filterSection, [], filterGrade.value); render();
+            ++requestId; controller?.abort(); exportController?.abort();
+            sourceRows = []; resultSet = []; rows = []; ReportUtils.fillSections(filterSection, [], filterGrade.value); render();
             document.dispatchEvent(new CustomEvent('quiz-results:cleared'));
         } catch (error) { $('results-note').textContent = error.message; }
         finally { button.disabled = false; }
     });
     await fetchResults(true);
-    if (['grade', 'section', 'rollNum', 'attempts'].some(key => initial.has(key))) await fetchResults();
 });

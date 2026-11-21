@@ -172,7 +172,122 @@ const dashboardGrade = document.getElementById('dashboard-grade');
 let dashboardRequest = 0;
 dashboardGrade?.addEventListener('change', loadDashboard);
 
+function ensureQuizAccessPanel() {
+    if (!dashboardTabContent || document.getElementById('quiz-access-panel')) return;
+    const panel = document.createElement('section');
+    panel.id = 'quiz-access-panel';
+    panel.className = 'school-panel quiz-access-panel';
+    panel.innerHTML = `<div><p class="stat-label">Student Quiz Access</p><strong id="quiz-access-state">Checking…</strong><p id="quiz-access-message">New quiz attempts stay blocked until you open access.</p></div><button id="quiz-access-toggle" type="button" disabled>Open Quiz Access</button>`;
+    dashboardTabContent.querySelector('.stat-grid')?.insertAdjacentElement('afterend', panel);
+    document.getElementById('quiz-access-toggle').addEventListener('click', toggleQuizAccess);
+}
+
+let reportViewerAccounts = [];
+
+function ensureReportViewerPanel() {
+    if (!dashboardTabContent || document.getElementById('report-viewer-panel')) return;
+    const panel = document.createElement('section');
+    panel.id = 'report-viewer-panel';
+    panel.className = 'school-panel report-viewer-panel';
+    panel.innerHTML = `<header class="report-viewer-head"><div class="report-viewer-identity"><img src="/assets/dar-e-arqam.png" alt="Dar-e-Arqam School logo"><div><span class="report-viewer-eyebrow">School administration</span><h2>Reports Portal Access</h2></div></div><a href="/reports/index.html">Open Reports Portal</a></header><form id="report-viewer-form"><label style="grid-column:1/-1"><span>Account</span><select id="report-viewer-account" disabled><option value="">Create new account</option></select></label><label><span>Display name</span><input id="report-viewer-name" required maxlength="100" placeholder="e.g. Principal"></label><label><span>Username</span><input id="report-viewer-username" required maxlength="100" autocomplete="off" placeholder="Choose a username"></label><label><span>Password</span><input id="report-viewer-password" type="password" minlength="6" maxlength="72" autocomplete="new-password" placeholder="Leave blank to keep current"></label><button id="report-viewer-save" type="submit" disabled>Create Account</button><p id="report-viewer-message" role="status"></p></form>`;
+    document.getElementById('quiz-access-panel')?.insertAdjacentElement('afterend', panel);
+    document.getElementById('report-viewer-account').addEventListener('change', selectReportViewer);
+    document.getElementById('report-viewer-form').addEventListener('submit', saveReportViewer);
+}
+
+function selectReportViewer() {
+    const id = document.getElementById('report-viewer-account').value;
+    const account = reportViewerAccounts.find(viewer => viewer._id === id);
+    document.getElementById('report-viewer-name').value = account?.displayName || '';
+    document.getElementById('report-viewer-username').value = account?.username || '';
+    const password = document.getElementById('report-viewer-password');
+    password.value = '';
+    password.required = !account;
+    password.placeholder = account ? 'Leave blank to keep current password' : '';
+    document.getElementById('report-viewer-save').textContent = account ? 'Save Changes' : 'Create Account';
+}
+
+async function loadReportViewer(selectedId) {
+    ensureReportViewerPanel();
+    const select = document.getElementById('report-viewer-account');
+    const button = document.getElementById('report-viewer-save');
+    const message = document.getElementById('report-viewer-message');
+    const previous = selectedId ?? select.value;
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/auth/report-viewer`, { headers: authHeaders(), cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data.viewers)) throw new Error(data.error || 'Could not load reports accounts.');
+        reportViewerAccounts = data.viewers;
+        select.replaceChildren(new Option('Create new account', ''), ...reportViewerAccounts.map(account =>
+            new Option(account.displayName ? `${account.displayName} (${account.username})` : account.username, account._id)));
+        select.value = reportViewerAccounts.some(account => account._id === previous) ? previous : '';
+        selectReportViewer();
+        select.disabled = button.disabled = false;
+    } catch (error) { message.textContent = error.message; }
+}
+
+async function saveReportViewer(event) {
+    event.preventDefault();
+    const button = document.getElementById('report-viewer-save');
+    const message = document.getElementById('report-viewer-message');
+    button.disabled = true; message.textContent = '';
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/auth/report-viewer`, { method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({
+            id: document.getElementById('report-viewer-account').value || null,
+            displayName: document.getElementById('report-viewer-name').value,
+            username: document.getElementById('report-viewer-username').value,
+            password: document.getElementById('report-viewer-password').value
+        }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not save the report viewer account.');
+        document.getElementById('report-viewer-password').value = '';
+        message.textContent = data.message;
+        await loadReportViewer(data.id);
+    } catch (error) { message.textContent = error.message; }
+    finally { button.disabled = false; }
+}
+
+async function loadQuizAccess() {
+    ensureQuizAccessPanel();
+    const button = document.getElementById('quiz-access-toggle');
+    const state = document.getElementById('quiz-access-state');
+    if (!button || !state) return;
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/quiz-access`, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Could not check quiz access.');
+        const data = await response.json();
+        button.dataset.open = String(data.open === true);
+        state.textContent = data.open ? 'Open' : 'Closed';
+        state.className = data.open ? 'quiz-access-open' : 'quiz-access-closed';
+        button.textContent = data.open ? 'Close Quiz Access' : 'Open Quiz Access';
+        button.disabled = false;
+    } catch (error) {
+        state.textContent = error.message;
+        button.disabled = true;
+    }
+}
+
+async function toggleQuizAccess() {
+    const button = document.getElementById('quiz-access-toggle');
+    const state = document.getElementById('quiz-access-state');
+    button.disabled = true;
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/quiz/access`, {
+            method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ open: button.dataset.open !== 'true' })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not change quiz access.');
+        await loadQuizAccess();
+    } catch (error) {
+        state.textContent = error.message;
+        button.disabled = false;
+    }
+}
+
 async function loadDashboard() {
+    loadQuizAccess();
+    loadReportViewer();
     const statQuestions = document.getElementById('stat-total-questions');
     const statAssignments = document.getElementById('stat-total-assignments');
     const statStudents = document.getElementById('stat-total-students');
@@ -204,64 +319,63 @@ async function loadDashboard() {
         const data = await response.json();
         // Ignore an older response if the teacher has already picked another grade.
         if (requestId !== dashboardRequest) return;
-        let topResults = data.topResults;
-        if (data.scoreView !== 'best' || data.topScoreFlagLimit !== ReportUtils.TOP_SCORER_FLAG_LIMIT) {
-            const reportQuery = new URLSearchParams({ grade: selectedGrade, attempts: 'all' });
-            const reports = await fetch(`${BACKEND_URL}/api/results?${reportQuery}`, { headers: authHeaders(), cache: 'no-store' });
-            if (reports.status === 401 || reports.status === 403) {
-                localStorage.removeItem('adminToken');
-                loginError.textContent = 'Your session expired. Please log in again.';
-                showLoggedOutView();
-                return;
-            }
-            if (!reports.ok) throw new Error('Could not load top scorers');
-            const rows = await reports.json();
-            if (requestId !== dashboardRequest) return;
-            if (!Array.isArray(rows)) throw new Error('Invalid result data');
-            topResults = ReportUtils.topScorers(rows);
-        }
-        if (!Array.isArray(topResults)) throw new Error('Could not load top scorers');
-        topResults = ReportUtils.topScorers(topResults);
-        if (selectedGrade !== '') topResults = topResults.filter(r => Number(r.grade) === Number(selectedGrade));
-        topResults = topResults.slice(0, 5);
+        const topResults = data.topResults;
+        if (data.scoreView !== 'overall' || !Array.isArray(topResults)) throw new Error('Could not load top scorers');
 
         statQuestions.textContent = data.totalQuestions;
         if (loadedQuestionGrade === null) questionCountBadge.textContent = data.totalQuestions;
-        statAssignments.textContent = data.totalAssignments;
+        const assignments = data.totalAssignments ?? 0;
+        const worksheets = data.totalWorksheets ?? 0;
+        document.getElementById('stat-assignment-label').textContent =
+            assignments && !worksheets ? 'Assignments' :
+            worksheets && !assignments ? 'Worksheets' : 'Assignments / Worksheets';
+        statAssignments.textContent = assignments + worksheets;
         statStudents.textContent = data.totalStudents;
         statPending.textContent = data.pendingSubmissions;
 
         status.textContent = selectedGrade === '' ? 'Across all grades and sections.' : `${scope} · All sections`;
         if (topResults.length === 0) {
             const empty = selectedGrade === '' ? 'No eligible top scorers.' : `No eligible top scorers for ${scope}.`;
-            resultsBody.innerHTML = `<tr><td colspan="9" class="shell-empty">${escapeHtml(empty)}</td></tr>`;
+            resultsBody.innerHTML = `<tr><td colspan="8" class="shell-empty">${escapeHtml(empty)}</td></tr>`;
             resultCards.innerHTML = `<p class="shell-empty" role="status">${escapeHtml(empty)}</p>`;
             return;
         }
 
-        resultCards.innerHTML = ReportUtils.resultCards(topResults, { dashboard: true, ranked: true });
-        resultsBody.innerHTML = topResults.map((r, index) => {
-            const flagCount = (r.tabSwitchCount || 0) + (r.fullscreenExitCount || 0);
-            const pillClass = flagCount === 0 ? 'good' : (flagCount <= 2 ? 'warn' : 'bad');
-            const pillText = flagCount === 0 ? 'Clean' : `${flagCount} flag${flagCount > 1 ? 's' : ''}`;
-            const dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Karachi' }) : '—';
-            return `
-                <tr>
-                    <td class="rank-cell">${ReportUtils.rankBadge(index)}</td>
-                    <td>${escapeHtml(r.name)}</td>
-                    <td class="mono">${gradeLabel(r.grade)}</td>
-                    <td>${escapeHtml(r.section || 'Unassigned')}</td>
-                    <td class="mono">${r.score} / ${r.total}</td>
-                    <td>${ReportUtils.marks(r.percentage)}</td>
-                    <td class="mono" title="${r.timingKnown ? 'Minutes:seconds' : 'Time unavailable'}">${ReportUtils.duration(r.elapsedMs)}</td>
-                    <td><span class="pill ${pillClass}">${pillText}</span></td>
-                    <td class="mono">${dateStr}</td>
-                </tr>`;
-        }).join('');
+        const scoreWeights = row => row.hasAssignment ? 'Quiz 60% · Worksheet 20% · Assignment 20%' : 'Quiz 80% · Worksheet 20%';
+        const components = row => [
+            ['Quiz Avg', ReportUtils.percent(row.quizAverage)],
+            ['Worksheet Avg', ReportUtils.percent(row.worksheetAverage)],
+            ['Assignment Avg', ReportUtils.percent(row.assignmentAverage)]
+        ];
+        resultCards.innerHTML = topResults.map((row, index) => `
+            <article class="mobile-result-card dashboard-score-card">
+                <div class="mobile-result-header">
+                    ${ReportUtils.rankBadge(index)}
+                    <div class="mobile-result-student">
+                        <h3>${escapeHtml(row.name)}</h3>
+                        <p class="mobile-result-meta">${gradeLabel(row.grade)} · ${escapeHtml(row.section)}</p>
+                    </div>
+                    <div class="mobile-result-score">
+                        <strong>${ReportUtils.percent(row.overallPercentage)}</strong><span>Overall Score</span>
+                    </div>
+                </div>
+                <dl class="mobile-result-detail-grid">
+                    ${components(row).map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}
+                </dl>
+            </article>`).join('');
+        resultsBody.innerHTML = topResults.map((row, index) => `
+            <tr>
+                <td class="rank-cell">${ReportUtils.rankBadge(index)}</td>
+                <td>${escapeHtml(row.name)}</td>
+                <td class="mono">${gradeLabel(row.grade)}</td>
+                <td>${escapeHtml(row.section)}</td>
+                ${components(row).map(([, value]) => `<td class="mono">${value}</td>`).join('')}
+                <td title="${scoreWeights(row)}">${ReportUtils.marks(row.overallPercentage)}</td>
+            </tr>`).join('');
     } catch (error) {
         if (requestId !== dashboardRequest) return;
         status.textContent = `Could not load top scorers for ${scope}. Select a grade to retry.`;
-        resultsBody.innerHTML = '<tr><td colspan="9" class="shell-empty">Could not load dashboard data.</td></tr>';
+        resultsBody.innerHTML = '<tr><td colspan="8" class="shell-empty">Could not load dashboard data.</td></tr>';
         resultCards.innerHTML = '<p class="shell-empty" role="status">Could not load dashboard data.</p>';
     } finally { stopLoading(); }
 }
@@ -661,6 +775,104 @@ const submissionsTitle = document.getElementById('submissions-title');
 const submissionsList = document.getElementById('submissions-list');
 const backToAssignmentsBtn = document.getElementById('back-to-assignments-btn');
 
+const manualForm = document.getElementById('manual-assignment-form');
+const manualGrade = document.getElementById('manual-grade');
+const manualSection = document.getElementById('manual-section');
+const manualStatus = document.getElementById('manual-assignment-status');
+const manualCreate = manualForm.querySelector('button');
+manualGrade.replaceChildren(...Array.from(assignmentGradeSelect.options, option => option.cloneNode(true)));
+
+async function manualRequest(path, body) {
+    const response = await fetch(`${BACKEND_URL}/api${path}`, {
+        cache: 'no-store',
+        headers: { ...authHeaders(), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+        ...(body ? { method: 'POST', body: JSON.stringify(body) } : {})
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not complete the request.');
+    return data;
+}
+let rosterRequest = 0;
+manualGrade.addEventListener('change', async () => {
+    const request = ++rosterRequest;
+    manualSection.replaceChildren(new Option('Choose section', ''));
+    manualSection.disabled = manualCreate.disabled = true;
+    manualStatus.textContent = '';
+    try {
+        const roster = await manualRequest(`/admin/students?grade=${encodeURIComponent(manualGrade.value)}`);
+        if (request !== rosterRequest) return;
+        const sections = [...new Set(roster.map(student => student.section))].sort();
+        manualSection.append(...sections.map(section => new Option(section, section)));
+        manualSection.disabled = manualCreate.disabled = !sections.length;
+        if (!sections.length) manualStatus.textContent = 'No students in this grade.';
+    } catch (error) {
+        if (request === rosterRequest) manualStatus.textContent = error.message;
+    }
+});
+manualForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    manualCreate.disabled = manualGrade.disabled = true;
+    manualStatus.textContent = '';
+    try {
+        const worksheet = await manualRequest('/admin/assignments/manual', {
+            title: document.getElementById('manual-title').value, grade: manualGrade.value,
+            section: manualSection.value, maxMarks: Number(document.getElementById('manual-max').value)
+        });
+        manualForm.reset();
+        manualSection.replaceChildren(new Option('Choose section', ''));
+        manualSection.disabled = true;
+        await loadAssignments();
+        await viewManualMarks(worksheet);
+    } catch (error) { manualStatus.textContent = error.message; }
+    finally {
+        manualGrade.disabled = false;
+        manualCreate.disabled = manualSection.disabled;
+    }
+});
+
+async function viewManualMarks(worksheet) {
+    submissionsPanel.classList.remove('hidden');
+    submissionsTitle.textContent = `${worksheet.title} · ${worksheet.section} · Marks out of ${worksheet.maxMarks}`;
+    submissionsList.textContent = 'Loading students…';
+    const path = `/admin/assignments/${worksheet._id}/manual-marks`;
+    try {
+        const roster = await manualRequest(path);
+        const form = document.createElement('form');
+        form.className = 'worksheet-marks';
+        form.innerHTML = roster.length ? `<div class="worksheet-marks-list">${roster.map(student => `<div class="worksheet-marks-row">
+            <div class="worksheet-student"><strong>${escapeHtml(student.name)}</strong><small>Roll ${escapeHtml(student.rollNum)}</small></div>
+            <div class="worksheet-score">
+                <input aria-label="Marks for ${escapeHtml(student.name)}" data-student="${student._id}" type="number" inputmode="decimal" min="0" max="${worksheet.maxMarks}" step="any" placeholder="—" value="${student.marks ?? ''}" ${student.absent ? 'disabled' : ''}>
+                <span>/ ${worksheet.maxMarks}</span>
+            </div>
+            <label class="worksheet-absent"><input type="checkbox" data-absent="${student._id}" ${student.absent ? 'checked' : ''} aria-label="Absent: ${escapeHtml(student.name)}"> Absent</label>
+        </div>`).join('')}</div><div class="worksheet-marks-actions"><p role="status"></p><button type="submit">Save Marks</button></div>` : '<p>No students in this worksheet.</p>';
+        const status = form.querySelector('[role="status"]');
+        form.addEventListener('change', event => {
+            const checkbox = event.target;
+            if (checkbox.dataset.absent) form.querySelector(`[data-student="${checkbox.dataset.absent}"]`).disabled = checkbox.checked;
+        });
+        form.onsubmit = async event => {
+            event.preventDefault();
+            const entries = [...form.querySelectorAll('[data-student]')]
+                .filter(input => input.disabled || input.value !== '')
+                .map(input => input.disabled
+                    ? { studentId: input.dataset.student, absent: true }
+                    : { studentId: input.dataset.student, marks: Number(input.value) });
+            if (!entries.length) { status.textContent = 'Enter marks or mark a student absent.'; return; }
+            const button = form.querySelector('button');
+            button.disabled = true;
+            try {
+                const data = await manualRequest(path, { entries });
+                status.textContent = data.message;
+            } catch (error) { status.textContent = error.message; }
+            finally { button.disabled = false; }
+        };
+        submissionsList.replaceChildren(form);
+        submissionsPanel.scrollIntoView({ block: 'nearest' });
+    } catch (error) { submissionsList.textContent = error.message; }
+}
+
 assignmentForm.addEventListener('submit', async function (event) {
     event.preventDefault();
     assignmentFormError.textContent = '';
@@ -726,13 +938,13 @@ async function loadAssignments() {
             card.className = 'question-card';
             card.innerHTML = `
                 <p><strong>${escapeHtml(a.title)}</strong> <span class="badge">${gradeLabel(a.grade)}</span></p>
-                <p class="q-options">📎 ${escapeHtml(a.fileName)} • Max Marks: ${a.maxMarks} • Submissions: ${a.submissionCount} (${a.gradedCount} graded)</p>
+                <p class="q-options">${a.manual ? escapeHtml(a.section) : escapeHtml(a.fileName)} · Max Marks: ${a.maxMarks} · ${a.gradedCount} graded</p>
                 <div class="q-actions">
-                    <button type="button" class="btn-secondary btn-small view-submissions-btn">View Submissions</button>
+                    <button type="button" class="btn-secondary btn-small view-submissions-btn">${a.manual ? 'Enter Marks' : 'View Submissions'}</button>
                     <button type="button" class="btn-danger btn-small delete-assignment-btn">Delete</button>
                 </div>
             `;
-            card.querySelector('.view-submissions-btn').addEventListener('click', () => viewSubmissions(a));
+            card.querySelector('.view-submissions-btn').addEventListener('click', () => a.manual ? viewManualMarks(a) : viewSubmissions(a));
             card.querySelector('.delete-assignment-btn').addEventListener('click', () => deleteAssignment(a._id));
             assignmentList.appendChild(card);
         });

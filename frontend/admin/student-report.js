@@ -1,7 +1,7 @@
 (() => {
     const $ = id => document.getElementById(id), size = 10;
-    let data = null, chosen = null, quizPage = 1, assignmentPage = 1, searchTimer, searchId = 0, reportId = 0;
-    let searchController, reportController, pdfController, started = false;
+    let data = null, chosen = null, quizPage = 1, assignmentPage = 1, worksheetPage = 1, searchTimer, searchId = 0, reportId = 0;
+    let directory, reportController, pdfController, started = false, allResultsQuery;
     let gradeSearchController, gradePdfController, gradeExportId = 0, gradeStudentCount = 0;
     let stopReportLoader = () => {};
     const make = (tag, text, className) => { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; };
@@ -65,15 +65,29 @@
             if (current === gradeExportId) { button.textContent = 'Download Grade PDF'; button.disabled = !gradeStudentCount; }
         }
     }
-    function setView(individual) {
+    function setView(individual, student = null) {
         for (const [id, active] of [['all-results-tab', !individual], ['individual-report-tab', individual]]) {
             $(id).setAttribute('aria-selected', String(active)); $(id).tabIndex = active ? 0 : -1;
         }
         $('all-results-panel').hidden = individual; $('individual-report-panel').hidden = !individual;
         const url = new URL(location.href); individual ? url.searchParams.set('view', 'student') : url.searchParams.delete('view');
         history.replaceState(null, '', url.pathname + url.search + url.hash);
-        if (individual && !started) { started = true; search(); }
-        else if (individual && chosen) selectStudent(chosen);
+        if (!individual) return;
+        const query = $('filter-roll').value.trim() || url.searchParams.get('rollNum') || '';
+        const carrySearch = query !== allResultsQuery && (query || allResultsQuery !== undefined);
+        allResultsQuery = query;
+        if (student) {
+            $('individual-name').value = student.name;
+            selectStudent(student);
+        } else if (!started || carrySearch) {
+            if (carrySearch) {
+                $('individual-name').value = query;
+                $('individual-grade').value = '';
+                $('individual-section').value = '';
+            }
+            scheduleSearch();
+        }
+        started = true;
     }
     function clearReport() {
         reportId++; reportController?.abort(); pdfController?.abort();
@@ -82,25 +96,39 @@
         $('individual-message').textContent = '';
     }
     function scheduleSearch() {
-        clearReport(); searchController?.abort(); searchId++; clearTimeout(searchTimer);
-        $('individual-search-results').replaceChildren(); $('individual-search-status').textContent = 'Searching…';
-        searchTimer = setTimeout(search, 250);
+        clearReport();
+        search();
     }
     async function search() {
-        clearTimeout(searchTimer); searchController?.abort(); searchController = new AbortController();
+        clearTimeout(searchTimer);
         const current = ++searchId;
-        $('individual-search-retry').hidden = true; $('individual-search-status').textContent = 'Searching students…';
-        const params = new URLSearchParams({ q: $('individual-name').value.trim(), grade: $('individual-grade').value, section: $('individual-section').value });
+        $('individual-search-retry').hidden = true;
+        if (!directory) {
+            $('individual-search-results').replaceChildren();
+            $('individual-search-status').textContent = 'Loading students…';
+            directory = request('directory').catch(error => { directory = null; throw error; });
+        }
         try {
-            const result = await request(`students?${params}`, searchController);
+            const students = await directory;
             if (current !== searchId) return;
-            const section = $('individual-section').value;
-            $('individual-section').replaceChildren(new Option('All Sections', ''), ...result.sections.map(name => new Option(name, name)));
-            $('individual-section').value = result.sections.includes(section) ? section : '';
-            $('individual-search-results').replaceChildren(...result.students.map(student => match(student)));
-            $('individual-search-status').textContent = !result.total ? 'No students found.'
-                : result.total > result.students.length ? `${result.students.length} of ${result.total} students`
-                : `${result.total} student${result.total === 1 ? '' : 's'}`;
+            const gradeFilter = $('individual-grade').value;
+            const sectionFilter = $('individual-section');
+            if (!sectionFilter.dataset.loaded || sectionFilter.dataset.grade !== gradeFilter) {
+                ReportUtils.fillSections(sectionFilter, students, gradeFilter);
+                sectionFilter.dataset.loaded = 'true';
+                sectionFilter.dataset.grade = gradeFilter;
+            }
+            const query = $('individual-name').value.trim();
+            const matches = ReportUtils.searchResults(ReportUtils.filterRows(students, { grade: gradeFilter, section: sectionFilter.value }), query);
+            const visible = matches.slice(0, 50);
+            $('individual-search-results').replaceChildren(...visible.map(student => match(student)));
+            $('individual-search-status').textContent = !matches.length ? 'No students found.'
+                : matches.length > visible.length ? `${visible.length} of ${matches.length} students`
+                : `${matches.length} student${matches.length === 1 ? '' : 's'}`;
+            const term = query.replace(/\s+/g, ' ').toLowerCase();
+            const exact = matches.filter(student => [student.name, student.rollNum].some(value => value.trim().replace(/\s+/g, ' ').toLowerCase() === term));
+            const candidate = exact.length === 1 ? exact[0] : matches.length === 1 ? matches[0] : null;
+            if (query && candidate) searchTimer = setTimeout(() => selectStudent(candidate), 180);
         } catch (error) {
             if (current !== searchId || error.name === 'AbortError') return;
             $('individual-search-results').replaceChildren(); $('individual-search-status').textContent = error.message;
@@ -115,9 +143,11 @@
         button.onclick = () => selectStudent(student); return button;
     }
     async function selectStudent(student) {
+        clearTimeout(searchTimer);
+        searchId++;
         stopReportLoader();
         reportController?.abort(); pdfController?.abort(); reportController = new AbortController();
-        chosen = student; data = null; quizPage = 1; assignmentPage = 1; const current = ++reportId;
+        chosen = student; data = null; quizPage = 1; assignmentPage = 1; worksheetPage = 1; const current = ++reportId;
         $('individual-content').hidden = true; $('individual-download-pdf').disabled = true;
         $('individual-message').textContent = ''; $('individual-search-results').replaceChildren(match(student, true));
         $('individual-search-status').textContent = '';
@@ -139,9 +169,9 @@
         $('individual-student-meta').textContent = `Roll ${student.rollNum} · ${grade(student.grade)} · Section ${student.section}`;
         $('individual-generated').textContent = `As of ${date(data.generatedAt)}`;
         const metrics = [['Quizzes Taken', summary.quizzesTaken], ['Average Quiz Marks', pct(summary.averageQuiz)],
-            ['Best Quiz Score', pct(summary.bestQuiz)], ['Assignment Average', pct(summary.assignmentAverage)]];
+            ['Best Quiz Score', pct(summary.bestQuiz)], ['Assignment Average', pct(summary.assignmentAverage)], ['Worksheet Average', pct(summary.worksheetAverage)]];
         $('individual-metrics').replaceChildren(...metrics.map(([label, value]) => { const card = make('div', null, 'individual-metric'); card.append(make('span', label), make('strong', String(value))); return card; }));
-        renderChart(); renderHistory('quiz'); renderHistory('assignment');
+        renderChart(); renderHistory('quiz'); renderHistory('assignment'); renderHistory('worksheet');
     }
     function renderChart() {
         const rows = data.quizzes.filter(row => row.percentage != null).slice(-20), container = $('individual-chart'); container.replaceChildren();
@@ -163,29 +193,29 @@
         plot.append(bars); chart.append(plot); scroller.append(chart); container.append(scroller);
     }
     function renderHistory(kind) {
-        const quiz = kind === 'quiz', absent = quiz ? (data.absences || []).length : 0;
-        const rows = quiz ? [...data.quizzes, ...(data.absences || [])].sort((a, b) => new Date(a.date) - new Date(b.date)).reverse() : data.assignments;
-        const pages = Math.max(1, Math.ceil(rows.length / size)); let page = Math.min(quiz ? quizPage : assignmentPage, pages);
-        if (quiz) quizPage = page; else assignmentPage = page;
+        const quiz = kind === 'quiz', worksheet = kind === 'worksheet', absent = quiz ? (data.absences || []).length : 0;
+        const rows = quiz ? [...data.quizzes, ...(data.absences || [])].sort((a, b) => new Date(a.date) - new Date(b.date)).reverse() : worksheet ? (data.worksheets || []) : data.assignments;
+        const pages = Math.max(1, Math.ceil(rows.length / size)); let page = Math.min(quiz ? quizPage : worksheet ? worksheetPage : assignmentPage, pages);
+        if (quiz) quizPage = page; else if (worksheet) worksheetPage = page; else assignmentPage = page;
         const visible = rows.slice((page - 1) * size, page * size), container = $(`individual-${kind}-history`); container.replaceChildren();
-        $(`individual-${kind}-count`).textContent = `${rows.length} ${quiz ? (rows.length === 1 ? 'quiz' : 'quizzes') : (rows.length === 1 ? 'assignment' : 'assignments')}${absent ? ` · ${absent} absent` : ''}`;
-        if (!rows.length) container.append(make('p', quiz ? 'No quiz results.' : 'No assignments.', 'individual-empty'));
+        $(`individual-${kind}-count`).textContent = `${rows.length} ${quiz ? (rows.length === 1 ? 'quiz' : 'quizzes') : (rows.length === 1 ? kind : kind + 's')}${absent ? ` · ${absent} absent` : ''}`;
+        if (!rows.length) container.append(make('p', quiz ? 'No quiz results.' : worksheet ? 'No worksheets.' : 'No assignments.', 'individual-empty'));
         else {
             const table = make('table', null, `individual-table${quiz ? '' : ' individual-assignment-table'}`), head = make('thead'), tr = make('tr'), body = make('tbody');
-            (quiz ? ['Date', 'Grade / Section', 'Score', 'Marks %', 'Time'] : ['Assignment', 'Date', 'Marks', 'Marks %', 'Status']).forEach(label => { const th = make('th', label); th.scope = 'col'; tr.append(th); });
+            (quiz ? ['Date', 'Grade / Section', 'Score', 'Marks %', 'Time'] : [worksheet ? 'Worksheet' : 'Assignment', 'Date', 'Marks', 'Marks %', 'Feedback']).forEach(label => { const th = make('th', label); th.scope = 'col'; tr.append(th); });
             head.append(tr); table.append(head, body);
             const cards = make('div', null, 'individual-history-cards');
             for (const row of visible) {
-                const status = row.status === 'graded' ? (row.archived ? 'Graded · Archived' : 'Graded') : 'Awaiting marking';
+                const feedback = row.status === 'absent' ? 'Absent' : row.status === 'graded' ? (row.feedback || 'Graded') : 'Awaiting marking';
                 const marks = quiz ? (row.absent ? 'Absent' : `${row.score ?? '—'} / ${row.total ?? '—'}`) : row.status === 'graded' ? `${row.marks ?? '—'} / ${row.maxMarks ?? '—'}` : '—';
                 const when = date(quiz ? row.date : row.gradedAt || row.submittedAt), meta = `${grade(row.grade)} · ${row.section}`;
                 const record = make('tr');
                 const cells = quiz ? [when, meta, marks, pct(row.percentage), ReportUtils.duration(row.elapsedMs)]
-                    : [row.title, when, marks, pct(row.percentage), status];
+                    : [row.title, when, marks, pct(row.percentage), feedback];
                 cells.forEach((value, i) => { const td = make('td', row.absent && i === 2 ? null : value); if (row.absent && i === 2) td.append(make('span', 'Absent', 'absent-badge')); if (!quiz && i === 0) td.append(make('small', meta)); record.append(td); }); body.append(record);
                 const card = make('article', null, 'individual-history-card'); card.append(make('strong', quiz ? when : row.title), make('p', quiz ? meta : `${when} · ${meta}`));
                 const values = make('div', null, 'individual-history-values'); values.append(make('span', `Marks: ${marks}`), make('strong', pct(row.percentage))); card.append(values);
-                card.append(make('p', quiz ? `Time: ${ReportUtils.duration(row.elapsedMs)}` : status)); cards.append(card);
+                card.append(make('p', quiz ? `Time: ${ReportUtils.duration(row.elapsedMs)}` : feedback)); cards.append(card);
             }
             container.append(table, cards);
         }
@@ -213,8 +243,8 @@
     $('individual-name').addEventListener('input', scheduleSearch);
     $('individual-grade').onchange = () => { $('individual-section').value = ''; scheduleSearch(); };
     $('individual-section').onchange = scheduleSearch; $('individual-search-retry').onclick = search;
-    for (const kind of ['quiz', 'assignment']) for (const direction of ['prev', 'next']) $(`individual-${kind}-${direction}`).onclick = () => {
-        if (kind === 'quiz') quizPage += direction === 'next' ? 1 : -1; else assignmentPage += direction === 'next' ? 1 : -1;
+    for (const kind of ['quiz', 'assignment', 'worksheet']) for (const direction of ['prev', 'next']) $(`individual-${kind}-${direction}`).onclick = () => {
+        if (kind === 'quiz') quizPage += direction === 'next' ? 1 : -1; else if (kind === 'worksheet') worksheetPage += direction === 'next' ? 1 : -1; else assignmentPage += direction === 'next' ? 1 : -1;
         renderHistory(kind);
     };
     $('individual-download-pdf').onclick = download;
@@ -225,7 +255,7 @@
     document.addEventListener('quiz-report:open-student', event => {
         const student = event.detail?.student;
         if (!student?.key) return;
-        setView(true); selectStudent(student);
+        setView(true, student);
         document.querySelector('.report-view-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     setView(new URLSearchParams(location.search).get('view') === 'student');

@@ -1,0 +1,38 @@
+.blue-gold #dashboard .student-school-logo {
+    width: 68px;
+    height: 68px;
+    object-fit: contain;
+}
+.blue-gold #dashboard .student-identity-info { flex: 1 1 140px; }
+.student-dashboard-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-block-end: 16px; }
+.blue-gold #dashboard .student-dashboard-nav button,
+.blue-gold #dashboard .student-latest-panel button {
+    width: auto;
+    min-height: 44px;
+    margin: 0;
+    padding: 8px 14px;
+}
+.blue-gold #dashboard .student-dashboard-nav button[aria-pressed="false"] {
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+.student-dashboard-grid { display: grid; gap: 16px; min-width: 0; }
+#dashboard[data-view="home"] .student-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.student-home-column, .student-result-column { display: grid; align-content: start; gap: 16px; min-width: 0; }
+#dashboard[data-view="home"] .student-result-column,
+#dashboard[data-view="results"] :is(.student-home-column, .student-assignments-panel),
+#dashboard[data-view="assignments"] :is(.student-home-column, .student-result-column) { display: none; }
+.blue-gold #dashboard :is(.student-scores-panel, .student-assignments-panel) { margin-bottom: 0; }
+.student-latest-panel strong { display: block; font-size: 28px; color: var(--accent); }
+.student-latest-panel p { margin: 6px 0 12px; color: var(--text-secondary); }
+.student-assignment-item + .student-assignment-item { border-top: 1px solid var(--border); }
+.student-assignment-item summary { cursor: pointer; padding-block: 12px; overflow-wrap: anywhere; }
+.student-assignment-item summary small { display: block; padding-inline-start: 16px; color: var(--text-secondary); }
+.student-mark-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding: 10px 0; overflow-wrap: anywhere; }
+.student-mark-row + .student-mark-row { border-top: 1px solid var(--border); }
+@media (max-width: 720px) {
+    #dashboard[data-view="home"] .student-dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+    .blue-gold #dashboard .student-school-logo { width: 52px; height: 52px; }
+}

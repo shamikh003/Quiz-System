@@ -21,7 +21,7 @@ function parseMultipart(body) {
 }
 
 async function protectActiveQuestions(req, res, next) {
-    const filter = { status: 'active', expiresAt: { $gt: new Date() } };
+    const filter = { status: 'active', $or: [{ remainingMs: { $gt: 0 } }, { timeBudgetMs: null, expiresAt: { $gt: new Date() } }] };
     if (req.params.id) filter['questions.questionId'] = req.params.id;
     if (await Attempt.exists(filter)) return res.status(409).json({ error: 'Students are taking this quiz. Wait until their timers end before editing or deleting questions.' });
     next();
@@ -132,7 +132,7 @@ router.delete('/admin/questions', requireAdmin, async (req, res) => {
     const grade = Number(req.query.grade);
     const questions = await Question.find({ grade }).select('imagePath');
     const ids = questions.map(q => q._id);
-    if (await Attempt.exists({ status: 'active', expiresAt: { $gt: new Date() }, 'questions.questionId': { $in: ids } })) {
+    if (await Attempt.exists({ status: 'active', $or: [{ remainingMs: { $gt: 0 } }, { timeBudgetMs: null, expiresAt: { $gt: new Date() } }], 'questions.questionId': { $in: ids } })) {
         return res.status(409).json({ error: 'Students are taking this grade’s quiz. Wait until their timers end before deleting its questions.' });
     }
     const deleted = await Question.deleteMany({ grade, _id: { $in: ids } });

@@ -8,11 +8,12 @@
         manage: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
         assignments: '<path d="M8 7v10a4 4 0 0 0 8 0V6a3 3 0 0 0-6 0v11a1 1 0 0 0 2 0V7"/>',
         students: '<circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-4-5"/>',
-        reports: '<path d="M4 3v18h17M9 17v-5M14 17V7M19 17V4"/>'
+        reports: '<path d="M4 3v18h17M9 17v-5M14 17V7M19 17V4"/>',
+        attendance: '<path d="M5 3h14v18H5zM9 8l2 2 4-4M9 15h6"/>'
     };
     const links = [['dashboard','Dashboard','index.html'], ['add','Add Question','index.html#add'],
         ['manage','Manage Questions','index.html#manage'], ['assignments','Assignments','index.html#assignments'],
-        ['students','Students','students.html'], ['reports','Reports','results.html']];
+        ['students','Students','students.html'], ['attendance','Attendance','attendance.html'], ['reports','Reports','results.html']];
     sidebar.innerHTML = `<div class="sidebar-brand"><div class="sidebar-brand-text">QuizBoard</div></div>
         <nav class="sidebar-nav" aria-label="Teacher navigation">${links.map(([key,label,href]) =>
             `<a href="${window.TeacherRoutes?.href(key) || href}" class="sidebar-link${document.body.dataset.teacherPage === key ? ' active' : ''}"${document.body.dataset.teacherPage === key ? ' aria-current="page"' : ''}><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24">${paths[key]}</svg></span><span class="sidebar-label">${label}</span></a>`).join('')}</nav>

@@ -1,9 +1,24 @@
 const express = require('express');
-const { requireAdmin } = require('../middleware/auth');
+const { requireReports } = require('../middleware/auth');
 const { searchStudents, studentReport, gradeReports } = require('../services/student-reports');
 const { reportPdf, gradeReportPdf } = require('../services/student-report-pdf');
+const { resultFilters } = require('../services/result-reports');
+const { dashboardScores } = require('../services/dashboard-scores');
 const router = express.Router();
-router.use('/admin/student-reports', requireAdmin, (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+router.use('/admin/student-reports', requireReports, (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+router.get('/admin/student-reports/directory', async (req, res) => {
+    const { students } = await searchStudents({}, { limit: null });
+    res.json(students.map(({ key, name, rollNum, grade, section }) => ({ key, name, rollNum, grade, section })));
+});
+router.get('/admin/student-reports/top-scorers', async (req, res) => {
+    try {
+        const { grade, section } = resultFilters({ grade: req.query.grade, section: req.query.section });
+        res.json(await dashboardScores(grade ? { grade: Number(grade) } : {}, section));
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ error: error.message });
+        throw error;
+    }
+});
 router.get('/admin/student-reports/students', async (req, res) => {
     try { res.json(await searchStudents(req.query)); }
     catch (error) { if (error.status) return res.status(error.status).json({ error: error.message }); throw error; }

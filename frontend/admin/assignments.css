@@ -1,0 +1,83 @@
+.blue-gold .worksheet-panel {
+    margin-block: 0 20px;
+    padding: 0;
+}
+.worksheet-panel summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    cursor: pointer;
+    list-style: none;
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.worksheet-panel summary::-webkit-details-marker { display: none; }
+.worksheet-panel summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.worksheet-icon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    background: var(--page-bg);
+    color: var(--accent);
+    border-radius: 9px;
+}
+.worksheet-icon svg { width: 21px; height: 21px; }
+.worksheet-chevron {
+    margin-inline-start: auto;
+    width: 8px;
+    height: 8px;
+    border: solid currentColor;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.worksheet-panel[open] .worksheet-chevron { transform: rotate(225deg); }
+.worksheet-panel form { padding: 18px; border-top: 1px solid var(--border); }
+.worksheet-panel form p:empty { display: none; }
+
+.worksheet-marks {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+.worksheet-marks-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px 24px;
+    padding: 12px 16px;
+}
+.worksheet-marks-row + .worksheet-marks-row { border-top: 1px solid var(--border); }
+.worksheet-student { display: grid; gap: 3px; overflow-wrap: anywhere; }
+.worksheet-student strong { font-weight: 400; }
+.worksheet-student small, .worksheet-score span { color: var(--text-secondary); }
+.worksheet-score { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.blue-gold .worksheet-score input { width: 76px; min-height: 42px; margin: 0; padding: 6px 8px; text-align: center; }
+.worksheet-score input:disabled { opacity: .5; }
+.blue-gold .worksheet-marks label.worksheet-absent {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    margin: 0;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-transform: none;
+    letter-spacing: normal;
+    cursor: pointer;
+}
+.blue-gold .worksheet-marks label.worksheet-absent::before { content: none; }
+.blue-gold .worksheet-absent input[type="checkbox"] { width: 17px; height: 17px; margin: 0; accent-color: var(--accent); }
+.worksheet-absent:has(input:checked) { background: var(--page-bg); font-weight: 700; }
+.worksheet-marks-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.worksheet-marks-actions p { margin: 0; }
+.worksheet-marks-actions p:empty { display: none; }
+.blue-gold .worksheet-marks-actions button { width: auto; margin: 0; }
+@media (max-width: 600px) {
+    .worksheet-marks-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .worksheet-student { grid-column: 1 / -1; }
+}

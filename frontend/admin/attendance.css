@@ -1,0 +1,39 @@
+.attendance-filters .qb-select .qb-select-menu,
+.attendance-filters .qb-select .qb-select-option,
+.attendance-filters .qb-select .qb-select-badge {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.attendance-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 12px;
+}
+
+.attendance-row > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.attendance-row > div:first-child > strong { font-weight: 400; }
+.attendance-row > .attendance-attempted { justify-self: start; }
+
+.attendance-row .qb-select .qb-select-option {
+    display: flex;
+    gap: 11px;
+}
+
+.attendance-row .qb-select-trigger > .qb-select-value,
+.attendance-row .qb-select-option > .qb-select-option-text {
+    color: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 1;
+}
+
+.attendance-row .qb-select-option > .qb-select-check {
+    color: inherit;
+}
+
+@media (max-width: 600px) {
+    .attendance-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+    .attendance-row .qb-select-trigger { padding-inline: 8px; gap: 6px; }
+}

@@ -14,7 +14,7 @@
 <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=1">
 <link rel="stylesheet" href="../style.css?v=8.10"><link rel="stylesheet" href="bulk-import.css?v=1.1">
 <link rel="stylesheet" href="../clean-select.css?v=1.0"><script src="../clean-select.js?v=1.0" defer></script>
-<link rel="stylesheet" href="../password-toggle.css?v=1.0"><script src="../password-toggle.js?v=1.0" defer></script></head>
+</head>
 <body class="app-shell-page blue-gold" data-teacher-page="students"><div class="app-shell">
 <aside class="sidebar" id="sidebar"></aside><main class="shell-main">
 <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle teacher navigation" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
@@ -27,10 +27,9 @@
 <div class="field"><label for="account-father-name">Father name</label><input id="account-father-name" maxlength="100"></div></div>
 <div class="field-row"><div class="field"><label for="account-roll">Roll number</label><input id="account-roll" required maxlength="40"></div>
 <div class="field"><label for="account-grade">Grade</label><select id="account-grade" required><option value="">Choose grade</option><option value="4">Grade 4</option><option value="5">Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="0">Hifz</option></select></div></div>
-<div class="field-row"><div class="field"><label for="account-section">Section (optional)</label><input id="account-section" maxlength="80" placeholder="Enter section name" list="section-suggestions">
+<div class="field-row student-section-row"><div class="field"><label for="account-section">Section (optional)</label><input id="account-section" maxlength="80" placeholder="Enter section name" list="section-suggestions">
 <datalist id="section-suggestions"></datalist>
-</div>
-<div class="field"><label for="account-password">Password</label><input id="account-password" type="password" required minlength="6" maxlength="72" autocomplete="new-password"></div></div>
+</div></div>
 <button id="create-account" type="submit">Create Student Account</button></form>
 </section><section class="school-panel registered-panel">
 <h2>Registered Students</h2>
@@ -45,4 +44,4 @@
 <script src="../loader.js?v=1.1"></script>
 <script src="teacher-shell.js?v=1.4"></script>
 <script src="report-utils.js?v=7.6"></script>
-<script src="students.js?v=5.9"></script><script src="bulk-import.js?v=1.4"></script></body></html>
+<script src="students.js?v=6.2"></script><script src="bulk-import.js?v=1.5"></script></body></html>

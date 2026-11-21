@@ -14,7 +14,11 @@ async function finalizeSavedAttempt(attempt, student, session) {
     // Freeze the first server submission time. Expired/offline quizzes use the
     // deadline, never a client-supplied timer or a later retry's timestamp.
     const timeLimitMs = sealed.expiresAt.getTime() - sealed.startedAt.getTime();
-    const timing = sealed.completedAt && timeLimitMs > 0 ? {
+    const timing = sealed.timeBudgetMs != null ? {
+        completedAt: sealed.completedAt,
+        elapsedMs: Math.max(0, sealed.timeBudgetMs - sealed.remainingMs),
+        timeLimitMs: sealed.timeBudgetMs
+    } : sealed.completedAt && timeLimitMs > 0 ? {
         completedAt: new Date(Math.min(sealed.completedAt.getTime(), sealed.expiresAt.getTime())),
         elapsedMs: Math.max(0, Math.min(timeLimitMs, sealed.completedAt.getTime() - sealed.startedAt.getTime())),
         timeLimitMs

@@ -5,6 +5,14 @@ const { validGrade } = require('../grades');
 const { resultMetrics } = require('../result-ranking');
 const { absentDaysByStudent, absenceRecords } = require('./absences');
 const problem = (status, message) => Object.assign(new Error(message), { status });
+function marksFeedback(percentage) {
+    if (!Number.isFinite(percentage)) return 'Graded';
+    if (percentage >= 90) return 'Outstanding!';
+    if (percentage >= 80) return 'Excellent work!';
+    if (percentage >= 70) return 'Well done!';
+    if (percentage >= 60) return 'Good effort!';
+    return 'Keep practising!';
+}
 const identity = row => JSON.stringify([row.rollNum, row.grade, sectionKey(row.section)]);
 const legacyKey = row => 'legacy:' + Buffer.from(identity(row)).toString('base64url');
 const profile = row => ({ key: `student:${row._id}`, name: row.name, fatherName: row.fatherName || '', rollNum: row.rollNum,
@@ -72,16 +80,14 @@ const average = values => values.length ? values.reduce((sum, value) => sum + va
 const validPercent = value => Number.isFinite(value) && value >= 0 && value <= 100;
 async function studentReport(key) {
     const { student, filter } = await resolveStudent(key);
-    const [savedQuizzes, submissions] = await Promise.all([
+    const account = key.startsWith('student:') ? { ...student, _id: key.slice(8) } : null;
+    const [savedQuizzes, submissions, absentDays] = await Promise.all([
         Result.find(filter).select('score total date grade section elapsedMs timeLimitMs').sort({ date: 1, _id: 1 }).lean(),
-        Submission.find(filter).select('assignment grade section status marks percentage submittedAt gradedAt assignmentDeletedAt').sort({ submittedAt: -1, _id: -1 }).lean()
+        Submission.find(filter).select('assignment grade section status marks percentage submittedAt gradedAt assignmentDeletedAt manual').sort({ submittedAt: -1, _id: -1 }).lean(),
+        account ? absentDaysByStudent([account]) : new Map()
     ]);
-    const tasks = await Assignment.find({ _id: { $in: submissions.map(row => row.assignment) } }).select('title maxMarks deletedAt').lean();
-    let absences = [];
-    if (student.key.startsWith('student:')) {
-        const account = await Student.findById(student.key.slice(8)).select('rollNum grade section createdAt').lean();
-        if (account) absences = absenceRecords(account, (await absentDaysByStudent([account])).get(String(account._id)));
-    }
+    const tasks = submissions.length ? await Assignment.find({ _id: { $in: submissions.map(row => row.assignment) } }).select('title maxMarks deletedAt manual').lean() : [];
+    const absences = account ? absenceRecords(account, absentDays.get(account._id)) : [];
     return assembleReport(student, savedQuizzes, submissions, new Map(tasks.map(row => [String(row._id), row])), absences);
 }
 function assembleReport(student, savedQuizzes, submissions, byId, absences = []) {
@@ -89,25 +95,29 @@ function assembleReport(student, savedQuizzes, submissions, byId, absences = [])
         section: sectionName(row.section), score: row.score ?? null, total: row.total ?? null,
         percentage: Number.isFinite(row.score) && Number.isFinite(row.total) && row.total > 0 && row.score >= 0 && row.score <= row.total ? row.score / row.total * 100 : null,
         elapsedMs: resultMetrics(row).elapsedMs }));
-    const assignments = submissions.flatMap(row => {
+    const work = submissions.flatMap(row => {
         const task = byId.get(String(row.assignment));
         const archived = Boolean(row.assignmentDeletedAt || task?.deletedAt || !task);
-        if (archived && row.status !== 'graded') return [];
+        if (archived && !['graded', 'absent'].includes(row.status)) return [];
         const graded = row.status === 'graded';
         const percentage = graded && validPercent(row.percentage) ? row.percentage
             : graded && Number.isFinite(row.marks) && task?.maxMarks > 0 && row.marks >= 0 && row.marks <= task.maxMarks ? row.marks / task.maxMarks * 100 : null;
-        return [{ id: String(row._id), title: task?.title || 'Archived assignment', grade: row.grade, section: sectionName(row.section),
+        return [{ id: String(row._id), title: task?.title || (row.manual ? 'Archived worksheet' : 'Archived assignment'), manual: task?.manual === true || row.manual === true, grade: row.grade, section: sectionName(row.section),
             status: row.status, marks: graded ? row.marks ?? null : null, maxMarks: task?.maxMarks ?? null,
-            percentage, submittedAt: row.submittedAt || null, gradedAt: row.gradedAt || null, archived }];
+            percentage, feedback: graded ? marksFeedback(percentage) : null,
+            submittedAt: row.submittedAt || null, gradedAt: row.gradedAt || null, archived }];
     });
+    const assignments = work.filter(row => !row.manual), worksheets = work.filter(row => row.manual);
+    const gradedWorksheets = worksheets.filter(row => row.status === 'graded');
     const scored = quizzes.filter(row => row.percentage != null), graded = assignments.filter(row => row.status === 'graded');
     return { student, generatedAt: new Date().toISOString(), summary: {
         quizzesTaken: quizzes.length, scoredQuizzes: scored.length, averageQuiz: average(scored.map(row => row.percentage)),
         bestQuiz: scored.length ? Math.max(...scored.map(row => row.percentage)) : null,
+        worksheetAverage: average(gradedWorksheets.map(row => row.percentage).filter(validPercent)),
         assignmentAverage: average(graded.map(row => row.percentage).filter(validPercent)), gradedAssignments: graded.length,
         assignmentsSubmitted: assignments.length, firstQuiz: scored[0]?.percentage ?? null, latestQuiz: scored.at(-1)?.percentage ?? null,
         absentDays: absences.length, quizDays: quizzes.length + absences.length
-    }, quizzes, absences, assignments };
+    }, quizzes, absences, assignments, worksheets };
 }
 async function gradeReports(query = {}) {
     if (typeof query.grade !== 'string' || !validGrade(query.grade)) throw problem(400, 'Choose a grade to download its reports.');
@@ -117,9 +127,9 @@ async function gradeReports(query = {}) {
         : studentRecords({ ...student, _id: new mongoose.Types.ObjectId(student.key.slice(8)) }));
     const [quizzes, submissions] = await Promise.all([
         Result.find({ $or: filters }).select('student rollNum grade section sectionKey score total date elapsedMs timeLimitMs').sort({ date: 1, _id: 1 }).lean(),
-        Submission.find({ $or: filters }).select('student rollNum grade section sectionKey assignment status marks percentage submittedAt gradedAt assignmentDeletedAt').sort({ submittedAt: -1, _id: -1 }).lean()
+        Submission.find({ $or: filters }).select('student rollNum grade section sectionKey assignment status marks percentage submittedAt gradedAt assignmentDeletedAt manual').sort({ submittedAt: -1, _id: -1 }).lean()
     ]);
-    const tasks = await Assignment.find({ _id: { $in: [...new Set(submissions.map(row => String(row.assignment)))] } }).select('title maxMarks deletedAt').lean();
+    const tasks = await Assignment.find({ _id: { $in: [...new Set(submissions.map(row => String(row.assignment)))] } }).select('title maxMarks deletedAt manual').lean();
     const tasksById = new Map(tasks.map(row => [String(row._id), row]));
     const buckets = new Map(students.map(student => [student.key, { quizzes: [], assignments: [] }]));
     const byIdentity = new Map(students.map(student => [identity(student), student.key]));

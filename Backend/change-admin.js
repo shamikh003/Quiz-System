@@ -32,7 +32,7 @@ async function main() {
         const passwordHash = await bcrypt.hash(newPassword, 10);
 
         // Update the existing admin (there should only be one), or create one if none exists.
-        const existing = await Admin.findOne({});
+        const existing = await Admin.findOne({ role: { $ne: 'viewer' } });
 
         if (existing) {
             existing.username = newUsername;
@@ -40,7 +40,7 @@ async function main() {
             await existing.save();
             console.log(`✅ Admin credentials updated.`);
         } else {
-            await Admin.create({ username: newUsername, passwordHash });
+            await Admin.create({ username: newUsername, passwordHash, role: 'admin', displayName: 'Administrator' });
             console.log(`✅ New admin created.`);
         }
 

@@ -13,6 +13,22 @@ router.get('/settings', async (req, res) => {
     res.json(req.query.grade === undefined ? settings || { time: 10 } : { grade: Number(req.query.grade), time: quizTime(settings, req.query.grade) });
 });
 
+router.get('/quiz-access', async (req, res) => {
+    const settings = await Settings.findOne({ settings_id: 'main' }).select('quizAccessOpen').lean();
+    res.set('Cache-Control', 'no-store');
+    res.json({ open: settings?.quizAccessOpen === true });
+});
+
+router.post('/admin/quiz/access', requireAdmin, async (req, res) => {
+    if (typeof req.body.open !== 'boolean') return res.status(400).json({ error: 'Choose whether quiz access is open or closed.' });
+    const settings = await Settings.findOneAndUpdate(
+        { settings_id: 'main' },
+        { $set: { quizAccessOpen: req.body.open } },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+    res.json({ open: settings.quizAccessOpen === true });
+});
+
 router.post('/settings', requireAdmin, async (req, res) => {
     if (!validGrade(req.body.grade)) return res.status(400).json({ error: 'Choose the grade for this quiz time.' });
     let time;

@@ -1,13 +1,17 @@
 // v5: cache only static assets. Private API responses are never cached.
-const CACHE_NAME = 'quizboard-cache-v8.44';
-const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.2','/index.html','/admin/index.html','/admin/results.html','/admin/students.html',
+const CACHE_NAME = 'quizboard-cache-v9.0.0';
+const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.2','/index.html','/admin/index.html','/admin/results.html','/admin/students.html','/admin/attendance.html',
     '/clean-select.js?v=1.0','/clean-select.css?v=1.0',
     '/password-toggle.js?v=1.0','/password-toggle.css?v=1.0',
-    '/admin/teacher-routing.js?v=1.1','/admin/teacher-shell.js?v=1.4',
-    '/admin/admin.js?v=7.16','/admin/report-utils.js?v=7.7','/admin/results.js?v=7.9','/admin/students.js?v=5.9',
-    '/admin/student-report.js?v=1.7','/admin/student-report.css?v=1.7',
-    '/admin/bulk-import.js?v=1.4','/admin/bulk-import.css?v=1.1',
-    '/student/quiz.html','/student/quiz.js?v=8.5','/student/quiz-session.css?v=1.1','/student/student-login.css?v=1.0','/assets/dar-e-arqam.png','/style.css?v=8.10',
+    '/admin/teacher-routing.js?v=1.1','/admin/teacher-shell.js?v=1.5',
+    '/admin/admin.js?v=7.25','/admin/report-utils.js?v=7.8','/admin/results.js?v=7.13','/admin/students.js?v=6.2','/admin/attendance.js?v=1.0',
+    '/admin/student-report.js?v=1.11','/admin/student-report.css?v=1.7',
+    '/admin/bulk-import.js?v=1.5','/admin/bulk-import.css?v=1.1',
+    '/admin/assignments.css?v=4',
+    '/admin/attendance.css?v=3',
+    '/admin/dashboard.css?v=1',
+    '/student/quiz.html','/student/quiz.js?v=8.19','/student/quiz-session.css?v=1.5','/student/student-login.css?v=1.0','/student/student-dashboard.css?v=1','/assets/dar-e-arqam.png','/style.css?v=8.11',
+    '/reports/index.html','/reports/reports.js?v=1.9','/reports/reports.css?v=1.6',
     '/favicon.ico?v=1','/favicon.svg?v=1',
     '/manifest-admin.json','/manifest-quiz.json']
     .map(path => new URL(path.slice(1), self.registration.scope).href);
@@ -27,7 +31,7 @@ self.addEventListener('fetch', event => {
         if (cached || event.request.mode !== 'navigate') return cached;
         const route = url.pathname.slice(new URL(self.registration.scope).pathname.length).replace(/\/$/, '');
         const aliases = { dashboard: 'index.html', addquestions: 'index.html', editquestions: 'index.html',
-            managequestions: 'index.html', assignments: 'index.html', students: 'students.html', reports: 'results.html' };
+            managequestions: 'index.html', assignments: 'index.html', students: 'students.html', attendance: 'attendance.html', reports: 'results.html' };
         return Object.hasOwn(aliases, route) ? caches.match(new URL(`admin/${aliases[route]}`, self.registration.scope).href) : undefined;
     }));
 });

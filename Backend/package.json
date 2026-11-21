@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Quiz System backend - auth, secure quiz submission, admin question management, and assignment uploads",
   "main": "index.js",
   "scripts": {

@@ -1,0 +1,39 @@
+#dashboard-tab-content .stat-grid .stat-card {
+    display: flex;
+    flex-direction: column;
+}
+
+#dashboard-tab-content .stat-grid .stat-value {
+    margin-block-start: auto;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.report-viewer-head {
+    flex-wrap: wrap;
+}
+
+.report-viewer-head a[href="/reports/index.html"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 9px 16px;
+    border-radius: 8px;
+    background: var(--table-head);
+    color: #fff;
+    font: 700 14px/1.25 var(--font-ui);
+    text-align: center;
+    text-decoration: none;
+}
+
+.report-viewer-head a[href="/reports/index.html"]:hover { filter: brightness(1.15); }
+.report-viewer-head a[href="/reports/index.html"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+    .report-viewer-head a[href="/reports/index.html"] { width: 100%; }
+}

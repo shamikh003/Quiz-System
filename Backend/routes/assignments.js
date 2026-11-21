@@ -2,11 +2,12 @@ const express = require('express');
 const path = require('path');
 const stream = require('stream');
 const multer = require('multer');
-const { Assignment, Submission } = require('../models/models');
+const { Assignment, Submission, Student } = require('../models/models');
 const { requireAdmin, requireStudent } = require('../middleware/auth');
 const { uploadBuffer, deleteFile } = require('../cloudinary');
-const { sectionName, studentRecords } = require('../sections');
+const { sectionName, sectionKey, studentRecords } = require('../sections');
 
+const { isObjectIdOrHexString } = require('mongoose');
 const router = express.Router();
 const { VALID_GRADES, validGrade } = require('../grades');
 
@@ -28,6 +29,80 @@ const uploader = multer({
 }).single('file');
 
 // ================= ADMIN: manage assignments =================
+
+const sectionFilter = key => key === 'unassigned' ? { $in: [null, key] } : key;
+const rosterFilter = assignment => ({ grade: assignment.grade, sectionKey: sectionFilter(assignment.sectionKey) });
+
+router.post('/admin/assignments/manual', requireAdmin, async (req, res) => {
+    const { grade, section, maxMarks } = req.body;
+    const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    if (!title || title.length > 120 || !validGrade(grade) || typeof section !== 'string' || !section.trim() ||
+        section.length > 80 || !Number.isInteger(maxMarks) || maxMarks < 1 || maxMarks > 10000) {
+        return res.status(400).json({ error: 'Enter a title, grade, section and total marks (1–10000).' });
+    }
+    if (!await Student.exists({ grade: Number(grade), sectionKey: sectionFilter(sectionKey(section)) })) {
+        return res.status(400).json({ error: 'No students in this grade and section.' });
+    }
+    const assignment = await Assignment.create({ title, grade: Number(grade), section, maxMarks, manual: true });
+    res.status(201).json(assignment);
+});
+
+router.get('/admin/assignments/:id/manual-marks', requireAdmin, async (req, res) => {
+    const assignment = await Assignment.findOne({ _id: req.params.id, manual: true, deletedAt: null });
+    if (!assignment) return res.status(404).json({ error: 'Worksheet not found.' });
+    const [students, marks] = await Promise.all([
+        Student.find(rosterFilter(assignment)).select('name rollNum').sort({ name: 1, rollNum: 1 }).lean(),
+        Submission.find({ assignment: assignment._id }).select('student marks status').lean()
+    ]);
+    const byStudent = new Map(marks.map(row => [String(row.student), row]));
+    res.json(students.map(student => {
+        const record = byStudent.get(String(student._id));
+        return { ...student, marks: record?.marks ?? null, absent: record?.status === 'absent' };
+    }));
+});
+
+router.post('/admin/assignments/:id/manual-marks', requireAdmin, async (req, res) => {
+    const { entries } = req.body;
+    if (!Array.isArray(entries) || !entries.length || entries.length > 1000 ||
+        entries.some(row => !row || typeof row.studentId !== 'string' || !isObjectIdOrHexString(row.studentId) ||
+            (row.absent === true ? row.marks != null : typeof row.marks !== 'number' || !Number.isFinite(row.marks) || row.marks < 0)) ||
+        new Set(entries.map(row => row.studentId.toLowerCase())).size !== entries.length) {
+        return res.status(400).json({ error: 'Enter valid marks for each selected student.' });
+    }
+    const fail = (status, message) => Object.assign(new Error(message), { status });
+    try {
+        await Assignment.db.transaction(async session => {
+            // Take a write lock so a concurrent archive cannot race with grading.
+            const assignment = await Assignment.findOneAndUpdate(
+                { _id: req.params.id, manual: true, deletedAt: null },
+                { $currentDate: { manualMarksUpdatedAt: true } }, { session }
+            );
+            if (!assignment) throw fail(404, 'Worksheet not found.');
+            if (entries.some(row => row.marks > assignment.maxMarks)) throw fail(400, `Marks must be between 0 and ${assignment.maxMarks}.`);
+            const students = await Student.find({ ...rosterFilter(assignment),
+                _id: { $in: entries.map(row => row.studentId) } }).session(session).lean();
+            if (students.length !== entries.length) throw fail(409, 'The class roster changed. Reopen the worksheet and try again.');
+            const byId = new Map(students.map(student => [String(student._id), student]));
+            const gradedAt = new Date();
+            await Submission.bulkWrite(entries.map(({ studentId, marks, absent }) => {
+                const student = byId.get(studentId.toLowerCase());
+                return { updateOne: {
+                    filter: { assignment: assignment._id, student: student._id },
+                    update: { $set: absent === true
+                        ? { marks: null, percentage: null, status: 'absent', gradedAt: null }
+                        : { marks, percentage: Math.round(marks / assignment.maxMarks * 100), status: 'graded', gradedAt },
+                        $setOnInsert: { manual: true, name: student.name, rollNum: student.rollNum, grade: student.grade,
+                            section: sectionName(student.section), sectionKey: sectionKey(student.section), submittedAt: gradedAt } },
+                    upsert: true
+                } };
+            }), { session });
+        });
+        res.json({ message: 'Marks saved.' });
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ error: error.message });
+        throw error;
+    }
+});
 
 // Create a new assignment (title + grade + max marks + file)
 router.post('/admin/assignments', requireAdmin, (req, res) => {
@@ -95,7 +170,9 @@ router.get('/assignments/:id/download', requireStudent, async (req, res) => {
         const assignment = await Assignment.findById(req.params.id);
         if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
         if (req.student && assignment.grade !== req.student.grade) return res.status(403).json({ error: 'This assignment belongs to another grade.' });
-        if (assignment.deletedAt) return res.status(410).json({ error: 'This assignment is no longer available.' });
+        if (assignment.manual) return res.status(404).json({ error: 'This worksheet has no online file or submission.' });
+            if (assignment.deletedAt) return res.status(410).json({ error: 'This assignment is no longer available.' });
+        if (!assignment.fileUrl || !assignment.fileName) return res.status(404).json({ error: 'This assignment has no online file.' });
 
         const fileResponse = await fetch(assignment.fileUrl);
         if (!fileResponse.ok || !fileResponse.body) {
@@ -116,7 +193,7 @@ router.get('/assignments/:id/download', requireStudent, async (req, res) => {
 router.get('/assignments', requireStudent, async (req, res) => {
     const grade = req.student.grade;
     if (!VALID_GRADES.includes(grade)) return res.status(400).json({ error: 'A valid grade (4-7) is required.' });
-    const assignments = await Assignment.find({ grade, deletedAt: null }).sort({ createdAt: -1 });
+    const assignments = await Assignment.find({ grade, deletedAt: null, manual: { $ne: true } }).sort({ createdAt: -1 });
     res.json(assignments);
 });
 
@@ -140,7 +217,9 @@ router.post('/assignments/:id/submit', requireStudent, (req, res) => {
             const assignment = await Assignment.findById(req.params.id);
             if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
             if (req.student && assignment.grade !== req.student.grade) return res.status(403).json({ error: 'This assignment belongs to another grade.' });
+            if (assignment.manual) return res.status(404).json({ error: 'This worksheet has no online file or submission.' });
             if (assignment.deletedAt) return res.status(410).json({ error: 'This assignment is no longer available.' });
+            if (!assignment.fileUrl || !assignment.fileName) return res.status(404).json({ error: 'This assignment has no online file.' });
 
             const { name, rollNum, grade } = req.student;
             if (!name || !rollNum || !validGrade(grade)) {

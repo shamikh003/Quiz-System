@@ -1,7 +1,14 @@
 const BACKEND_URL = window.QUIZ_BACKEND_URL || 'https://quiz-system-hpy5.onrender.com';
 const $ = id => document.getElementById(id);
 const labels = {
- studentPanel:['My Student Panel','میرا اسٹوڈنٹ پینل'], section:['Section','سیکشن'],
+ pin:['PIN','پن'], createPin:['Create a 4-digit PIN','چار ہندسوں کا پن بنائیں'],
+ confirmPin:['Confirm PIN','پن دوبارہ درج کریں'],
+ panelHome:['Home','ہوم'], panelResults:['Results','نتائج'],
+ panelQuiz:['Computer Quiz','کمپیوٹر کوئز'], panelLatest:['Latest Quiz','تازہ ترین کوئز'],
+ panelViewResults:['View Results','نتائج دیکھیں'], panelWorksheets:['Worksheet Marks','ورک شیٹ کے نمبر'],
+ panelAssignmentMarks:['Assignment Marks','اسائنمنٹ کے نمبر'], panelNoMarks:['No marks yet.','ابھی نمبر موجود نہیں۔'],
+ panelAbsent:['Absent','غیر حاضر'],
+ welcome:['Welcome','خوش آمدید'], section:['Section','سیکشن'],
  lookupBusy:['Finding your profile…','آپ کی پروفائل تلاش ہو رہی ہے…'], lookupMissing:['Roll number not found.','رول نمبر موجود نہیں۔'],
  lookupDuplicate:['This roll number belongs to multiple accounts. Please contact your teacher.','یہ رول نمبر ایک سے زیادہ اکاؤنٹس میں ہے۔ اپنے استاد سے رابطہ کریں۔'], lookupError:['Could not find your profile. Please try again.','پروفائل نہیں مل سکی۔ دوبارہ کوشش کریں۔'],
  signingIn:['Signing you in…','لاگ اِن ہو رہا ہے…'], loadingScores:['Loading scores…','نتائج لوڈ ہو رہے ہیں…'],
@@ -29,8 +36,11 @@ const labels = {
  saveError:['Save failed. Please retry.','محفوظ نہیں ہوا۔ دوبارہ کوشش کریں۔'], retrySave:['Retry saving answers','جوابات دوبارہ محفوظ کریں'],
  unsavedEnded:['The quiz ended before all pending answers reached the server. Only confirmed answers were marked.','کچھ جوابات سرور تک پہنچنے سے پہلے وقت ختم ہو گیا۔ صرف محفوظ جوابات کے نمبر ملے ہیں۔'],
  network:['Could not connect. Please try again.','رابطہ نہیں ہو سکا۔ دوبارہ کوشش کریں۔'], todayDone:['Today’s quiz is complete','آج کا کوئز مکمل ہو گیا'],
+ quizClosed:['Quiz access is closed. Please wait for your teacher to open it.','کوئز بند ہے۔ استاد کے کھولنے کا انتظار کریں۔'], quizClosedButton:['Quiz Closed','کوئز بند ہے'],
  question:['Question','سوال'], answered:['answered','جوابات دیے'], remaining:['remaining','باقی'], skipped:['Skipped question moved to the end.','چھوڑا گیا سوال آخر میں دوبارہ آئے گا۔'],
- confirm:['Submit now? Unanswered questions count as zero.','ابھی جمع کریں؟ جن سوالات کے جواب نہیں دیے ان کے نمبر صفر ہوں گے۔'],
+ submitTitle:['Submit Quiz?','کوئز جمع کریں؟'], keepReviewing:['Keep Reviewing','مزید جائزہ لیں'],
+ unansweredWarning:['Unanswered questions count as zero.','جن سوالات کے جواب نہیں دیے ان کے نمبر صفر ہوں گے۔'],
+ totalQuestions:['Total','کل'],
  file:['Choose a Word, Excel or PowerPoint file (maximum 15 MB).','ورڈ، ایکسل یا پاورپوائنٹ فائل منتخب کریں (زیادہ سے زیادہ 15 MB)۔'],
  flags:['Leaving the quiz tab or full-screen is recorded. Click here to return to full-screen.','ٹیب یا فل اسکرین چھوڑنا ریکارڈ ہوتا ہے۔ فل اسکرین پر واپس جانے کے لیے یہاں کلک کریں۔'],
  submitError:['Submission not confirmed. Keep this page open and retry.','جمع ہونے کی تصدیق نہیں ہوئی۔ صفحہ کھلا رکھیں اور دوبارہ کوشش کریں۔'],
@@ -43,6 +53,7 @@ let token = sessionStorage.getItem('studentToken');
 let reportLoading = false;
 let detectedStudent = null, lookupState = '', lookupController, lookupTimer, lookupId = 0;
 let report, lastResult, page = 1, attempt, queue = [], selected = null, answers = new Map();
+let checkpointPending = false, quizPaused = false, lastCheckpoint = 0, nextCheckpoint = 0;
 let timer, clockOffset = 0, timerDurationMs = 1, active = false, submitting = false, savePromise = null, conflict = false;
 let tabSwitchCount = 0, fullscreenExitCount = 0;
 let confirmedAnswers = new Map(), inFlightAnswers = null, saveFailed = false;
@@ -82,18 +93,25 @@ async function api(path, options = {}) {
  const data = await response.json();
  if (!response.ok) {
   if (response.status === 401) { token = null; sessionStorage.removeItem('studentToken'); active = false; clearInterval(timer); screen('login-container'); }
-  const error = new Error(data.error || t('network')); error.status = response.status; error.result = data.result; throw error;
+  const error = new Error(data.error || t('network')); error.status = response.status; error.code = data.code; error.result = data.result; throw error;
  }
  return data;
 }
 const post = (path, body = {}, options = {}) => api(path, { ...options, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
 const saveTimeout = () => typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(15000) } : {};
+let studentLoginPending = false;
+let needsPinSetup = false;
 function renderDetectedStudent() {
  const found = Boolean(detectedStudent);
  $('student-profile-empty').classList.toggle('hidden', found);
  $('student-profile-found').classList.toggle('hidden', !found);
  $('student-profile-preview').classList.toggle('is-empty', !found);
- $('login-btn').disabled = !found || lookupState === 'lookupBusy';
+ $('login-btn').disabled = studentLoginPending || !$('student-roll').value.trim();
+ const pinLabel = $('student-pin-label');
+ pinLabel.dataset.i18n = needsPinSetup ? 'createPin' : 'pin';
+ pinLabel.textContent = t(pinLabel.dataset.i18n);
+ $('student-pin').autocomplete = needsPinSetup ? 'new-password' : 'current-password';
+ $('student-pin-setup').hidden = !needsPinSetup;
  $('detected-student-name').textContent = detectedStudent?.name || '';
  $('detected-student-roll').textContent = detectedStudent ? `${t('roll')} ${detectedStudent.rollNum}` : '';
  $('detected-student-father').textContent = detectedStudent?.fatherName || '—';
@@ -111,24 +129,35 @@ async function findStudent() {
   if (!response.ok) throw new Error('Lookup failed');
   const data = await response.json(); if(current !== lookupId) return;
   detectedStudent = data.found && !data.ambiguous ? data.student : null;
+  needsPinSetup = Boolean(detectedStudent && data.needsPinSetup);
   lookupState = !data.found ? 'lookupMissing' : data.ambiguous ? 'lookupDuplicate' : '';
  } catch(error) { if(error.name === 'AbortError' || current !== lookupId) return; lookupState = 'lookupError'; }
  renderDetectedStudent();
 }
 $('student-roll').addEventListener('input', () => {
+ needsPinSetup = false;
+ $('student-pin').value = ''; $('student-pin-confirm').value = '';
  ++lookupId; lookupController?.abort(); clearTimeout(lookupTimer); detectedStudent = null; lookupState = ''; renderDetectedStudent();
  lookupTimer = setTimeout(findStudent, 350);
 });
-$('student-roll').addEventListener('blur', () => { clearTimeout(lookupTimer); findStudent(); });
 $('login-form').onsubmit = async event => {
- event.preventDefault(); $('login-btn').disabled = true; notify('');
+ event.preventDefault();
+ const rollNum = $('student-roll').value.trim();
+ if (!rollNum || studentLoginPending) return;
+ studentLoginPending = true;
+ ++lookupId; clearTimeout(lookupTimer); lookupController?.abort();
+ lookupState = ''; renderDetectedStudent(); notify('');
  const stopLoading = globalThis.QuizLoader?.show($('student-login-loader'), t('signingIn')) || (() => {});
  try {
-  if (!detectedStudent) throw new Error(t('lookupMissing'));
-  const data = await post('/student/login', { rollNum:$('student-roll').value.trim() });
+  const data = await post('/student/login', { rollNum, pin: $('student-pin').value,
+   ...(needsPinSetup ? { pinConfirmation: $('student-pin-confirm').value } : {}) }, saveTimeout());
+  $('student-pin').value = ''; $('student-pin-confirm').value = ''; needsPinSetup = false;
   ++lookupId; clearTimeout(lookupTimer); lookupController?.abort(); detectedStudent = data.student; lookupState = ''; renderDetectedStudent();
-  token = data.token; sessionStorage.setItem('studentToken', token); page = 1; await loadReport();
- } catch (error) { notify(error.message); } finally { stopLoading(); renderDetectedStudent(); }
+  token = data.token; sessionStorage.setItem('studentToken', token); page = 1; showStudentView('home'); await loadReport();
+ } catch (error) {
+  if (error.code === 'PIN_SETUP') needsPinSetup = true;
+  notify(error.message);
+ } finally { studentLoginPending = false; stopLoading(); renderDetectedStudent(); }
 };
 $('logout-btn').onclick = async () => {
  if (active) {
@@ -157,13 +186,44 @@ async function loadReport() {
   $('prev-page').disabled = !report || report.page <= 1; $('next-page').disabled = !report || report.page >= report.pages;
  }
 }
+function showStudentView(view) {
+ $('dashboard').dataset.view = view;
+ for (const button of document.querySelectorAll('[data-student-view]')) {
+  button.setAttribute('aria-pressed', String(button.dataset.studentView === view));
+ }
+}
+for (const button of document.querySelectorAll('[data-student-view]')) {
+ button.addEventListener('click', () => showStudentView(button.dataset.studentView));
+}
+$('view-student-results').onclick = () => {
+ showStudentView('results');
+ document.querySelector('[data-student-view="results"]').focus();
+};
+
 function renderReport() {
- $('quiz-header-student').textContent = `${report.student.name} · ${t('roll')} ${report.student.rollNum || '—'}`;
+ const fullName = report.student.name.trim();
+ $('student-welcome').textContent = fullName ? `${t('welcome')}${language === 'ur' ? '،' : ','} ${fullName}` : t('welcome');
+ $('quiz-header-student').replaceChildren(
+  element('strong', report.student.name),
+  element('small', `${t('roll')} ${report.student.rollNum || '—'}`)
+ );
  $('quiz-header-student').classList.remove('hidden');
  $('student-heading').textContent = report.student.name;
  $('student-father-name').textContent = `${t('fatherName')}: ${report.student.fatherName || '—'}`;
  $('student-meta').textContent = `${t('roll')} ${report.student.rollNum || '—'} · ${gradeLabel(report.student.grade)} · ${report.student.section || 'Unassigned'}`;
- const done = report.today?.status === 'submitted'; $('start-btn').disabled = done; $('start-btn').textContent = t(done ? 'todayDone' : 'start');
+ const done = report.today?.status === 'submitted';
+ const canResume = report.today?.status === 'active';
+ const closed = !report.quizAccessOpen && !canResume;
+ $('start-btn').disabled = done || closed;
+ $('start-btn').textContent = t(done ? 'todayDone' : (closed ? 'quizClosedButton' : 'start'));
+ $('quiz-access-status').textContent = closed ? t('quizClosed') : '';
+ if (report.page === 1) {
+  const latest = report.results[0];
+  $('latest-quiz-percent').textContent = latest ? ReportUtils.percent(latest.percentage) : '';
+  $('latest-quiz-details').textContent = latest
+   ? `${latest.score} / ${latest.total} · ${new Date(latest.date).toLocaleDateString(language === 'ur' ? 'ur-PK' : 'en-GB', { timeZone: 'Asia/Karachi' })}`
+   : t('emptyScores');
+ }
  $('scores-body').replaceChildren(); $('student-score-cards').replaceChildren();
  $('student-score-cards').setAttribute('aria-label',t('scores'));
  if (!report.results.length) { const cell = element('td',t('emptyScores')); cell.colSpan = 4; const row = element('tr'); row.append(cell); $('scores-body').append(row); $('student-score-cards').append(element('p',t('emptyScores'),'shell-empty')); }
@@ -187,14 +247,26 @@ function renderReport() {
   card.append(header,metrics); $('student-score-cards').append(card);
  }
  $('page-label').textContent = `${report.page} / ${report.pages}`; $('prev-page').disabled = report.page <= 1; $('next-page').disabled = report.page >= report.pages;
- $('assignments-list').replaceChildren(); if (!report.assignments.length) $('assignments-list').append(element('p',t('emptyAssignments')));
+ const assignmentList = $('assignments-list'), worksheets = $('student-worksheet-marks'), assignmentMarks = $('student-assignment-marks');
+ assignmentList.replaceChildren(); worksheets.replaceChildren(); assignmentMarks.replaceChildren();
  for (const assignment of report.assignments) {
-  const card = element('article',undefined,'assignment-report-card'); card.append(element('h3',assignment.title),element('p',assignment.fileName));
   const submission = assignment.submission;
-  card.append(element('p',submission?.status === 'graded' ? `${t('graded')}: ${submission.marks} / ${assignment.maxMarks} (${submission.percentage}%)` : t(submission ? 'submitted' : 'pending'),'assignment-status'));
+  const status = submission?.status === 'absent' ? t('panelAbsent') : submission?.status === 'graded'
+   ? `${submission.marks} / ${assignment.maxMarks} (${submission.percentage}%)` : t(submission ? 'submitted' : 'pending');
+  if (['graded', 'absent'].includes(submission?.status)) {
+   const row = element('div', undefined, 'student-mark-row');
+   row.append(element('span', assignment.title), element('span', status));
+   (assignment.manual ? worksheets : assignmentMarks).append(row);
+  }
+  if (assignment.manual || !assignment.fileName || (assignment.hasFile === false && !assignment.deletedAt)) continue;
+  const disclosure = element('details', undefined, 'student-assignment-item');
+  const summary = element('summary');
+  summary.append(element('span', assignment.title), element('small', status));
+  const card = element('div', undefined, 'assignment-report-card');
+  if (assignment.fileName) card.append(element('p', assignment.fileName));
+  disclosure.append(summary, card); assignmentList.append(disclosure);
   if (assignment.deletedAt || assignment.historical) {
    card.append(element('p',t('archived'),'assignment-status'));
-   $('assignments-list').append(card);
    continue;
   }
   const download = element('button',t('download'),'btn-secondary'); download.type = 'button';
@@ -220,8 +292,9 @@ function renderReport() {
    };
    card.append(label,input,upload);
   }
-  $('assignments-list').append(card);
  }
+ if (!assignmentList.children.length) assignmentList.append(element('p', t('emptyAssignments')));
+ for (const list of [worksheets, assignmentMarks]) if (!list.children.length) list.append(element('p', t('panelNoMarks')));
 }
 $('refresh-btn').onclick = loadReport;
 $('prev-page').onclick = () => { page--; loadReport(); };
@@ -231,8 +304,11 @@ $('start-btn').onclick = async () => {
  $('start-btn').disabled = true; notify('');
  const stopLoading = globalThis.QuizLoader?.show($('quiz-start-loader'), t('loadingQuiz')) || (() => {});
  try {
-  attempt = await post('/quiz/start'); clockOffset = new Date(attempt.serverNow).getTime() - Date.now();
-  timerDurationMs = countdownDuration(attempt);
+  attempt = await post('/quiz/start', {}, saveTimeout());
+  await preloadQuizImages(attempt.questions);
+  lastCheckpoint = nextCheckpoint = 0;
+  setQuizPaused(attempt.timeBudgetMs != null); clockOffset = new Date(attempt.serverNow).getTime() - Date.now();
+  timerDurationMs = attempt.timeBudgetMs ?? countdownDuration(attempt);
   answers = new Map(attempt.answers.map(a => [a.questionId,a.selected])); confirmedAnswers = new Map(answers);
   inFlightAnswers = null; saveFailed = false; restoreDraft();
   queue = attempt.questions.map(q => q._id).filter(id => !answers.has(id));
@@ -244,19 +320,26 @@ $('start-btn').onclick = async () => {
   renderQuestion(); updateSaveStatus(); clearInterval(timer); timer = setInterval(tick,1000); tick();
   if (pendingCount()) drainSaves().catch(error => notify(error.message));
  } catch (error) { if (error.result) displayResult(error.result); else notify(error.message); }
- finally { stopLoading(); if (report && !active) $('start-btn').disabled = report.today?.status === 'submitted'; }
+ finally {
+  stopLoading();
+  if (report && !active) {
+   const done = report.today?.status === 'submitted';
+   const closed = !report.quizAccessOpen && report.today?.status !== 'active';
+   $('start-btn').disabled = done || closed;
+  }
+ }
 };
 function rememberQueue() { try { sessionStorage.setItem(`queue-${attempt.attemptId}`,JSON.stringify(queue)); } catch { /* The current queue remains available in memory. */ } }
 function currentQuestion() {
  return attempt?.questions.find(q => q._id === (reviewQuestionId || queue[0])) || attempt?.questions.at(-1);
 }
 function rememberNavigation() {
- try { sessionStorage.setItem(`navigation-${attempt.attemptId}`, JSON.stringify({ current: currentQuestion()?._id, skipped: [...skippedQuestions] })); } catch { /* Navigation remains available in memory. */ }
+ try { localStorage.setItem(`navigation-${attempt.attemptId}`, JSON.stringify({ current: currentQuestion()?._id, skipped: [...skippedQuestions] })); } catch { /* Navigation remains available in memory. */ }
 }
 function restoreNavigation() {
  reviewQuestionId = null; skippedQuestions = new Set();
  try {
-  const saved = JSON.parse(sessionStorage.getItem(`navigation-${attempt.attemptId}`));
+  const saved = JSON.parse(localStorage.getItem(`navigation-${attempt.attemptId}`));
   if (!saved) return;
   const valid = id => attempt.questions.some(q => q._id === id);
   if (Array.isArray(saved.skipped)) skippedQuestions = new Set(saved.skipped.filter(id => valid(id) && !answers.has(id)));
@@ -270,23 +353,23 @@ const answerList = map => [...map].map(([questionId, selected]) => ({ questionId
 const sameAnswers = (a, b) => a.size === b.size && [...a].every(([id, value]) => b.get(id) === value);
 const pendingCount = () => [...answers].filter(([id, value]) => confirmedAnswers.get(id) !== value).length;
 function rememberDraft() {
- try { sessionStorage.setItem(`draft-${attempt.attemptId}`, JSON.stringify({ revision: attempt.revision,
+ try { localStorage.setItem(`draft-${attempt.attemptId}`, JSON.stringify({ revision: attempt.revision,
   confirmed: answerList(confirmedAnswers), answers: answerList(answers), inFlight: inFlightAnswers && answerList(inFlightAnswers) })); } catch { /* The in-memory save queue still works when storage is unavailable. */ }
 }
 function restoreDraft() {
  try {
-  const draft = JSON.parse(sessionStorage.getItem(`draft-${attempt.attemptId}`)); if (!draft) return;
+  const draft = JSON.parse(localStorage.getItem(`draft-${attempt.attemptId}`)); if (!draft) return;
   const valid = rows => Array.isArray(rows) && rows.every(a => attempt.questions.some(q => q._id === a.questionId && q.options.some(o => o.id === a.selected))) && new Set(rows.map(a => a.questionId)).size === rows.length;
   if (!valid(draft.answers) || !valid(draft.confirmed)) return;
   const baselineMatches = draft.revision === attempt.revision && sameAnswers(new Map(draft.confirmed.map(a => [a.questionId, a.selected])), confirmedAnswers);
   const lostAcknowledgement = draft.revision + 1 === attempt.revision && valid(draft.inFlight) && sameAnswers(new Map(draft.inFlight.map(a => [a.questionId, a.selected])), confirmedAnswers);
   if (baselineMatches || lostAcknowledgement) answers = new Map(draft.answers.map(a => [a.questionId, a.selected]));
-  else sessionStorage.removeItem(`draft-${attempt.attemptId}`); // Another tab changed the server copy; it remains authoritative.
+  else localStorage.removeItem(`draft-${attempt.attemptId}`); // Another tab changed the server copy; it remains authoritative.
  } catch { /* Ignore malformed local drafts. */ }
 }
 function updateSaveStatus() {
  const pending = pendingCount();
- $('save-status').textContent = conflict ? t('reload') : saveFailed && pending ? t('saveError') : '';
+ $('save-status').textContent = conflict ? t('reload') : pending && (saveFailed || quizPaused || !navigator.onLine) ? (language === 'ur' ? 'جوابات اس براؤزر میں محفوظ ہیں۔ رابطہ بحال ہونے پر بھیجے جائیں گے۔' : 'Answers pending on this device. They’ll sync when the connection returns.') : '';
  $('save-status').classList.toggle('hidden', !$('save-status').textContent);
  $('retry-save-btn').classList.toggle('hidden', !saveFailed || !pending || conflict);
  $('retry-save-btn').disabled = submitting || !!savePromise;
@@ -301,6 +384,7 @@ function questionContent(question) {
   { text: question.text || question.questionText, options: question.options, lang: 'en' };
 }
 function renderQuestion() {
+ $('quiz-count-summary').textContent = quizCountText(answers.size);
  const question = currentQuestion();
  if (!question) {
   $('question-title').textContent = ''; $('translation-notice').classList.add('hidden');
@@ -325,20 +409,20 @@ function renderQuestion() {
  renderQuestionImage(question);
  const choice = selected || answers.get(question._id);
  content.options.forEach(option => {
-  const button = element('button',undefined,'option-btn'); button.type = 'button'; button.classList.toggle('selected',choice === option.id); button.setAttribute('aria-pressed',String(choice === option.id)); button.disabled = conflict || submitting || saveFailed;
+  const button = element('button',undefined,'option-btn'); button.type = 'button'; button.classList.toggle('selected',choice === option.id); button.setAttribute('aria-pressed',String(choice === option.id)); button.disabled = conflict || submitting;
   const letter = element('span', option.id, 'quiz-option-letter'), copy = element('span', option.text, 'quiz-option-copy'), check = element('span', '✓', 'quiz-option-check');
   check.setAttribute('aria-hidden','true'); button.append(letter, copy, check);
   button.setAttribute('lang',content.lang); button.setAttribute('dir',content.lang === 'ur' ? 'rtl' : 'ltr');
   button.onclick = () => {
-   if (!active || conflict || submitting || saveFailed) return;
+   if (!active || conflict || submitting) return;
    selected = option.id; answers.set(question._id, option.id); skippedQuestions.delete(question._id);
    rememberDraft(); rememberNavigation(); renderQuestion(); updateSaveStatus();
    drainSaves().catch(error => notify(error.message));
   }; $('options-container').append(button);
  });
- $('next-btn').disabled = !choice || conflict || submitting || saveFailed; $('skip-btn').disabled = conflict || submitting || saveFailed; $('finish-btn').disabled = conflict || submitting;
+ $('next-btn').disabled = !choice || conflict || submitting; $('skip-btn').disabled = conflict || submitting; $('finish-btn').disabled = conflict || submitting;
  $('next-btn').textContent = t(answers.size === attempt.questions.length && !queue.some(id => id !== question._id && !answers.has(id)) ? 'reviewAnswers' : 'saveNext');
- $('previous-question-btn').disabled = conflict || submitting || saveFailed || attempt.questions.indexOf(question) <= 0;
+ $('previous-question-btn').disabled = conflict || submitting || attempt.questions.indexOf(question) <= 0;
  renderNavigator(question);
  if (pendingCount() || conflict) updateSaveStatus();
 }
@@ -350,7 +434,7 @@ function renderNavigator(question) {
   button.classList.toggle('answered', answered); button.classList.toggle('skipped', skipped); button.classList.toggle('current', current);
   button.setAttribute('aria-label', `${t('question')} ${index + 1}, ${t(current ? 'legendCurrent' : answered ? 'legendAnswered' : skipped ? 'legendSkipped' : 'legendUnanswered')}`);
   if (current) button.setAttribute('aria-current','step');
-  button.disabled = conflict || submitting || saveFailed; button.onclick = () => navigateQuestion(q._id);
+  button.disabled = conflict || submitting; button.onclick = () => navigateQuestion(q._id);
   $('quiz-question-grid').append(button);
  });
 }
@@ -373,7 +457,7 @@ $('view-question-image').onclick = () => {
 $('close-question-image').onclick = () => $('question-image-dialog').close?.();
 $('question-image-dialog').onclose = () => $('question-image-full').removeAttribute('src');
 function navigateQuestion(id) {
- if (!active || conflict || submitting || saveFailed || !attempt.questions.some(q => q._id === id)) return;
+ if (!active || conflict || submitting || !attempt.questions.some(q => q._id === id)) return;
  if (id === currentQuestion()?._id) return;
  persistSelection({ advance: false });
  if (!active) return;
@@ -383,7 +467,7 @@ function navigateQuestion(id) {
 }
 $('previous-question-btn').onclick = () => { const index = attempt.questions.indexOf(currentQuestion()); if (index > 0) navigateQuestion(attempt.questions[index - 1]._id); };
 $('skip-btn').onclick = () => {
- if (!active || conflict || submitting || saveFailed) return;
+ if (!active || conflict || submitting) return;
  const question = currentQuestion(); if (!question) return;
  if (selected || answers.has(question._id)) persistSelection();
  else {
@@ -400,15 +484,15 @@ function persistSelection({ advance = true } = {}) {
  queue = queue.filter(id => id !== question._id); selected = null;
  reviewQuestionId = advance ? null : question._id;
  rememberDraft(); rememberQueue(); rememberNavigation(); renderQuestion(); updateSaveStatus();
- drainSaves().catch(error => notify(error.message));
+ if (navigator.onLine && !quizPaused && !saveFailed) drainSaves().catch(() => {});
 }
 function drainSaves() {
  if (savePromise) return savePromise;
- if (!active || !pendingCount() || conflict) return Promise.resolve();
+ if (!active || !pendingCount() || conflict || !navigator.onLine) return Promise.resolve();
  const operation = (async () => {
   while (active && pendingCount() && !conflict) {
    const snapshot = new Map(answers), revision = attempt.revision;
-   inFlightAnswers = snapshot; saveFailed = false; rememberDraft(); updateSaveStatus();
+   inFlightAnswers = snapshot; rememberDraft(); updateSaveStatus();
    try {
     let data;
     try { data = await post('/quiz/save', { attemptId: attempt.attemptId, revision, answers: answerList(snapshot), tabSwitchCount, fullscreenExitCount }, saveTimeout()); }
@@ -423,14 +507,23 @@ function drainSaves() {
      else if (resumed.revision !== revision || !sameAnswers(serverAnswers, confirmedAnswers)) throw Object.assign(new Error(t('reload')), { status: 409 });
      else throw error;
     }
-    attempt.revision = data.revision; confirmedAnswers = snapshot; inFlightAnswers = null; rememberDraft();
+    attempt.revision = data.revision; confirmedAnswers = snapshot; inFlightAnswers = null;
+    if (saveFailed) notify('');
+    saveFailed = false;
+    rememberDraft();
    } catch (error) {
     if (error.result) {
      const unmarkedPending = [...answers].some(([id, value]) => confirmedAnswers.get(id) !== value &&
       error.result.details?.[attempt.questions.findIndex(q => q._id === id)]?.selected !== value);
      displayResult(error.result); if (unmarkedPending) notify(t('unsavedEnded')); return;
     }
-    if (error.status === 409) conflict = true; else saveFailed = true;
+    if (error.status === 409) {
+     conflict = true;
+     saveFailed = false;
+    } else {
+     saveFailed = true;
+     if (attempt.timeBudgetMs != null) setQuizPaused(true);
+    }
     updateSaveStatus(); throw error;
    }
   }
@@ -446,7 +539,7 @@ $('next-btn').onclick = async () => {
  else $('question-title').focus();
 };
 $('retry-save-btn').onclick = async () => {
- try { if (new Date(attempt.expiresAt).getTime() <= Date.now() + clockOffset) await submit(); else { await drainSaves(); notify(''); } }
+ try { if (remainingTime() <= 0) await submit(); else { await drainSaves(); notify(''); } }
  catch (error) { notify(error.message); }
 };
 window.addEventListener('online', () => { if (active && pendingCount() && !conflict && !submitting) drainSaves().catch(error => notify(error.message)); });
@@ -464,16 +557,97 @@ function countdownDuration(value) {
  try { sessionStorage.setItem(key,JSON.stringify({expiresAt:value.expiresAt,duration})); } catch { /* Storage is optional. */ }
  return duration;
 }
+const preloadedImages = new Map();
+async function preloadQuizImages(questions) {
+ preloadedImages.clear();
+ await Promise.all([...new Set(questions.map(question => question.imageUrl).filter(Boolean))].map(url => new Promise((resolve, reject) => {
+  const image = new Image();
+  const timeout = setTimeout(() => reject(new Error('Question images could not load. Please retry before starting.')), 15000);
+  image.onload = () => { clearTimeout(timeout); preloadedImages.set(url, image); resolve(); };
+  image.onerror = () => { clearTimeout(timeout); reject(new Error('A question image could not load. Please retry or ask your teacher.')); };
+  image.src = url;
+ })));
+}
+function setQuizPaused(paused) {
+ if (quizPaused === paused && $('quiz-pause-notice').hidden === !paused) return;
+ quizPaused = paused;
+ $('quiz-pause-notice').textContent = language === 'ur' ? 'ٹائمر رکا ہوا ہے۔ آپ جواب دینا جاری رکھ سکتے ہیں۔' : 'Timer paused. You can keep answering while we reconnect.';
+ $('quiz-pause-notice').hidden = !paused;
+ updateSaveStatus();
+
+}
+function remainingTime() {
+ if (attempt.timeBudgetMs == null) return Math.max(0, new Date(attempt.expiresAt).getTime() - Date.now() - clockOffset);
+ return Math.max(0, attempt.remainingMs - (quizPaused ? 0 : performance.now() - lastCheckpoint));
+}
+async function checkpoint() {
+ if (!active || checkpointPending || submitting || attempt.timeBudgetMs == null || !navigator.onLine) return;
+ checkpointPending = true;
+ nextCheckpoint = performance.now() + 2000;
+ try {
+  const data = await post('/quiz/heartbeat', {
+   attemptId: attempt.attemptId, paused: quizPaused
+  }, { signal: AbortSignal.timeout(4500) });
+  if (!active) return;
+  attempt.remainingMs = data.remainingMs;
+  if (data.remainingMs > 0 && pendingCount() && !conflict) {
+   if (saveFailed) await drainSaves().catch(() => {});
+   else drainSaves().catch(() => {});
+  }
+  if (active) {
+   lastCheckpoint = performance.now();
+   setQuizPaused(saveFailed && !conflict && data.remainingMs > 0);
+  }
+ } catch (error) {
+  if (active) setQuizPaused(true);
+  if (error.status === 409 || error.status === 410) {
+   active = false; clearInterval(timer); exitFullscreen(); loadReport();
+  }
+ } finally { checkpointPending = false; }
+}
+window.addEventListener('offline', () => { if (active && attempt.timeBudgetMs != null) setQuizPaused(true); });
+window.addEventListener('online', checkpoint);
 function tick() {
  if (!active) return;
- const remainingMs = Math.max(0,new Date(attempt.expiresAt).getTime() - Date.now() - clockOffset);
+ if (attempt.timeBudgetMs != null) {
+  if (performance.now() - lastCheckpoint > 4500) setQuizPaused(true);
+  if (performance.now() >= nextCheckpoint) checkpoint();
+ } else if (saveFailed && performance.now() >= nextCheckpoint) {
+  nextCheckpoint = performance.now() + 4000;
+  drainSaves().catch(() => {});
+ }
+ const remainingMs = remainingTime();
  const seconds = Math.ceil(remainingMs / 1000);
  $('time-left').textContent = `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`;
- $('timer-display').classList.toggle('time-warning',seconds <= 60); if (!seconds) { notify(t('timeUp')); submit(); }
+ $('timer-display').classList.toggle('time-warning',seconds <= 60); if (!seconds && !quizPaused && (attempt.timeBudgetMs == null || attempt.remainingMs === 0)) { notify(t('timeUp')); submit(); }
 }
-$('finish-btn').onclick = async () => { if (!confirm(t('confirm'))) return; persistSelection(); if (active) await submit(); };
+function quizCountText(answered) {
+ const total = attempt.questions.length;
+ return `${t('totalQuestions')}: ${total} · ${t('answered')}: ${answered} · ${t('remaining')}: ${total - answered}`;
+}
+const submitDialog = $('quiz-submit-dialog');
+$('finish-btn').onclick = () => {
+ if (!active || submitting || conflict || submitDialog.open) return;
+ const question = currentQuestion();
+ const answered = answers.size + (question && selected && !answers.has(question._id) ? 1 : 0);
+ $('quiz-submit-summary').textContent = quizCountText(answered);
+ $('quiz-submit-warning').hidden = answered === attempt.questions.length;
+ submitDialog.returnValue = '';
+ submitDialog.showModal();
+};
+submitDialog.addEventListener('close', async () => {
+ if (submitDialog.returnValue !== 'submit' || !active || submitting) return;
+ persistSelection();
+ await submit();
+});
 async function submit() {
- if (submitting || conflict) return; submitting = true; clearInterval(timer); renderQuestion(); updateSaveStatus();
+ if (submitting || conflict) return;
+ if (quizPaused || !navigator.onLine) {
+  notify(language === 'ur' ? 'کوئز جمع کرنے کے لیے رابطہ بحال ہونے کا انتظار کریں۔' : 'Reconnect to submit your quiz. Your answers are still on this device.');
+  return;
+ }
+ if (submitDialog.open) submitDialog.close('timer');
+ submitting = true; clearInterval(timer); renderQuestion(); updateSaveStatus();
  try {
   if (savePromise) await savePromise;
   if (active && pendingCount()) await drainSaves();
@@ -481,7 +655,7 @@ async function submit() {
   if (pendingCount()) throw new Error(t('saveError'));
  } catch (error) {
   submitting = false; updateSaveStatus();
-  if (active) { renderQuestion(); if (new Date(attempt.expiresAt).getTime() > Date.now() + clockOffset) timer = setInterval(tick,1000); }
+  if (active) { renderQuestion(); timer = setInterval(tick,1000); }
   notify(error.message); return;
  }
  active = false; exitFullscreen(); screen('result-container'); $('score-display').textContent = ''; $('retry-btn').classList.add('hidden'); $('back-btn').disabled = true;
@@ -493,7 +667,7 @@ async function submit() {
 }
 function displayResult(result) {
  lastResult = result;
- active = false; clearInterval(timer); exitFullscreen(); screen('result-container'); notify('');
+ active = false; setQuizPaused(false); clearInterval(timer); exitFullscreen(); screen('result-container'); notify('');
  $('score-display').textContent = `${result.score} / ${result.total} (${result.total ? Math.round(result.score / result.total * 100) : 0}%)`;
  $('ranking-display').textContent = `${t('timeTaken')}: ${ReportUtils.duration(result.elapsedMs)}`;
  $('answer-review').replaceChildren();
@@ -506,8 +680,8 @@ function displayResult(result) {
  }
  $('retry-btn').classList.add('hidden'); $('back-btn').disabled = false;
  if (attempt) sessionStorage.removeItem(`queue-${attempt.attemptId}`);
- if (attempt) sessionStorage.removeItem(`draft-${attempt.attemptId}`);
- if (attempt) sessionStorage.removeItem(`navigation-${attempt.attemptId}`);
+ if (attempt) localStorage.removeItem(`draft-${attempt.attemptId}`);
+ if (attempt) localStorage.removeItem(`navigation-${attempt.attemptId}`);
 }
 $('retry-btn').onclick = () => submit();
 async function enterFullscreen() { try { await document.documentElement.requestFullscreen?.(); } catch { /* Unsupported browsers may continue. */ } }
