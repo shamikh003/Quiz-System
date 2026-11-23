@@ -1,5 +1,5 @@
 // v5: cache only static assets. Private API responses are never cached.
-const CACHE_NAME = 'quizboard-cache-v9.0.0';
+const CACHE_NAME = 'quizboard-cache-v9.0.2';
 const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.2','/index.html','/admin/index.html','/admin/results.html','/admin/students.html','/admin/attendance.html',
     '/clean-select.js?v=1.0','/clean-select.css?v=1.0',
     '/password-toggle.js?v=1.0','/password-toggle.css?v=1.0',
@@ -11,7 +11,7 @@ const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.2','/index.html','/admin/i
     '/admin/attendance.css?v=3',
     '/admin/dashboard.css?v=1',
     '/student/quiz.html','/student/quiz.js?v=8.19','/student/quiz-session.css?v=1.5','/student/student-login.css?v=1.0','/student/student-dashboard.css?v=1','/assets/dar-e-arqam.png','/style.css?v=8.11',
-    '/reports/index.html','/reports/reports.js?v=1.9','/reports/reports.css?v=1.6',
+    '/reports/index.html','/reports/reports.js?v=1.11','/reports/reports.css?v=1.7',
     '/favicon.ico?v=1','/favicon.svg?v=1',
     '/manifest-admin.json','/manifest-quiz.json']
     .map(path => new URL(path.slice(1), self.registration.scope).href);
