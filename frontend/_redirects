@@ -13,3 +13,5 @@
 /students/       /admin/students  200
 /reports         /admin/results   200
 /reports/        /admin/results   200
+/teacher-reports /admin/results.html 200!
+/teacher-reports/ /admin/results.html 200!

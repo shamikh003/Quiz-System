@@ -1,7 +1,7 @@
 // The same teacher screens have readable addresses on static hosts with rewrites.
 (() => {
     const slugs = { dashboard: 'dashboard', add: 'addquestions', edit: 'editquestions',
-        manage: 'managequestions', assignments: 'assignments', students: 'students', attendance: 'attendance', reports: 'reports' };
+        manage: 'managequestions', assignments: 'assignments', students: 'students', attendance: 'attendance', reports: 'teacher-reports' };
     const adminBase = new URL('./', document.baseURI);
     const appBase = new URL('../', adminBase);
     // VS Code Live Server cannot apply _redirects. Keep its working local links.
@@ -15,7 +15,7 @@
         const leaf = location.pathname.replace(/\/+$/, '').split('/').pop().replace(/\.html$/, '');
         if (leaf === 'editquestions') return 'manage';
         return Object.keys(slugs).find(key => slugs[key] === leaf)
-            || (leaf === 'results' ? 'reports' : 'dashboard');
+            || (['results', 'reports'].includes(leaf) ? 'reports' : 'dashboard');
     }
     function href(key) {
         if (key === 'edit') key = 'manage';

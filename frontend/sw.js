@@ -1,9 +1,9 @@
 // v5: cache only static assets. Private API responses are never cached.
-const CACHE_NAME = 'quizboard-cache-v9.0.2';
+const CACHE_NAME = 'quizboard-cache-v9.0.3';
 const APP_SHELL = ['/loader.js?v=1.1','/config.js?v=5.2','/index.html','/admin/index.html','/admin/results.html','/admin/students.html','/admin/attendance.html',
     '/clean-select.js?v=1.0','/clean-select.css?v=1.0',
     '/password-toggle.js?v=1.0','/password-toggle.css?v=1.0',
-    '/admin/teacher-routing.js?v=1.1','/admin/teacher-shell.js?v=1.5',
+    '/admin/teacher-routing.js?v=1.2','/admin/teacher-shell.js?v=1.5',
     '/admin/admin.js?v=7.25','/admin/report-utils.js?v=7.8','/admin/results.js?v=7.13','/admin/students.js?v=6.2','/admin/attendance.js?v=1.0',
     '/admin/student-report.js?v=1.11','/admin/student-report.css?v=1.7',
     '/admin/bulk-import.js?v=1.5','/admin/bulk-import.css?v=1.1',
