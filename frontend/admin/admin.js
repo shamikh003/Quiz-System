@@ -832,22 +832,28 @@ manualForm.addEventListener('submit', async event => {
 
 async function viewManualMarks(worksheet) {
     submissionsPanel.classList.remove('hidden');
-    submissionsTitle.textContent = `${worksheet.title} · ${worksheet.section} · Marks out of ${worksheet.maxMarks}`;
+    submissionsTitle.textContent = `${worksheet.title} · ${gradeLabel(worksheet.grade)}${worksheet.manual ? ' · ' + worksheet.section : ''} · Marks out of ${worksheet.maxMarks}`;
     submissionsList.textContent = 'Loading students…';
-    const path = `/admin/assignments/${worksheet._id}/manual-marks`;
+    const path = `/admin/assignments/${worksheet._id}/${worksheet.manual ? 'manual-marks' : 'marks'}`;
     try {
         const roster = await manualRequest(path);
         const form = document.createElement('form');
         form.className = 'worksheet-marks';
         form.innerHTML = roster.length ? `<div class="worksheet-marks-list">${roster.map(student => `<div class="worksheet-marks-row">
-            <div class="worksheet-student"><strong>${escapeHtml(student.name)}</strong><small>Roll ${escapeHtml(student.rollNum)}</small></div>
+            <div class="worksheet-student"><strong>${escapeHtml(student.name)}</strong><small>Roll ${escapeHtml(student.rollNum)}${worksheet.manual ? '' : ' · ' + escapeHtml(student.section || 'Unassigned')}</small>${!worksheet.manual ? `<small>${student.fileName ? escapeHtml(student.fileName) : 'Not submitted'}</small>${student.hasFile ? `<button type="button" class="btn-secondary btn-small" data-download="${student.submissionId}">Download File</button>` : ''}` : ''}</div>
             <div class="worksheet-score">
                 <input aria-label="Marks for ${escapeHtml(student.name)}" data-student="${student._id}" type="number" inputmode="decimal" min="0" max="${worksheet.maxMarks}" step="any" placeholder="—" value="${student.marks ?? ''}" ${student.absent ? 'disabled' : ''}>
                 <span>/ ${worksheet.maxMarks}</span>
             </div>
             <label class="worksheet-absent"><input type="checkbox" data-absent="${student._id}" ${student.absent ? 'checked' : ''} aria-label="Absent: ${escapeHtml(student.name)}"> Absent</label>
-        </div>`).join('')}</div><div class="worksheet-marks-actions"><p role="status"></p><button type="submit">Save Marks</button></div>` : '<p>No students in this worksheet.</p>';
+        </div>`).join('')}</div><div class="worksheet-marks-actions"><p role="status"></p><button type="submit">Save All Marks</button></div>` : '<p>No students in this worksheet.</p>';
         const status = form.querySelector('[role="status"]');
+        form.querySelectorAll('[data-download]').forEach(button => {
+            button.onclick = () => {
+                const student = roster.find(row => String(row.submissionId) === button.dataset.download);
+                downloadSubmission({ _id: student.submissionId, fileName: student.fileName });
+            };
+        });
         form.addEventListener('change', event => {
             const checkbox = event.target;
             if (checkbox.dataset.absent) form.querySelector(`[data-student="${checkbox.dataset.absent}"]`).disabled = checkbox.checked;
@@ -860,13 +866,14 @@ async function viewManualMarks(worksheet) {
                     ? { studentId: input.dataset.student, absent: true }
                     : { studentId: input.dataset.student, marks: Number(input.value) });
             if (!entries.length) { status.textContent = 'Enter marks or mark a student absent.'; return; }
-            const button = form.querySelector('button');
+            const button = form.querySelector('button[type="submit"]');
             button.disabled = true;
+            form.inert = true;
             try {
                 const data = await manualRequest(path, { entries });
                 status.textContent = data.message;
             } catch (error) { status.textContent = error.message; }
-            finally { button.disabled = false; }
+            finally { button.disabled = false; form.inert = false; }
         };
         submissionsList.replaceChildren(form);
         submissionsPanel.scrollIntoView({ block: 'nearest' });
@@ -974,49 +981,7 @@ async function deleteAssignment(id) {
 }
 
 async function viewSubmissions(assignment) {
-    submissionsPanel.classList.remove('hidden');
-    submissionsTitle.textContent = `Submissions — ${assignment.title}`;
-    const stopLoading = QuizLoader.show(submissionsList, 'Loading submissions…');
-
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/assignments/${assignment._id}/submissions`, {
-            headers: authHeaders()
-        });
-        if (response.status === 401) {
-            localStorage.removeItem('adminToken');
-            showLoggedOutView();
-            return;
-        }
-        const submissions = await response.json();
-
-        if (submissions.length === 0) {
-            submissionsList.innerHTML = '<p class="empty-state">No submissions yet.</p>';
-            return;
-        }
-
-        submissionsList.innerHTML = '';
-        submissions.forEach(s => {
-            const card = document.createElement('div');
-            card.className = 'question-card';
-            const statusBadge = s.status === 'graded'
-                ? `<span class="badge" style="background:var(--success-subtle); color:var(--success);">Graded — ${s.percentage}%</span>`
-                : `<span class="badge">Pending</span>`;
-            card.innerHTML = `
-                <p><strong>${escapeHtml(s.name)}</strong> (Roll: ${escapeHtml(s.rollNum)} · Section: ${escapeHtml(s.section || 'Unassigned')}) ${statusBadge}</p>
-                <p class="q-options">📎 ${escapeHtml(s.fileName)} • Submitted: ${new Date(s.submittedAt).toLocaleString('en-US')}</p>
-                <div class="q-actions">
-                    <button type="button" class="btn-secondary btn-small download-submission-btn">⬇ Download File</button>
-                    <input type="number" class="marks-input" placeholder="Marks / ${assignment.maxMarks}" min="0" max="${assignment.maxMarks}" value="${s.marks !== null && s.marks !== undefined ? s.marks : ''}" style="max-width:140px;">
-                    <button type="button" class="btn-small save-marks-btn">Save Marks</button>
-                </div>
-            `;
-            card.querySelector('.download-submission-btn').addEventListener('click', () => downloadSubmission(s));
-            card.querySelector('.save-marks-btn').addEventListener('click', () => saveMarks(s._id, card, assignment));
-            submissionsList.appendChild(card);
-        });
-    } catch (error) {
-        submissionsList.innerHTML = '<p class="empty-state">Could not load submissions.</p>';
-    } finally { stopLoading(); }
+    return viewManualMarks(assignment);
 }
 
 async function downloadSubmission(submission) {
@@ -1037,34 +1002,6 @@ async function downloadSubmission(submission) {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-    } catch (error) {
-        alert('Could not connect to server.');
-    }
-}
-
-async function saveMarks(submissionId, card, assignment) {
-    const input = card.querySelector('.marks-input');
-    const marks = Number(input.value);
-    if (input.value === '' || isNaN(marks) || marks < 0 || marks > assignment.maxMarks) {
-        alert(`Marks must be between 0 and ${assignment.maxMarks}.`);
-        return;
-    }
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/submissions/${submissionId}/marks`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ marks })
-        });
-        if (response.ok) {
-            alert('Marks saved!');
-            viewSubmissions(assignment);
-        } else if (response.status === 401) {
-            localStorage.removeItem('adminToken');
-            showLoggedOutView();
-        } else {
-            const data = await response.json();
-            alert(data.error || 'Could not save marks.');
-        }
     } catch (error) {
         alert('Could not connect to server.');
     }

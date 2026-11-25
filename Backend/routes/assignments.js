@@ -47,21 +47,21 @@ router.post('/admin/assignments/manual', requireAdmin, async (req, res) => {
     res.status(201).json(assignment);
 });
 
-router.get('/admin/assignments/:id/manual-marks', requireAdmin, async (req, res) => {
-    const assignment = await Assignment.findOne({ _id: req.params.id, manual: true, deletedAt: null });
-    if (!assignment) return res.status(404).json({ error: 'Worksheet not found.' });
+router.get(['/admin/assignments/:id/manual-marks', '/admin/assignments/:id/marks'], requireAdmin, async (req, res) => {
+    const assignment = await Assignment.findOne({ _id: req.params.id, ...(req.path.endsWith('/manual-marks') ? { manual: true } : {}), deletedAt: null });
+    if (!assignment) return res.status(404).json({ error: 'Assignment or worksheet not found.' });
     const [students, marks] = await Promise.all([
-        Student.find(rosterFilter(assignment)).select('name rollNum').sort({ name: 1, rollNum: 1 }).lean(),
-        Submission.find({ assignment: assignment._id }).select('student marks status').lean()
+        Student.find(assignment.manual ? rosterFilter(assignment) : { grade: assignment.grade }).select('name rollNum section').sort({ name: 1, rollNum: 1 }).lean(),
+        Submission.find({ assignment: assignment._id }).select('student rollNum section marks status fileName fileUrl submittedAt').lean()
     ]);
     const byStudent = new Map(marks.map(row => [String(row.student), row]));
     res.json(students.map(student => {
-        const record = byStudent.get(String(student._id));
-        return { ...student, marks: record?.marks ?? null, absent: record?.status === 'absent' };
+        const record = byStudent.get(String(student._id)) || marks.find(row => !row.student && row.rollNum === student.rollNum && sectionKey(row.section) === sectionKey(student.section));
+        return { ...student, marks: record?.marks ?? null, absent: record?.status === 'absent', submissionId: record?._id, fileName: record?.fileName || null, hasFile: Boolean(record?.fileUrl), submittedAt: record?.submittedAt || null };
     }));
 });
 
-router.post('/admin/assignments/:id/manual-marks', requireAdmin, async (req, res) => {
+router.post(['/admin/assignments/:id/manual-marks', '/admin/assignments/:id/marks'], requireAdmin, async (req, res) => {
     const { entries } = req.body;
     if (!Array.isArray(entries) || !entries.length || entries.length > 1000 ||
         entries.some(row => !row || typeof row.studentId !== 'string' || !isObjectIdOrHexString(row.studentId) ||
@@ -74,24 +74,27 @@ router.post('/admin/assignments/:id/manual-marks', requireAdmin, async (req, res
         await Assignment.db.transaction(async session => {
             // Take a write lock so a concurrent archive cannot race with grading.
             const assignment = await Assignment.findOneAndUpdate(
-                { _id: req.params.id, manual: true, deletedAt: null },
+                { _id: req.params.id, ...(req.path.endsWith('/manual-marks') ? { manual: true } : {}), deletedAt: null },
                 { $currentDate: { manualMarksUpdatedAt: true } }, { session }
             );
-            if (!assignment) throw fail(404, 'Worksheet not found.');
+            if (!assignment) throw fail(404, 'Assignment or worksheet not found.');
             if (entries.some(row => row.marks > assignment.maxMarks)) throw fail(400, `Marks must be between 0 and ${assignment.maxMarks}.`);
-            const students = await Student.find({ ...rosterFilter(assignment),
+            const students = await Student.find({ ...(assignment.manual ? rosterFilter(assignment) : { grade: assignment.grade }),
                 _id: { $in: entries.map(row => row.studentId) } }).session(session).lean();
-            if (students.length !== entries.length) throw fail(409, 'The class roster changed. Reopen the worksheet and try again.');
+            if (students.length !== entries.length) throw fail(409, 'The class roster changed. Reopen the marks list and try again.');
             const byId = new Map(students.map(student => [String(student._id), student]));
             const gradedAt = new Date();
+            const saved = await Submission.find({ assignment: assignment._id }).session(session).lean();
             await Submission.bulkWrite(entries.map(({ studentId, marks, absent }) => {
                 const student = byId.get(studentId.toLowerCase());
+                const existing = saved.find(row => row.student ? String(row.student) === String(student._id)
+                    : row.rollNum === student.rollNum && sectionKey(row.section) === sectionKey(student.section));
                 return { updateOne: {
-                    filter: { assignment: assignment._id, student: student._id },
+                    filter: existing ? { _id: existing._id, assignmentDeletedAt: null } : { assignment: assignment._id, student: student._id },
                     update: { $set: absent === true
                         ? { marks: null, percentage: null, status: 'absent', gradedAt: null }
                         : { marks, percentage: Math.round(marks / assignment.maxMarks * 100), status: 'graded', gradedAt },
-                        $setOnInsert: { manual: true, name: student.name, rollNum: student.rollNum, grade: student.grade,
+                        $setOnInsert: { manual: assignment.manual === true, name: student.name, rollNum: student.rollNum, grade: student.grade,
                             section: sectionName(student.section), sectionKey: sectionKey(student.section), submittedAt: gradedAt } },
                     upsert: true
                 } };
